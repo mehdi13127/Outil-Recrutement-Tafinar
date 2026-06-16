@@ -1,0 +1,2332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notion TAFINAR v50</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#0d3b6e;--green:#0e7c3a;--red:#a32d2d;--fs:system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-height:100vh}
+.topbar{display:flex;align-items:center;gap:8px;padding:10px 18px;background:#fff;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+.logo{font-size:16px;font-weight:600;color:var(--navy);flex:1;white-space:nowrap}
+.logo span{font-weight:400;opacity:.6}
+.nav{display:flex;gap:4px}
+.tab{padding:5px 13px;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;background:transparent;color:#6b7280;font-family:var(--fs)}
+.tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tab:hover:not(.active){background:#f9fafb}
+.btn{padding:6px 14px;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:12px;background:transparent;color:#111;font-family:var(--fs)}
+.btn:hover{background:#f9fafb}
+.btn-p{background:var(--navy)!important;color:#fff!important;border-color:var(--navy)!important}
+.btn-p:hover{background:#0a2f58!important}
+.btn-g{background:var(--green)!important;color:#fff!important;border-color:var(--green)!important}
+.btn-g:hover{background:#0b6330!important}
+.btn-r{color:var(--red)!important;border-color:transparent!important}
+.btn-r:hover{background:#fef2f2!important}
+.btn-link{padding:5px 12px;background:var(--green);color:#fff;border-radius:8px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;border:none;cursor:pointer;font-family:var(--fs)}
+.btn-link:hover{background:#0b6330}
+.content{padding:16px;max-width:1400px;margin:0 auto}
+.zone-bar{display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.zone-btn{padding:5px 14px;border:1px solid #e5e7eb;border-radius:20px;cursor:pointer;font-size:13px;background:transparent;color:#6b7280;font-family:var(--fs)}
+.zone-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}
+.col{min-width:200px;flex:0 0 200px;background:#fff;border-radius:12px;padding:10px;border:1px solid #e5e7eb}
+.col-head{display:flex;align-items:center;gap:4px;margin-bottom:8px}
+.col-name{font-size:12px;font-weight:500;background:transparent;border:none;color:#111;flex:1;outline:none;min-width:0;font-family:var(--fs)}
+.col-name:focus{background:#f3f4f6;border-radius:4px;padding:1px 4px}
+.col-cnt{font-size:10px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:10px;padding:1px 6px;color:#6b7280;white-space:nowrap;flex-shrink:0}
+.col-del{background:none;border:none;cursor:pointer;color:#9ca3af;font-size:14px;opacity:.4;flex-shrink:0;padding:0}
+.col-del:hover{opacity:1;color:var(--red)}
+.col.col-dragging{opacity:.4;border:1px dashed #9ca3af}
+.col.col-drag-over{border:2px dashed var(--navy);background:#eff6ff}
+.drag-handle{font-size:16px;color:#9ca3af;cursor:grab;padding:0 4px;flex-shrink:0;user-select:none;line-height:1}
+.drag-handle:hover{color:#6b7280}
+.zone-bar-line{height:6px;border-radius:2px;margin-bottom:14px;transition:background .3s}
+.add-col{min-width:140px;flex:0 0 140px;border:1.5px dashed #e5e7eb;border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-size:12px;color:#9ca3af;background:transparent}
+.add-col:hover{background:#f9fafb;border-color:#9ca3af}
+.drop-zone{min-height:32px}
+.card.readonly{opacity:.85;border-left:3px solid #cbd5e1;cursor:default}
+.card.readonly:hover{border-color:#e5e7eb}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 28px 8px 28px;margin-bottom:6px;cursor:pointer;position:relative;transition:border-color .15s}
+.card:hover{border-color:var(--navy)}
+.card.dragging{opacity:.4}
+.card.sel{border-color:var(--green);background:#f0faf4}
+.card-check{position:absolute;top:9px;left:8px;width:13px;height:13px;cursor:pointer;accent-color:var(--green)}
+.card-name{font-size:12px;font-weight:500}
+.card-poste{font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-score{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:1px 6px;border-radius:6px;margin-top:3px}
+.score-m{background:#dcfce7;color:#166534}.score-p{background:#fef9c3;color:#854d0e}.score-n{background:#fee2e2;color:#991b1b}
+.card-del{position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;opacity:.4;padding:0}
+.card-del:hover{opacity:1;color:var(--red)}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding-top:24px;z-index:200}
+.modal{background:#fff;border-radius:12px;padding:20px;width:560px;max-height:88vh;overflow-y:auto;border:1px solid #e5e7eb;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.m-title{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.m-close{background:none;border:none;cursor:pointer;font-size:20px;color:#9ca3af}
+.fr{margin-bottom:10px}
+.fl{display:block;font-size:11px;color:#6b7280;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.fi{width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;color:#111;font-family:var(--fs)}
+.fi:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 2px rgba(13,59,110,.08)}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.m-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid #e5e7eb;flex-wrap:wrap}
+.drop-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;z-index:300;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.drop-list>div{padding:7px 10px;cursor:pointer;font-size:12px}
+.drop-list>div:hover{background:#f3f4f6}
+.sug-item{padding:7px 10px;cursor:pointer;border-bottom:1px solid #f3f4f6}
+.sug-item:hover{background:#f3f4f6}
+.sug-t{font-weight:500;font-size:12px}
+.sug-m{color:#6b7280;font-size:10px}
+.tags-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.tg{font-size:11px;padding:2px 8px;background:#f3f4f6;border-radius:10px;display:flex;align-items:center;gap:4px;border:1px solid #e5e7eb}
+.tg-x{cursor:pointer;color:#9ca3af;font-size:12px}
+.tg-x:hover{color:var(--red)}
+.warn-txt{color:var(--red);font-size:11px;margin-top:3px}
+.dup-box{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fef9c3;border-radius:8px;font-size:12px;margin-top:6px}
+.cv-sec{border-top:1px solid #f3f4f6;padding-top:10px;margin-top:10px}
+.cv-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.cv-lbl{font-size:11px;color:#6b7280;width:90px;flex-shrink:0}
+.cv-up{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:11px;color:#6b7280;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cv-up:hover{background:#f3f4f6}
+.cv-up.has{background:#f0faf4;color:#166534;border-color:#86efac}
+.bloc-mail{background:#f9fafb;border-radius:8px;padding:12px;font-size:12px;white-space:pre-wrap;font-family:monospace;border:1px solid #e5e7eb;max-height:140px;overflow-y:auto;line-height:1.6}
+.mail-preview{background:#f9fafb;border-radius:8px;padding:14px;font-size:12px;white-space:pre-wrap;font-family:monospace;border:1px solid #e5e7eb;max-height:360px;overflow-y:auto;line-height:1.7}
+.divider{border:none;border-top:1px solid #f3f4f6;margin:12px 0}
+.profils-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.pc{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 10px 10px 28px;cursor:pointer;position:relative;transition:border-color .15s}
+.pc:hover{border-color:var(--navy)}
+.pc.sel{border-color:var(--green);background:#f0faf4}
+.pc-src{font-size:10px;color:#9ca3af;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.pc-name{font-size:13px;font-weight:600}
+.pc-poste{font-size:11px;color:#6b7280;margin-bottom:5px}
+.ptag{font-size:10px;padding:1px 6px;border-radius:6px;margin-right:3px}
+.ptag-b{background:#dbeafe;color:#1e40af}
+.ptag-g{background:#dcfce7;color:#166534}
+.ptag-n{background:#f3f4f6;color:#6b7280}
+.lt{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+.lt th{text-align:left;padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb}
+.lt td{padding:7px 10px;border-bottom:1px solid #f3f4f6}
+.lt tr.sel td{background:#f0faf4}
+.lt tr:hover td{background:#f9fafb}
+.tvw{display:flex;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
+.tvw button{padding:5px 12px;background:transparent;border:none;cursor:pointer;font-size:12px;color:#6b7280;font-family:var(--fs)}
+.tvw button.active{background:var(--navy);color:#fff}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.pc2{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s}
+.pc2:hover{border-color:var(--navy)}
+.u-r{color:var(--red)}.u-n{font-weight:600}.u-j{color:#854d0e}
+.tb{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.par-sec{margin-bottom:22px;background:#fff;border-radius:12px;padding:16px;border:1px solid #e5e7eb}
+.par-sec h3{font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:6px}
+.par-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f3f4f6}
+.par-item:last-child{border-bottom:none}
+.toast{position:fixed;bottom:20px;right:20px;background:#111;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:500;transition:opacity .3s;max-width:320px}
+.toast.hide{opacity:0;pointer-events:none}
+.toast.warn{background:#854d0e}
+.toast.ok{background:#166534}
+.loader-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;z-index:100;font-size:13px;color:#6b7280;gap:10px}
+.spinner{width:20px;height:20px;border:2px solid #e5e7eb;border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.badge-mail{background:var(--red);color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:600}
+.analyse-sec{border-top:1px solid #f3f4f6;padding-top:10px;margin-top:10px}
+.analyse-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+.analyse-table th{text-align:left;padding:5px 7px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280;font-weight:600;background:#f9fafb}
+.analyse-table td{padding:5px 7px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+.analyse-table td:first-child{font-weight:500;color:#111}
+.verdict-analyse{background:#f9fafb;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;margin-top:8px;border:1px solid #e5e7eb}
+.verdict-analyse p{margin-bottom:4px}
+.score-m{background:#dcfce7;color:#166534}.score-p{background:#fef9c3;color:#854d0e}.score-n{background:#fee2e2;color:#991b1b}
+.info-banner{background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12px;color:#1e40af;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+</style>
+</head>
+<body>
+
+
+<div id="loader" class="loader-overlay" style="display:none">
+  <div class="spinner"></div> Chargement des données...
+</div>
+
+<div class="topbar">
+  <span class="logo">Notion <span>TAFINAR</span></span>
+  <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
+  <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
+    <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
+  </button>
+  <div class="nav">
+    <button class="tab active" onclick="showTab('s')">Sourceurs</button>
+    <button class="tab" onclick="showTab('p')">Les Profils</button>
+    <button class="tab" onclick="showTab('po')">Postes</button>
+    <button class="tab" onclick="showTab('cfg')">Paramètres</button>
+    <button class="tab" onclick="showTab('trash')" id="tab-trash-btn">🗑 Corbeille <span id="trash-count" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;display:none">0</span></button>
+  </div>
+  <button class="btn-link" onclick="window.parent.switchTo('rec')"><i class="ti ti-arrows-exchange" aria-hidden="true"></i> Recrutement TAFINAR</button>
+</div>
+
+<div class="content" id="main"></div>
+<div id="mroot"></div>
+<div id="toast" class="toast hide"></div>
+
+<script>
+// ═══════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════
+const SB_URL = 'https://lqqgweqsscyfrqosbcah.supabase.co';
+const SB_KEY = 'sb_publishable_HpXipfY__RmCKOqeGZZMHQ_wJ83l2Yi';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const VILLES = ["Paris","Lyon","Marseille","Toulouse","Nice","Nantes","Strasbourg","Montpellier","Bordeaux","Lille","Rennes","Reims","Saint-Étienne","Toulon","Le Havre","Grenoble","Dijon","Angers","Nîmes","Brest","Tours","Amiens","Limoges","Perpignan","Metz","Besançon","Orléans","Rouen","Caen","Nancy","Mulhouse","Avignon","Pau","Versailles","Poitiers","Courbevoie","Boulogne-Billancourt","Bourges","La Rochelle","Calais","Antibes","Cannes","Issy-les-Moulineaux","Saint-Nazaire","Levallois-Perret","Quimper","Troyes","Valence","Évreux","Blois","Chartres","Cergy","Marignane","Vitrolles","Aubagne","Istres","Fos-sur-Mer","Salon-de-Provence","Arles","Béziers","Sète","Montauban","Albi","Tarbes","Thionville","Saint-Dizier","Belfort","Montbéliard","Chalon-sur-Saône","Annecy","Chambéry","Fréjus","Draguignan","Hyères","La Ciotat","Martigues","Saint-Raphaël","Menton","Grasse","Sophia Antipolis","Lorient","Vannes","Saint-Brieuc","Lannion","Cherbourg","Bayeux","Deauville","La Roche-sur-Yon","Niort","Angoulême","Saintes","Rochefort","Royan","Libourne","Périgueux","Bergerac","Agen","Mont-de-Marsan","Dax","Bayonne","Biarritz","Anglet","Rueil-Malmaison","Nanterre","Vitry-sur-Seine","Créteil","Dunkerque","Colombes","Tourcoing","Roubaix","Valenciennes","Aubervilliers","Aulnay-sous-Bois","Asnières-sur-Seine","Fontenay-sous-Bois","Noisy-le-Grand","Sartrouville","France entière","Île-de-France","PACA","Occitanie","Bretagne","Grand Est","Normandie","Hauts-de-France","Remote","Full remote"];
+const DISPOS = ["Immédiatement","1 mois","2 mois","3 mois"];
+const DEFAULT_STATUTS = ['🆕 Nouveau','📤 À appeler','✅ À envoyer','⏳ En attente','📦 Archiver'];
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let eCV = {o:null, a:null};
+let eCVFiles = {o:null, a:null};
+let pendingAnalyse = null;
+
+// ── Render analysis block (from Recrutement TAFINAR) ──
+function renderAnalyse(analyse){
+  if(!analyse||!analyse.criteres?.length)return'';
+  const iconMap={ok:'✅',partial:'⚠️',partiel:'⚠️',ko:'❌',non:'❌',na:'⬜',no:'❌'};
+  const poidsMap={essentiel:'Essentiel',important:'Important',secondaire:'Secondaire'};
+  const rows=analyse.criteres.map(c=>`<tr>
+    <td class="crit-analyse">${esc(c.nom||'')}</td>
+    <td style="text-align:center;color:#6b7280;font-size:10px">${poidsMap[c.poids]||c.poids||''}</td>
+    <td style="text-align:center;font-size:14px">${iconMap[c.statut]||'⬜'}</td>
+    <td style="color:#6b7280;font-size:10px">${esc(c.commentaire||'')}</td>
+  </tr>`).join('');
+  const verdict=(analyse.verdictPhrases||[]).map(p=>`<p>${esc(p)}</p>`).join('');
+  const dateInfo=analyse.date?`<span style="font-size:10px;color:#9ca3af;margin-left:8px">Analysé le ${esc(analyse.date)}</span>`:'';
+  const scoreClass=analyse.score>=75?'score-m':analyse.score>=50?'score-p':'score-n';
+  return`<div class="analyse-sec">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600"><i class="ti ti-chart-bar" aria-hidden="true"></i> Analyse depuis Recrutement TAFINAR</div>
+      ${analyse.score?`<span class="card-score ${scoreClass}" style="font-size:11px">${analyse.score}/100 — ${analyse.verdictCourt}</span>`:''}
+      ${dateInfo}
+    </div>
+    <table class="analyse-table">
+      <thead><tr><th>Critère</th><th style="text-align:center">Poids</th><th style="text-align:center">Statut</th><th>Commentaire</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${verdict?`<div class="verdict-analyse">${verdict}</div>`:''}
+  </div>`;
+}
+let S = {
+  tab: 's',
+  srcr: 'Mehdi',
+  sourceurs: ['Mehdi','Said','Amine'],
+  statuts: {Mehdi:[...DEFAULT_STATUTS],Said:[...DEFAULT_STATUTS],Amine:[...DEFAULT_STATUTS]},
+  candidates: [],   // localStorage — private per device
+  postes: [],       // Supabase — shared
+  sharedProfils: [],// Supabase — shared (with pretention)
+  sel: new Set(),   // selected for mail
+  remHist: [],
+  dragId: null,
+  colDragIdx: null,
+  pView: 'list',
+  profilSort: 'nom',
+  posteView: 'grid',
+  posteSort: 'date',
+  trash: [],
+};
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function uid(){return 'x'+Math.random().toString(36).substr(2,9)}
+function isUUID(s){return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s||'')}
+function sim(a,b){a=(a||'').toLowerCase().trim();b=(b||'').toLowerCase().trim();if(a===b)return 1;if(a.includes(b)||b.includes(a))return.85;const sa=new Set(a.split(/\s+/));const sb2=new Set(b.split(/\s+/));return[...sa].filter(x=>sb2.has(x)).length/new Set([...sa,...sb2]).size;}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function tryJSON(s,d){try{return JSON.parse(s);}catch{return d;}}
+function gp(id){return S.postes.find(p=>p.id===id);}
+
+let toastTimer;
+function showToast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast '+(type||'ok');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{el.className='toast hide';},3500);
+}
+
+function showLoader(v){document.getElementById('loader').style.display=v?'flex':'none';}
+function updateMailBtn(){
+  const btn=document.getElementById('mail-btn');if(!btn)return;
+  const n=S.sel.size;
+  btn.innerHTML=`<i class="ti ti-mail" aria-hidden="true"></i> Mail récap${n>0?` <strong>(${n})</strong>`:''}`;
+  btn.style.opacity=n>0?'1':'.4';
+  btn.style.pointerEvents=n>0?'auto':'none';
+}
+
+// ═══════════════════════════════════════
+// LOCAL STORAGE
+// ═══════════════════════════════════════
+function saveLocal(){
+  try{
+    localStorage.setItem('tn_sourceurs',JSON.stringify(S.sourceurs));
+    localStorage.setItem('tn_statuts',JSON.stringify(S.statuts));
+    localStorage.setItem('tn_remhist',JSON.stringify(S.remHist));
+    S.sourceurs.forEach(src=>{
+      const cands=S.candidates.filter(c=>c.sourcer===src);
+      localStorage.setItem('tn_cands_'+src,JSON.stringify(cands));
+    });
+    localStorage.setItem('tn_trash',JSON.stringify(S.trash||[]));
+  }catch(e){console.error('saveLocal',e);}
+}
+
+function loadLocal(){
+  try{
+    const ss=localStorage.getItem('tn_sourceurs');if(ss)S.sourceurs=tryJSON(ss,S.sourceurs);
+    const sts=localStorage.getItem('tn_statuts');if(sts)S.statuts=tryJSON(sts,S.statuts);
+    S.sourceurs.forEach(src=>{if(!S.statuts[src])S.statuts[src]=[...DEFAULT_STATUTS];});
+    const rh=localStorage.getItem('tn_remhist');if(rh)S.remHist=tryJSON(rh,[]);
+    S.candidates=[];
+    S.sourceurs.forEach(src=>{
+      const saved=localStorage.getItem('tn_cands_'+src);
+      const cands=tryJSON(saved,[]);
+      S.candidates.push(...cands);
+    });
+    // Load postes cache as fallback
+    const pc=localStorage.getItem('tn_postes_cache');
+    if(pc&&!S.postes.length)S.postes=tryJSON(pc,[]);
+    S.trash=tryJSON(localStorage.getItem('tn_trash'),[]);
+  }catch(e){console.error('loadLocal',e);}
+}
+
+// ═══════════════════════════════════════
+// PENDING STATE (form preservation)
+// ═══════════════════════════════════════
+let pendingCandidatState = null;
+
+// ═══════════════════════════════════════
+// CSV PARSER (handles quoted fields)
+// ═══════════════════════════════════════
+function parseCSV(text){
+  // Remove BOM
+  text=text.replace(/^\uFEFF/,'');
+  const rows=[];let cur=[];let field='';let inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];const n=text[i+1];
+    if(inQ){
+      if(c==='"'&&n==='"'){field+='"';i++;}
+      else if(c==='"'){inQ=false;}
+      else{field+=c;}
+    }else{
+      if(c==='"'){inQ=true;}
+      else if(c===','){cur.push(field);field='';}
+      else if(c==='\n'){cur.push(field);field='';if(cur.some(f=>f.trim()))rows.push(cur);cur=[];}
+      else if(c!=='\r'){field+=c;}
+    }
+  }
+  if(field)cur.push(field);if(cur.some(f=>f.trim()))rows.push(cur);
+  return rows;
+}
+
+// ═══════════════════════════════════════
+// SUPABASE OPS
+// ═══════════════════════════════════════
+async function fetchPostes(){
+  const{data,error}=await sb.from('postes').select('*').order('created_at',{ascending:false});
+  if(error)throw error;
+  S.postes=(data||[]).map(p=>({
+    id:p.id,titre:p.titre||'',client:p.client||'',
+    lieux:tryJSON(p.lieux,[]),secteur:p.secteur||'',
+    urgence:p.urgence||'',statut:p.statut||'🟢 Actif',
+    salaire:p.salaire||'',experience:p.experience||'',
+    nbCandidats:p.nb_candidats||'',competences:p.competences||'',
+    description:p.description||'',analyseIA:p.analyse_ia||null,
+  }));
+  localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
+}
+
+async function fetchProfils(){
+  const{data,error}=await sb.from('profils').select('*').order('created_at',{ascending:false});
+  if(error)throw error;
+  S.sharedProfils=(data||[]).map(p=>({
+    sbId:p.id,nom:p.nom||'',trigramme:p.trigramme||'',
+    posteTitre:p.poste_titre||'',dispo:p.dispo||'',
+    mobilite:tryJSON(p.mobilite,p.mobilite?[p.mobilite]:[]),
+    pretention:p.pretention||'',freelance:p.freelance||'Non',
+    remarque:p.remarque||'',sourcer:p.sourcer||'',
+    score:p.score||null,verdict:p.verdict||null,
+    cvOriginalUrl:p.cv_original_url||null,cvOriginalName:p.cv_original_name||null,
+    cvAnonymeUrl:p.cv_anonyme_url||null,cvAnonymeName:p.cv_anonyme_name||null,
+  }));
+}
+
+// ═══════════════════════════════════════
+// SUPABASE CANDIDATS (vue partagée Mehdi)
+// ═══════════════════════════════════════
+
+async function syncCandidatToSB(c){
+  const payload={
+    local_id:c.id,
+    nom:c.nom,trigramme:c.trigramme||'',
+    poste_titre:c.posteTitre||(gp(c.posteId)?.titre||''),
+    dispo:c.dispo||'',
+    mobilite:JSON.stringify(c.mobilite||[]),
+    pretention:c.pretention||'',
+    freelance:c.freelance||'Non',
+    remarque:c.remarque||'',
+    sourcer:c.sourcer||'',
+    statut:c.statut||'',
+    score:c.score||null,
+    verdict:c.verdict||null,
+    telephone:c.telephone||'',
+    updated_at:new Date().toISOString(),
+  };
+  // Upsert by local_id
+  const{error}=await sb.from('candidats').upsert(payload,{onConflict:'local_id'});
+  if(error)throw error;
+}
+
+async function deleteCandidatFromSB(localId){
+  await sb.from('candidats').delete().eq('local_id',localId);
+}
+
+async function fetchCandidats(){
+  const me=getMe();
+  if(!isAdmin())return; // Only Mehdi fetches others' candidates
+  const{data,error}=await sb.from('candidats').select('*').order('created_at',{ascending:false});
+  if(error)throw error;
+  // Inject candidates from other sourceurs into S.candidates (read-only view)
+  const others=(data||[]).filter(r=>r.sourcer!==me);
+  others.forEach(r=>{
+    // Don't duplicate — check by local_id
+    const existing=S.candidates.find(c=>c.id===r.local_id);
+    if(!existing){
+      S.candidates.push({
+        id:r.local_id,
+        nom:r.nom||'',trigramme:r.trigramme||'',
+        posteId:'',posteTitre:r.poste_titre||'',
+        dispo:r.dispo||'',
+        mobilite:tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]),
+        pretention:r.pretention||'',
+        freelance:r.freelance||'Non',
+        remarque:r.remarque||'',
+        sourcer:r.sourcer||'',
+        statut:r.statut||'',
+        score:r.score||null,verdict:r.verdict||null,
+        telephone:r.telephone||'',
+        sbId:null,cvO:null,cvA:null,analyse:null,
+        _fromSB:true, // mark as read-only
+      });
+    }
+  });
+  // Re-resolve posteId from posteTitre for display
+  S.candidates.forEach(c=>{
+    if(!c.posteId&&c.posteTitre){
+      const p=S.postes.find(p=>sim(p.titre,c.posteTitre)>0.55);
+      if(p)c.posteId=p.id;
+    }
+  });
+}
+
+async function pushPoste(p){
+  const payload={
+    titre:p.titre,client:p.client,
+    lieux:JSON.stringify(p.lieux||[]),
+    secteur:p.secteur,urgence:p.urgence,statut:p.statut,
+    salaire:p.salaire,experience:p.experience,
+    nb_candidats:p.nbCandidats,competences:p.competences,
+    description:p.description||'',
+  };
+  if(isUUID(p.id)){
+    const{error}=await sb.from('postes').update(payload).eq('id',p.id);
+    if(error)throw error;
+  }else{
+    const{data,error}=await sb.from('postes').insert(payload).select().single();
+    if(error)throw error;
+    // Update id in local array
+    const idx=S.postes.findIndex(x=>x.id===p.id);
+    if(idx>=0)S.postes[idx].id=data.id;
+    p.id=data.id;
+  }
+  localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
+}
+
+async function deletePosteDB(id){
+  if(isUUID(id)){
+    const{error}=await sb.from('postes').delete().eq('id',id);
+    if(error)throw error;
+  }
+  S.postes=S.postes.filter(p=>p.id!==id);
+  localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
+}
+
+async function syncCandidatProfil(c){
+  const hasPret=c.pretention&&c.pretention.trim();
+  if(!hasPret){
+    if(c.sbId){
+      await sb.from('profils').delete().eq('id',c.sbId);
+      c.sbId=null;
+    }
+    return;
+  }
+  const p=gp(c.posteId);
+  const payload={
+    nom:c.nom,trigramme:c.trigramme,
+    poste_titre:p?p.titre:(c.posteTitre||''),
+    dispo:c.dispo,
+    mobilite:JSON.stringify(c.mobilite||[]),
+    pretention:c.pretention,freelance:c.freelance,
+    remarque:c.remarque,sourcer:c.sourcer,
+    score:c.score||null,verdict:c.verdict||null,
+  };
+  if(c.sbId){
+    const{error}=await sb.from('profils').update(payload).eq('id',c.sbId);
+    if(error)throw error;
+  }else{
+    const{data,error}=await sb.from('profils').insert(payload).select().single();
+    if(error)throw error;
+    if(data)c.sbId=data.id;
+  }
+}
+
+// ═══════════════════════════════════════
+// SUPABASE STORAGE — CVs
+// ═══════════════════════════════════════
+async function uploadCvToStorage(sbId,type,file){
+  const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path=`${sbId}/${type}_${safe}`;
+  const{error:upErr}=await sb.storage.from('tafinar-cvs').upload(path,file,{upsert:true,cacheControl:'3600',contentType:file.type||'application/octet-stream'});
+  if(upErr)throw upErr;
+  const{data:{publicUrl}}=sb.storage.from('tafinar-cvs').getPublicUrl(path);
+  const col=type==='o'?{cv_original_url:publicUrl,cv_original_name:file.name}:{cv_anonyme_url:publicUrl,cv_anonyme_name:file.name};
+  await sb.from('profils').update(col).eq('id',sbId);
+  return{url:publicUrl,name:file.name};
+}
+
+async function uploadCvAfterSync(c){
+  if(!c.sbId)return;
+  if(eCVFiles.o){try{const r=await uploadCvToStorage(c.sbId,'o',eCVFiles.o);c.cvStorageO=r;}catch(e){console.error('CV upload O:',e);}eCVFiles.o=null;}
+  if(eCVFiles.a){try{const r=await uploadCvToStorage(c.sbId,'a',eCVFiles.a);c.cvStorageA=r;}catch(e){console.error('CV upload A:',e);}eCVFiles.a=null;}
+}
+
+// ═══════════════════════════════════════
+// SHARED EDIT (Les Profils — any device)
+// ═══════════════════════════════════════
+function openSharedEdit(sbId){
+  // If local candidate exists on this device, use regular edit form
+  const local=S.candidates.find(x=>x.sbId===sbId);
+  if(local){openForm(local.id);return;}
+  // Otherwise show shared edit form (saves directly to Supabase)
+  const c=S.sharedProfils.find(x=>x.sbId===sbId);
+  if(!c)return;
+  const cvOUrl=c.cvOriginalUrl;const cvAUrl=c.cvAnonymeUrl;
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="m-title">Modifier profil <span style="font-size:11px;font-weight:400;color:#6b7280">(via ${c.sourcer})</span><button class="m-close" onclick="closeM()">×</button></div>
+    <div class="fg">
+      <div class="fr"><label class="fl">Nom et prénom</label><input class="fi" id="se-nom" value="${esc(c.nom)}"></div>
+      <div class="fr"><label class="fl">Trigramme</label><input class="fi" id="se-tri" value="${esc(c.trigramme)}"></div>
+    </div>
+    <div class="fr"><label class="fl">Poste ciblé</label><input class="fi" id="se-poste" value="${esc(c.posteTitre||'')}"></div>
+    <div class="fr" style="position:relative">
+      <label class="fl">Disponibilité</label>
+      <input class="fi" id="se-dis" value="${esc(c.dispo||'')}" autocomplete="off" oninput="filtDisSE()" onblur="setTimeout(()=>{const d=document.getElementById('se-dis-drop');if(d)d.style.display='none'},220)">
+      <div id="se-dis-drop" class="drop-list" style="display:none"></div>
+    </div>
+    <div class="fr">
+      <label class="fl">Mobilité <span style="text-transform:none;font-size:10px;font-weight:400">(Entrée pour valider)</span></label>
+      <div style="position:relative"><input class="fi" id="se-city" placeholder="Taper une ville..." oninput="filtCitySE()" onblur="setTimeout(()=>{const d=document.getElementById('se-city-drop');if(d)d.style.display='none'},220)" onkeydown="citySEKey(event)" autocomplete="off"><div id="se-city-drop" class="drop-list" style="display:none"></div></div>
+      <div id="se-mob-tags" class="tags-row">${(c.mobilite||[]).map(v=>`<div class="tg">${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span></div>`).join('')}</div>
+    </div>
+    <div class="fg">
+      <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="se-pret" value="${esc(c.pretention||'')}"></div>
+      <div class="fr"><label class="fl">Freelance</label><select class="fi" id="se-free"><option value="Non"${c.freelance==='Non'?' selected':''}>Non</option><option value="Oui"${c.freelance==='Oui'?' selected':''}>Oui</option><option value="À valider"${c.freelance==='À valider'?' selected':''}>À valider</option><option value="CDI"${c.freelance==='CDI'?' selected':''}>CDI</option></select></div>
+    </div>
+    <div class="fr"><label class="fl">Remarque</label><textarea class="fi" id="se-rem" rows="2" style="resize:vertical">${esc(c.remarque||'')}</textarea></div>
+    <div class="cv-sec">
+      <div style="font-size:12px;font-weight:600;margin-bottom:10px">CVs <span style="font-size:10px;font-weight:400;color:#6b7280">(stockés dans la base commune)</span></div>
+      <div class="cv-row">
+        <span class="cv-lbl">CV original</span>
+        ${cvOUrl?`<a href="${cvOUrl}" target="_blank" class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(c.cvOriginalName||'Voir')}</a>`:'<span style="font-size:11px;color:#9ca3af">Non chargé</span>'}
+        <label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> ${cvOUrl?'Remplacer':'Ajouter'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvSharedEdit('${sbId}','o',this)"></label>
+      </div>
+      <div class="cv-row">
+        <span class="cv-lbl">CV anonyme</span>
+        ${cvAUrl?`<a href="${cvAUrl}" target="_blank" class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(c.cvAnonymeName||'Voir')}</a>`:'<span style="font-size:11px;color:#9ca3af">Non chargé</span>'}
+        <label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> ${cvAUrl?'Remplacer':'Ajouter'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvSharedEdit('${sbId}','a',this)"></label>
+      </div>
+    </div>
+    <div class="m-actions">
+      <button class="btn" onclick="closeM()">Annuler</button>
+      <button class="btn btn-p" onclick="saveSharedEdit('${sbId}')">Enregistrer</button>
+    </div>
+  </div></div>`;
+}
+
+function filtDisSE(){const val=(document.getElementById('se-dis')?.value||'').toLowerCase();const drop=document.getElementById('se-dis-drop');if(!drop)return;const m=val?DISPOS.filter(d=>d.toLowerCase().includes(val)):DISPOS;drop.innerHTML=m.map(d=>`<div onmousedown="event.preventDefault()" onclick="document.getElementById('se-dis').value='${d}';document.getElementById('se-dis-drop').style.display='none'">${d}</div>`).join('')+`<div onmousedown="event.preventDefault()" onclick="document.getElementById('se-dis-drop').style.display='none';document.getElementById('se-dis').focus()" style="font-style:italic;color:#9ca3af">Saisie libre...</div>`;drop.style.display='block';}
+function filtCitySE(){const val=(document.getElementById('se-city')?.value||'').toLowerCase().trim();const drop=document.getElementById('se-city-drop');if(!drop||!val){if(drop)drop.style.display='none';return;}const m=VILLES.filter(v=>v.toLowerCase().startsWith(val)).slice(0,6);if(!m.length){drop.style.display='none';return;}drop.innerHTML=m.map(v=>`<div onmousedown="event.preventDefault()" onclick="addCitySE('${v}')">${v}</div>`).join('');drop.style.display='block';}
+function addCitySE(v){const cont=document.getElementById('se-mob-tags');const inp=document.getElementById('se-city');const drop=document.getElementById('se-city-drop');if(cont){const ex=[...cont.querySelectorAll('.tg')].map(el=>el.childNodes[0].textContent.trim());if(!ex.includes(v)){const tg=document.createElement('div');tg.className='tg';tg.innerHTML=`${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span>`;cont.appendChild(tg);}}if(inp)inp.value='';if(drop)drop.style.display='none';}
+function citySEKey(e){if(e.key==='Enter'){e.preventDefault();const v=(document.getElementById('se-city')?.value||'').trim();if(v)addCitySE(v);}}
+
+async function uploadCvSharedEdit(sbId,type,input){
+  if(!input.files[0])return;
+  const f=input.files[0];
+  showToast('Upload en cours...','ok');
+  try{
+    await uploadCvToStorage(sbId,type,f);
+    await fetchProfils();
+    showToast('CV uploadé','ok');
+    openSharedEdit(sbId);
+  }catch(e){console.error(e);showToast('Erreur upload CV','warn');}
+}
+
+async function saveSharedEdit(sbId){
+  const nom=(document.getElementById('se-nom')?.value||'').trim();
+  if(!nom){alert('Le nom est obligatoire.');return;}
+  const mobilite=[...document.querySelectorAll('#se-mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
+  const payload={
+    nom,trigramme:(document.getElementById('se-tri')?.value||'').trim(),
+    poste_titre:(document.getElementById('se-poste')?.value||'').trim(),
+    dispo:(document.getElementById('se-dis')?.value||'').trim(),
+    mobilite:JSON.stringify(mobilite),
+    pretention:(document.getElementById('se-pret')?.value||'').trim(),
+    freelance:document.getElementById('se-free')?.value||'Non',
+    remarque:(document.getElementById('se-rem')?.value||'').trim(),
+  };
+  try{
+    await sb.from('profils').update(payload).eq('id',sbId);
+    await fetchProfils();
+    closeM();showToast('Profil mis à jour','ok');
+  }catch(e){console.error(e);showToast('Erreur sauvegarde','warn');}
+}
+function showTab(t){
+  S.tab=t;
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['s','p','po','cfg'][i]===t));
+  if(t==='p')fetchProfils().then(render).catch(()=>render());
+  else render();
+}
+
+function render(){
+  const m=document.getElementById('main');
+  if(S.tab==='s')m.innerHTML=rSrc();
+  else if(S.tab==='p')m.innerHTML=rProfils();
+  else if(S.tab==='po')m.innerHTML=rPostes();
+  else if(S.tab==='cfg')m.innerHTML=rParams();
+  else if(S.tab==='trash'){m.innerHTML=rTrash();renderTrashTable();}
+  updateMailBtn();
+  renderTopbarUser();
+  const tc=document.getElementById('trash-count');
+  if(tc){const n=(S.trash||[]).length;tc.textContent=n;tc.style.display=n>0?'inline':'none';}
+}
+
+// ── SOURCEURS ──
+function rSrc(){
+  const ztabs=S.sourceurs.map(s=>`<button class="zone-btn${S.srcr===s?' active':''}" onclick="setSrc('${s}')">${s}</button>`).join('');
+  const sts=S.statuts[S.srcr]||[];
+  const cands=S.candidates.filter(c=>c.sourcer===S.srcr);
+  const cols=sts.map((st,idx)=>{
+    const cards=cands.filter(c=>c.statut===st).sort((a,b)=>(a.order??9999)-(b.order??9999));
+    const enc=encodeURIComponent(st);
+    const adminCol=canManageCols();
+    return`<div class="col" data-colidx="${idx}" ondragover="onColOver(event,${idx})" ondrop="onColDrop(event,'${enc}',${idx})">
+      <div class="col-head" style="cursor:default">
+        ${adminCol?`<span class="drag-handle" draggable="true" ondragstart="colDStart(event,${idx})" ondragend="colDEnd()" title="Glisser pour déplacer">⠿</span>`:''}
+        ${adminCol
+          ?`<input class="col-name" value="${esc(st)}" title="Cliquer pour renommer" onblur="renCol('${S.srcr}',${idx},this.value)" onclick="event.stopPropagation()" ondragstart="event.stopPropagation()">`
+          :`<span class="col-name" style="cursor:default;flex:1">${esc(st)}</span>`}
+        <span class="col-cnt">${cards.length}</span>
+        ${adminCol?`<button class="col-del" onclick="delCol('${S.srcr}',${idx})" ondragstart="event.stopPropagation()">×</button>`:''}
+      </div>
+      <div class="drop-zone">
+        ${cards.length===0?'<div style="font-size:11px;color:#9ca3af;text-align:center;padding:8px 0">Vide</div>':''}
+        ${cards.map(c=>{
+          const p=gp(c.posteId);const isSel=S.sel.has(c.id);
+          const scoreBadge=c.score?`<div class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100 ${c.verdict||''}</div>`:'';
+          return`<div class="card${isSel?' sel':''}" style="position:relative" draggable="true" data-id="${c.id}" onclick="canEditC('${esc(c.sourcer)}')?openForm('${c.id}'):openView('${c.id}')" ondragstart="dst(event,'${c.id}')" ondragend="den()">
+            <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" ondragstart="event.stopPropagation()">
+            ${c._fromSB?`<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${esc(c.sourcer)}</div>`:''}
+            <div class="card-name">${esc(c.nom)}</div>
+            <div class="card-poste">${p?esc(p.titre):c.posteTitre?esc(c.posteTitre):'—'}</div>
+            ${scoreBadge}
+            <div style="position:absolute;top:4px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px">
+              ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();delCand('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;color:#d1d5db;padding:0;line-height:1;font-weight:300" title="Supprimer">×</button>`:''}
+              ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();moveCard('${c.id}','up')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Monter">▲</button>`:''}
+              ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();moveCard('${c.id}','down')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Descendre">▼</button>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  const zcolor=getZoneColor(S.srcr);
+  return`<div class="zone-bar-line" style="background:${zcolor}"></div><div class="zone-bar">${ztabs}
+    <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="openForm(null)"><i class="ti ti-plus" aria-hidden="true"></i> Ajouter profil</button>
+      <label class="btn" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> Import CSV<input type="file" accept=".csv" style="display:none" onchange="impCSV(event)"></label>
+    </div>
+  </div>
+  <div class="kanban" id="kanban">${cols}
+    ${canManageCols()?`<div class="add-col" onclick="addCol('${S.srcr}')"><i class="ti ti-plus" aria-hidden="true"></i> Créer statut</div>`:''}
+  </div>`;
+}
+
+// ── LES PROFILS ──
+function rProfils(){
+  const sn=document.getElementById('ps-n')?.value||'';
+  const sp=document.getElementById('ps-p')?.value||'';
+  const st2=document.getElementById('ps-t')?.value||'';
+  let list=[...S.sharedProfils];
+  if(sn)list=list.filter(c=>c.nom.toLowerCase().includes(sn.toLowerCase()));
+  if(sp)list=list.filter(c=>c.posteTitre.toLowerCase().includes(sp.toLowerCase()));
+  if(st2)list=list.filter(c=>c.trigramme.toLowerCase().includes(st2.toLowerCase()));
+  const isG=S.pView==='grid';
+  const sortBy=S.profilSort||'nom';
+  if(sortBy==='nom')list.sort((a,b)=>a.nom.localeCompare(b.nom));
+  else if(sortBy==='poste')list.sort((a,b)=>(a.posteTitre||'').localeCompare(b.posteTitre||''));
+  else if(sortBy==='score')list.sort((a,b)=>(b.score||0)-(a.score||0));
+  else if(sortBy==='dispo')list.sort((a,b)=>(a.dispo||'').localeCompare(b.dispo||''));
+  const selAll=list.length>0&&list.every(c=>S.sel.has('sb_'+c.sbId));
+  const cards=isG?`<div class="profils-grid">${list.map(c=>{
+    const isSel=S.sel.has('sb_'+c.sbId);
+    const scBadge=c.score?`<span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100 ${c.verdict||''}</span>`:'';
+    return`<div class="pc${isSel?' sel':''}" style="position:relative" onclick="openSharedEdit('${c.sbId}')">
+      <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSelSb('${c.sbId}',event)">
+      <button onclick="event.stopPropagation();delSharedProfil('${c.sbId}')" style="position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:14px;color:#9ca3af;line-height:1" title="Supprimer">×</button>
+      <div class="pc-src">${c.sourcer}</div>
+      <div class="pc-name">${esc(c.nom)}</div>
+      <div class="pc-poste">${esc(c.posteTitre||'—')}</div>
+      <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">
+        ${c.pretention?`<span class="ptag ptag-b">${esc(c.pretention)}</span>`:''}
+        ${c.freelance==='Oui'?'<span class="ptag ptag-g">Freelance</span>':''}
+        ${c.dispo?`<span class="ptag ptag-n">${esc(c.dispo)}</span>`:''}
+        ${scBadge}
+      </div>
+    </div>`;}).join('')}</div>`
+  :`<table class="lt"><thead><tr><th><input type="checkbox" ${selAll?'checked':''} onclick="toggleSelAllSb(this,${JSON.stringify(list.map(c=>c.sbId))})" style="accent-color:var(--green)"></th><th>Sourceur</th><th>Nom</th><th>Trigramme</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>Prétention</th><th>Freelance</th><th>Score</th></tr></thead><tbody>
+  ${list.map(c=>{const isSel=S.sel.has('sb_'+c.sbId);return`<tr class="${isSel?'sel':''}" onclick="openSharedEdit('${c.sbId}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSelSb('${c.sbId}',event)" style="accent-color:var(--green)"></td><td style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${c.sourcer}</td><td style="font-weight:600">${esc(c.nom)}</td><td>${c.trigramme}</td><td style="font-size:11px">${esc(c.posteTitre||'—')}</td><td>${c.dispo||'—'}</td><td>${(c.mobilite||[]).join(', ')||'—'}</td><td><span class="ptag ptag-b">${esc(c.pretention)}</span></td><td>${c.freelance}</td><td>${c.score?`<span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100</span>`:''}</td></tr>`;}).join('')}
+  </tbody></table>`;
+  return`<div class="tb">
+    <input id="ps-n" placeholder="Nom..." value="${esc(sn)}" oninput="render()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:130px">
+    <input id="ps-p" placeholder="Poste..." value="${esc(sp)}" oninput="render()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:160px">
+    <input id="ps-t" placeholder="Trigramme..." value="${esc(st2)}" oninput="render()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:110px">
+    <span style="font-size:11px;color:#6b7280">${list.length} profil(s)</span>
+    ${S.sel.size>0?`<button class="btn btn-r" style="font-size:11px" onclick="S.sel=new Set();updateMailBtn();render()">Désélectionner (${S.sel.size})</button>`:''}
+    <button class="btn" style="font-size:11px" onclick="fetchProfils().then(render)"><i class="ti ti-refresh" aria-hidden="true"></i> Actualiser</button>
+    <select onchange="S.profilSort=this.value;render()" style="font-family:inherit;font-size:12px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;margin-left:auto">
+      <option value="nom" ${S.profilSort==='nom'?'selected':''}>Trier : Nom</option>
+      <option value="poste" ${S.profilSort==='poste'?'selected':''}>Trier : Poste</option>
+      <option value="score" ${S.profilSort==='score'?'selected':''}>Trier : Score</option>
+      <option value="dispo" ${S.profilSort==='dispo'?'selected':''}>Trier : Dispo</option>
+    </select>
+    <div class="tvw">
+      <button class="${isG?'active':''}" onclick="S.pView='grid';render()"><i class="ti ti-layout-grid" aria-hidden="true"></i></button>
+      <button class="${!isG?'active':''}" onclick="S.pView='list';render()"><i class="ti ti-list" aria-hidden="true"></i></button>
+    </div>
+  </div>${list.length===0?`<div style="text-align:center;color:#9ca3af;font-size:13px;padding:3rem">Aucun profil avec prétention salariale</div>`:cards}`;
+}
+
+// ── POSTES ──
+function rPostes(){
+  const nbCands=id=>S.sharedProfils.filter(p=>p.posteTitre===S.postes.find(x=>x.id===id)?.titre).length;
+  // Sort postes
+  let postes=[...S.postes];
+  if(S.posteSort==='titre')postes.sort((a,b)=>a.titre.localeCompare(b.titre));
+  else if(S.posteSort==='cands')postes.sort((a,b)=>nbCands(b.id)-nbCands(a.id));
+  else postes.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0)); // date desc
+  const isG=S.posteView==='grid';
+  // Grid card
+  const gridCard=p=>`<div class="pc2" onclick="openPosteForm('${p.id}')">
+    <div style="font-size:12px;font-weight:600;margin-bottom:4px">${esc(p.titre)}</div>
+    <div style="font-size:11px;color:#6b7280">${esc(p.client||'—')} · ${(p.lieux||[]).join(', ')||'—'}</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:2px">${p.secteur||'—'}</div>
+    ${p.urgence?`<div style="font-size:11px;margin-top:4px" class="${p.urgence.includes('Très')?'u-n':p.urgence.includes('Urgent')?'u-r':'u-j'}">${p.urgence}</div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <span onclick="event.stopPropagation();showPosteCandidats('${p.id}')" style="font-size:10px;color:#0d3b6e;cursor:pointer;text-decoration:underline" title="Voir les candidats">${nbCands(p.id)} candidat(s)</span>
+      <button class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="event.stopPropagation();doDeletePoste('${p.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </div>
+  </div>`;
+  // List row
+  const listRow=p=>`<tr onclick="openPosteForm('${p.id}')" style="cursor:pointer">
+    <td style="padding:8px 10px;font-weight:600;font-size:13px">${esc(p.titre)}</td>
+    <td style="padding:8px 10px;font-size:12px;color:#6b7280">${esc(p.client||'—')}</td>
+    <td style="padding:8px 10px;font-size:12px;color:#6b7280">${(p.lieux||[]).join(', ')||'—'}</td>
+    <td style="padding:8px 10px;font-size:12px">${p.urgence?`<span class="${p.urgence.includes('Très')?'u-n':p.urgence.includes('Urgent')?'u-r':'u-j'}" style="font-size:11px">${p.urgence}</span>`:''}</td>
+    <td style="padding:8px 10px;font-size:12px" onclick="event.stopPropagation();showPosteCandidats('${p.id}');event.stopPropagation()">
+      <span style="color:#0d3b6e;cursor:pointer;text-decoration:underline">${nbCands(p.id)} candidat(s)</span>
+    </td>
+    <td style="padding:8px 10px;text-align:right" onclick="event.stopPropagation()">
+      <button class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="doDeletePoste('${p.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </td>
+  </tr>`;
+  const content=postes.length===0
+    ?'<div style="color:#9ca3af;font-size:13px;padding:2rem">Aucun poste — créez-en un ou importez depuis Recrutement TAFINAR</div>'
+    :isG
+      ?`<div class="pg">${postes.map(gridCard).join('')}</div>`
+      :`<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <thead><tr style="background:#f9fafb;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">
+          <th style="padding:8px 10px;text-align:left;font-weight:600">Titre</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:600">Client</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:600">Lieu</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:600">Urgence</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:600">Candidats</th>
+          <th style="padding:8px 10px"></th>
+        </tr></thead>
+        <tbody>${postes.map(listRow).join('')}</tbody>
+      </table>`;
+  return `<div class="tb" style="justify-content:space-between">
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="font-size:12px" onclick="fetchPostes().then(render)"><i class="ti ti-refresh" aria-hidden="true"></i> Actualiser</button>
+      <label class="btn" style="cursor:pointer;font-size:12px"><i class="ti ti-upload" aria-hidden="true"></i> Import CSV<input type="file" accept=".csv" style="display:none" onchange="impCSVPostes(event)"></label>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select onchange="S.posteSort=this.value;render()" style="font-family:inherit;font-size:12px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer">
+        <option value="date" ${S.posteSort==='date'?'selected':''}>Trier : Date</option>
+        <option value="titre" ${S.posteSort==='titre'?'selected':''}>Trier : Titre</option>
+        <option value="cands" ${S.posteSort==='cands'?'selected':''}>Trier : Candidats</option>
+      </select>
+      <div class="tvw">
+        <button class="${isG?'active':''}" onclick="S.posteView='grid';render()"><i class="ti ti-layout-grid" aria-hidden="true"></i></button>
+        <button class="${!isG?'active':''}" onclick="S.posteView='list';render()"><i class="ti ti-list" aria-hidden="true"></i></button>
+      </div>
+      <button class="btn btn-p" onclick="openPosteForm(null)"><i class="ti ti-plus" aria-hidden="true"></i> Ajouter poste</button>
+    </div>
+  </div>
+  ${content}`;
+}
+
+// ── PARAMÈTRES ──
+function rParams(){
+  const curSrc=isAdmin()?(document.getElementById('par-src-sel')?.value||S.sourceurs[0]):getMe();
+  const sts=S.statuts[curSrc]||[];
+  return`<div style="max-width:560px">
+    ${isAdmin()?`<div class="par-sec"><h3><i class="ti ti-users" aria-hidden="true"></i> Sourceurs</h3>
+      ${S.sourceurs.map((s,i)=>`<div class="par-item"><span style="flex:1">${s}</span>${i>0?`<button class="btn btn-r" style="font-size:11px;padding:2px 8px" onclick="delSrc('${s}')"><i class="ti ti-trash" aria-hidden="true"></i></button>`:'<span style="font-size:10px;color:#9ca3af">Principal</span>'}</div>`).join('')}
+      <div style="display:flex;gap:6px;margin-top:10px"><input id="new-src" class="fi" placeholder="Nom du sourceur..." style="flex:1"><button class="btn btn-p" onclick="addSrc()">Ajouter</button></div>
+    </div>`:''}
+    <div class="par-sec"><h3><i class="ti ti-layout-kanban" aria-hidden="true"></i> Statuts ${isAdmin()?'par sourceur':'de ma zone'}</h3>
+      ${isAdmin()?`<select id="par-src-sel" class="fi" style="width:auto;margin-bottom:12px" onchange="render()">
+        ${S.sourceurs.map(s=>`<option value="${s}"${s===curSrc?' selected':''}>${s}</option>`).join('')}
+      </select>`:`<div style="font-size:12px;color:var(--navy);font-weight:600;margin-bottom:12px">${getMe()}</div>`}
+      ${sts.map((st,i)=>`<div class="par-item">
+        <input value="${esc(st)}" style="flex:1;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;font-family:var(--fs)" onblur="if(this.value.trim()&&this.value.trim()!=='${esc(st)}'){S.candidates.forEach(c=>{if(c.sourcer==='${curSrc}'&&c.statut==='${esc(st)}')c.statut=this.value.trim()});S.statuts['${curSrc}'][${i}]=this.value.trim();saveLocal();}">
+        <button class="btn" style="font-size:11px;padding:3px 7px" onclick="mvSt('${curSrc}',${i},-1)"${i===0?' disabled':''}>↑</button>
+        <button class="btn" style="font-size:11px;padding:3px 7px" onclick="mvSt('${curSrc}',${i},1)"${i===sts.length-1?' disabled':''}>↓</button>
+        <button class="btn btn-r" style="font-size:11px;padding:3px 7px" onclick="delSt('${curSrc}',${i})"><i class="ti ti-trash" aria-hidden="true"></i></button>
+      </div>`).join('')}
+      <div style="display:flex;gap:6px;margin-top:10px"><input id="new-st" class="fi" placeholder="Nouveau statut..." style="flex:1"><button class="btn btn-p" onclick="addSt('${curSrc}')">Ajouter</button></div>
+    </div>
+    <div class="par-sec"><h3><i class="ti ti-upload" aria-hidden="true"></i> Importer des données</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;width:140px">Candidats (CSV Notion)</span><label class="btn" style="cursor:pointer"><i class="ti ti-file-csv" aria-hidden="true"></i> Choisir<input type="file" accept=".csv" style="display:none" onchange="impCSV(event)"></label></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;width:140px">Postes (CSV)</span><label class="btn" style="cursor:pointer"><i class="ti ti-file-csv" aria-hidden="true"></i> Choisir<input type="file" accept=".csv" style="display:none" onchange="impCSVPostes(event)"></label></div>
+      </div>
+    </div>
+    <div class="par-sec"><h3><i class="ti ti-download" aria-hidden="true"></i> Exporter des données</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-g" onclick="expCSV('c')"><i class="ti ti-download" aria-hidden="true"></i> Candidats locaux CSV</button>
+        <button class="btn btn-g" onclick="expCSV('p')"><i class="ti ti-download" aria-hidden="true"></i> Postes CSV</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// SÉLECTION + MAIL
+// ═══════════════════════════════════════
+function toggleSel(id,e){if(e)e.stopPropagation();if(S.sel.has(id))S.sel.delete(id);else S.sel.add(id);updateMailBtn();render();}
+function toggleSelSb(sbId,e){if(e)e.stopPropagation();const k='sb_'+sbId;if(S.sel.has(k))S.sel.delete(k);else S.sel.add(k);updateMailBtn();render();}
+function toggleSelAllSb(cb,ids){ids.forEach(id=>{const k='sb_'+id;if(cb.checked)S.sel.add(k);else S.sel.delete(k);});updateMailBtn();render();}
+
+function getSelData(){
+  const result=[];
+  S.sel.forEach(key=>{
+    if(key.startsWith('sb_')){
+      const sbId=key.slice(3);
+      const p=S.sharedProfils.find(x=>x.sbId===sbId);
+      if(p)result.push({nom:p.nom,trigramme:p.trigramme,posteTitre:p.posteTitre,dispo:p.dispo,mobilite:p.mobilite,pretention:p.pretention,freelance:p.freelance,remarque:p.remarque,score:p.score,verdict:p.verdict,_sbId:sbId});
+    }else{
+      const c=S.candidates.find(x=>x.id===key);
+      if(c){const p=gp(c.posteId);result.push({nom:c.nom,trigramme:c.trigramme,posteTitre:p?p.titre:(c.posteTitre||''),dispo:c.dispo,mobilite:c.mobilite,pretention:c.pretention,freelance:c.freelance,remarque:c.remarque,score:c.score,verdict:c.verdict,_id:c.id});}
+    }
+  });
+  return result;
+}
+
+function getMailData(){
+  const sel=getSelData();
+  const byPoste={};const ordre=[];
+  sel.forEach(c=>{const k=c.posteTitre||'Poste non défini';if(!byPoste[k]){byPoste[k]=[];ordre.push(k);}byPoste[k].push(c);});
+  return{sel,byPoste,ordre};
+}
+
+function genMailHTML(dest){
+  const{byPoste,ordre}=getMailData();
+  if(!ordre.length)return'<p style="color:#9ca3af">(Aucun profil sélectionné)</p>';
+  let html=`<p>Bonjour Monsieur ${esc(dest||'ABABOU')}</p><p>&nbsp;</p>`;
+  html+=`<p>Ci-joints les <strong>CI</strong> concernant les postes suivant :</p>`;
+  html+=`<ul>`;ordre.forEach(p=>{html+=`<li>${esc(p)}</li>`;});html+=`</ul><p>&nbsp;</p>`;
+  ordre.forEach(p=>{
+    html+=`<p><strong><em>${esc(p)}</em></strong></p><p>&nbsp;</p>`;
+    byPoste[p].forEach(c=>{
+      html+=`<p><strong>${esc(c.nom)}</strong></p>`;
+      html+=`<p>Profil : ${esc(c.trigramme||'—')}</p>`;
+      html+=`<p>Disponible : ${esc(c.dispo||'—')}</p>`;
+      html+=`<p>Prétention salariale : ${esc(c.pretention||'—')}</p>`;
+      html+=`<p>Mobilité : ${esc((c.mobilite||[]).join(', ')||'—')}</p>`;
+      html+=`<p>Remarque : ${esc(c.remarque||'—')}</p>`;
+      html+=`<p>Freelance : ${esc(c.freelance)}</p><p>&nbsp;</p>`;
+    });
+  });
+  return html;
+}
+
+function genMailText(dest){
+  const{byPoste,ordre}=getMailData();
+  if(!ordre.length)return'(Aucun profil sélectionné)';
+  let t=`Bonjour Monsieur ${dest||'ABABOU'}\n\nCi-joints les CI concernant les postes suivant :\n\n`;
+  ordre.forEach(p=>{t+=`* ${p}\n`;});
+  t+='\n\n';
+  ordre.forEach(p=>{
+    t+=`${p}\n\n`;
+    byPoste[p].forEach(c=>{
+      t+=`${c.nom}\nProfil : ${c.trigramme||'—'}\nDisponible : ${c.dispo||'—'}\nPrétention salariale : ${c.pretention||'—'}\nMobilité : ${(c.mobilite||[]).join(', ')||'—'}\nRemarque : ${c.remarque||'—'}\nFreelance : ${c.freelance}\n\n`;
+    });
+  });
+  return t.trim();
+}
+
+function openMailModal(){
+  if(!S.sel.size)return;
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
+  <div class="modal" style="width:620px">
+    <div class="m-title"><span><i class="ti ti-mail" aria-hidden="true"></i> Mail récap — ${S.sel.size} profil(s)</span><button class="m-close" onclick="closeM()">×</button></div>
+    <div class="fg" style="margin-bottom:10px">
+      <div class="fr"><label class="fl">Destinataire</label><input class="fi" id="mail-dest" value="ABABOU" oninput="refreshMail()"></div>
+      <div class="fr"><label class="fl">Objet</label><input class="fi" id="mail-subject" value="Candidatures — Profils TAFINAR"></div>
+    </div>
+    <div class="fr">
+      <label class="fl">Aperçu formaté</label>
+      <div id="mail-prev" style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;max-height:380px;overflow-y:auto;font-size:13px;line-height:1.7;color:#111">${genMailHTML('ABABOU')}</div>
+    </div>
+    <div class="m-actions">
+      <button class="btn btn-r" onclick="S.sel=new Set();updateMailBtn();closeM()">Vider sélection</button>
+      <button class="btn" onclick="closeM()">Fermer</button>
+      <button class="btn btn-g" onclick="copyMailFormatted()"><i class="ti ti-copy" aria-hidden="true"></i> Copier → Outlook</button>
+      <button class="btn btn-p" onclick="dlTousCVs()"><i class="ti ti-download" aria-hidden="true"></i> Télécharger les CVs</button>
+    </div>
+  </div></div>`;
+}
+
+function refreshMail(){
+  const d=document.getElementById('mail-dest')?.value||'ABABOU';
+  const el=document.getElementById('mail-prev');
+  if(el)el.innerHTML=genMailHTML(d);
+}
+
+function copyMailText(){
+  const d=document.getElementById('mail-dest')?.value||'ABABOU';
+  navigator.clipboard.writeText(genMailText(d)).then(()=>showToast('Texte copié !','ok')).catch(()=>{});
+}
+
+function copyMailFormatted(){
+  const d=document.getElementById('mail-dest')?.value||'ABABOU';
+  const html=genMailHTML(d);
+  // Copy as HTML — pastes with formatting into Outlook
+  const temp=document.createElement('div');
+  temp.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
+  temp.innerHTML=html;temp.contentEditable='true';
+  document.body.appendChild(temp);
+  const range=document.createRange();range.selectNodeContents(temp);
+  const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+  try{document.execCommand('copy');showToast('Mis en presse-papiers — colle dans Outlook','ok');}
+  catch(e){copyMailText();}
+  sel.removeAllRanges();document.body.removeChild(temp);
+}
+
+function ouvrirOutlook(){
+  const dest=document.getElementById('mail-dest')?.value||'ABABOU';
+  const subject=document.getElementById('mail-subject')?.value||'Candidatures — Profils TAFINAR';
+  const body=genMailText(dest);
+  const a=document.createElement('a');
+  a.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  a.style.display='none';document.body.appendChild(a);a.click();
+  setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}},200);
+}
+
+function dlTousCVs(){
+  const sel=getSelData();
+  const localCVs=[];
+  const supabaseCVs=[];
+
+  sel.forEach(c=>{
+    const local=S.candidates.find(x=>x.id===c._id||(c._sbId&&x.sbId===c._sbId));
+    if(local){
+      if(local.cvO&&local.cvO.data)
+        localCVs.push({nom:local.nom||local.trigramme||'?',label:'CV original',data:local.cvO.data,name:local.cvO.name||'CV_original.pdf'});
+      if(local.cvA&&local.cvA.data)
+        localCVs.push({nom:local.nom||local.trigramme||'?',label:'CV anonymisé',data:local.cvA.data,name:local.cvA.name||'CV_anonyme.pdf'});
+      if(local.cvOriginalUrl&&!(local.cvO&&local.cvO.data))
+        supabaseCVs.push({nom:local.nom||local.trigramme||'?',label:'CV original',url:local.cvOriginalUrl});
+      if(local.cvAnonymeUrl&&!(local.cvA&&local.cvA.data))
+        supabaseCVs.push({nom:local.nom||local.trigramme||'?',label:'CV anonymisé',url:local.cvAnonymeUrl});
+    } else {
+      const shared=S.sharedProfils.find(x=>x.sbId===c._sbId);
+      if(shared){
+        if(shared.cvOriginalUrl) supabaseCVs.push({nom:shared.nom||shared.trigramme||'?',label:'CV original',url:shared.cvOriginalUrl});
+        if(shared.cvAnonymeUrl) supabaseCVs.push({nom:shared.nom||shared.trigramme||'?',label:'CV anonymisé',url:shared.cvAnonymeUrl});
+      }
+    }
+  });
+
+  if(localCVs.length===0&&supabaseCVs.length===0){
+    showToast('Aucun CV joint pour ces profils','warn');
+    return;
+  }
+
+  // ── Build popup ──
+  const existing=document.getElementById('cv-dl-popup');if(existing)existing.remove();
+  const popup=document.createElement('div');
+  popup.id='cv-dl-popup';
+  popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center';
+
+  const totalCount=localCVs.length+supabaseCVs.length;
+
+  // Local CVs section
+  // Store localCVs on window for indexed access — avoids any escaping issue
+  window._dlLocalCVs=localCVs;
+
+  const localRows=localCVs.map((cv,i)=>
+    `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb">
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#111">${cv.nom}</div>
+        <div style="font-size:11px;color:#6b7280">${cv.label} — <span style="color:#9ca3af">${cv.name}</span></div>
+      </div>
+      <button onclick="dlLocalCv(${i},this)"
+        style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#0d3b6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">
+        <i class="ti ti-download" aria-hidden="true"></i> Télécharger
+      </button>
+    </div>`
+  ).join('');
+
+  // Supabase CVs section
+  const sbRows=supabaseCVs.map((cv,i)=>
+    `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #fde68a${i===supabaseCVs.length-1?';border-bottom:none':''}">
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#92400e">${cv.nom}</div>
+        <div style="font-size:11px;color:#b45309">${cv.label}</div>
+      </div>
+      <a href="${cv.url}" target="_blank"
+        style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#854d0e;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0">
+        <i class="ti ti-external-link" aria-hidden="true"></i> Ouvrir
+      </a>
+    </div>`
+  ).join('');
+
+  popup.innerHTML=`
+    <div style="background:#fff;border-radius:14px;padding:0;width:520px;max-width:95vw;max-height:85vh;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2);display:flex;flex-direction:column">
+      <div style="padding:20px 24px 16px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#111">CVs sélectionnés</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">${totalCount} CV(s) pour ${sel.length} profil(s)</div>
+        </div>
+        <button onclick="document.getElementById('cv-dl-popup').remove()"
+          style="background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af;line-height:1;padding:4px">×</button>
+      </div>
+      <div style="overflow-y:auto;padding:16px 24px;flex:1">
+        ${localCVs.length>0?`
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0d3b6e;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <i class="ti ti-device-floppy" aria-hidden="true"></i> Sur ton ordinateur (${localCVs.length})
+          </div>
+          ${localRows}
+          ${supabaseCVs.length>0?'<div style="height:16px"></div>':''}
+        `:''}
+        ${supabaseCVs.length>0?`
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#92400e;margin-bottom:8px;display:flex;align-items:center;gap:6px;margin-top:${localCVs.length>0?'4px':'0'}">
+            <i class="ti ti-cloud" aria-hidden="true"></i> Base commune — s'ouvre dans un onglet (${supabaseCVs.length})
+          </div>
+          <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 12px">
+            ${sbRows}
+          </div>
+        `:''}
+      </div>
+      <div style="padding:14px 24px;border-top:1px solid #e5e7eb;flex-shrink:0;display:flex;justify-content:flex-end">
+        <button onclick="document.getElementById('cv-dl-popup').remove()"
+          style="padding:8px 20px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;color:#374151">
+          Fermer
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(popup);
+  popup.addEventListener('click',e=>{if(e.target===popup)popup.remove();});
+}
+
+// ═══════════════════════════════════════
+// FORM CANDIDAT
+// ═══════════════════════════════════════
+function openForm(id){
+  const isEdit=!!id;const c=isEdit?S.candidates.find(x=>x.id===id):null;
+  eCV={o:c?.cvO||null,a:c?.cvA||null};
+  const srcr=c?c.sourcer:getWho();const ep=c?gp(c.posteId):null;
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="m-title">${isEdit?'Modifier':'Ajouter'} un profil<button class="m-close" onclick="closeM()">×</button></div>
+    <div class="fg">
+      <div class="fr"><label class="fl">Nom et prénom *</label><input class="fi" id="f-nom" value="${esc(c?.nom||'')}" oninput="chkDupC();saveDraft()"><div id="dup-c"></div></div>
+      <div class="fr"><label class="fl">Trigramme</label><input class="fi" id="f-tri" value="${esc(c?.trigramme||'')}" oninput="saveDraft()"></div>
+    </div>
+    <div class="fr" style="position:relative">
+      <label class="fl">Poste ciblé *</label>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="color:var(--red);font-size:11px">Introuvable dans la liste ?</span>
+        <button type="button" class="btn btn-p" style="font-size:10px;padding:2px 10px" onclick="openPosteFromCandidatForm()">+ Créer un nouveau poste</button>
+      </div>
+      <input class="fi" id="f-ps" placeholder="Cliquer pour voir tous les postes, ou taper pour filtrer..." autocomplete="off" value="${ep?esc(ep.titre):''}" oninput="filtPS()" onfocus="filtPSAll()" onblur="setTimeout(()=>{const d=document.getElementById('ps-drop');if(d)d.style.display='none'},220)">
+      <input type="hidden" id="f-pid" value="${c?.posteId||''}">
+      <div id="ps-drop" class="drop-list" style="display:none;max-height:180px"></div>
+      <div id="ps-warn" class="warn-txt" style="display:none">Aucun poste trouvé.</div>
+    </div>
+    <div class="fr" style="position:relative">
+      <label class="fl">Disponibilité</label>
+      <input class="fi" id="f-dis" value="${esc(c?.dispo||'')}" placeholder="Immédiatement, 1 mois..." autocomplete="off" oninput="filtDis();saveDraft()" onblur="setTimeout(()=>{const d=document.getElementById('dis-drop');if(d)d.style.display='none'},220)">
+      <div id="dis-drop" class="drop-list" style="display:none"></div>
+    </div>
+    <div class="fr">
+      <label class="fl">Mobilité <span style="text-transform:none;font-size:10px;font-weight:400">(plusieurs villes — Entrée pour valider)</span></label>
+      <div style="position:relative"><input class="fi" id="f-city" placeholder="Taper une ville..." autocomplete="off" oninput="filtCity()" onblur="setTimeout(()=>{const d=document.getElementById('city-drop');if(d)d.style.display='none'},220)" onkeydown="cityKey(event)"><div id="city-drop" class="drop-list" style="display:none"></div></div>
+      <div id="mob-tags" class="tags-row">${(c?.mobilite||[]).map(v=>`<div class="tg">${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span></div>`).join('')}</div>
+    </div>
+    <div class="fg">
+      <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="f-pret" value="${esc(c?.pretention||'')}" placeholder="ex: 45k" oninput="saveDraft()"></div>
+      <div class="fr"><label class="fl">Freelance</label><select class="fi" id="f-free" onchange="saveDraft()"><option value="Non"${(c?.freelance||'Non')==='Non'?' selected':''}>Non</option><option value="Oui"${c?.freelance==='Oui'?' selected':''}>Oui</option><option value="CDI"${c?.freelance==='CDI'?' selected':''}>CDI</option><option value="À valider"${c?.freelance==='À valider'?' selected':''}>À valider</option></select></div>
+    </div>
+    <div class="fr">${isAdmin()?`<label class='fl'>Sourceur</label><select class='fi' id='f-src'>${S.sourceurs.map(s=>`<option value='${s}'${srcr===s?' selected':''}>${s}</option>`).join('')}</select>`:`<input type='hidden' id='f-src' value='${srcr}'>`}</div>
+    <div class="fr" style="position:relative">
+      <label class="fl">Remarque</label>
+      <input class="fi" id="f-rem" value="${esc(c?.remarque||'')}" autocomplete="off" oninput="filtRem();saveDraft()" onblur="setTimeout(()=>{const d=document.getElementById('rem-drop');if(d)d.style.display='none'},220)">
+      <div id="rem-drop" class="drop-list" style="display:none"></div>
+    </div>
+    <div class="fr"><label class="fl">Téléphone</label><input class="fi" id="f-tel" value="${esc(c?.telephone||'')}" placeholder="ex: 06 12 34 56 78"></div>
+    ${c?.score?`<div class="fr"><label class="fl">Score analyse</label><div class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="display:inline-flex">${c.score}/100 — ${c.verdict}</div></div>`:''}
+    <div class="cv-sec">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px">CVs</div>
+      <div class="cv-row"><span class="cv-lbl">CV original</span><label class="cv-up${eCV.o?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i><span id="cvol">${eCV.o?esc(eCV.o.name):'Choisir fichier'}</span><input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="fCvUp('o',this)"></label><div id="cvo-act" style="display:${eCV.o?'flex':'none'};gap:4px"><button type="button" class="btn" style="font-size:11px;padding:2px 6px" onclick="fCvDl('o')"><i class="ti ti-download" aria-hidden="true"></i></button><button type="button" class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="fCvRm('o')"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div>
+      <div class="cv-row"><span class="cv-lbl">CV anonyme</span><label class="cv-up${eCV.a?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i><span id="cval">${eCV.a?esc(eCV.a.name):'Choisir fichier'}</span><input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="fCvUp('a',this)"></label><div id="cva-act" style="display:${eCV.a?'flex':'none'};gap:4px"><button type="button" class="btn" style="font-size:11px;padding:2px 6px" onclick="fCvDl('a')"><i class="ti ti-download" aria-hidden="true"></i></button><button type="button" class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="fCvRm('a')"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div>
+    </div>
+    <div class="m-actions"><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-p" onclick="saveC('${c?.id||''}')">Enregistrer</button></div>
+  </div></div>`;
+  // Restore draft for new candidates
+  if(!isEdit){
+    const draft=loadDraft();
+    if(draft){
+      setTimeout(()=>{
+        const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
+        if(draft.nom)set('f-nom',draft.nom);
+        if(draft.tri)set('f-tri',draft.tri);
+        if(draft.dis)set('f-dis',draft.dis);
+        if(draft.pret)set('f-pret',draft.pret);
+        if(draft.rem)set('f-rem',draft.rem);
+        if(draft.free){const el=document.getElementById('f-free');if(el)el.value=draft.free;}
+        if(draft.ps){
+          set('f-ps',draft.ps);
+          if(draft.pid){const hid=document.getElementById('f-pid');if(hid)hid.value=draft.pid;}
+        }
+        if(draft.mobilite&&draft.mobilite.length){
+          const tags=document.getElementById('mob-tags');
+          if(tags) draft.mobilite.forEach(v=>{
+            const d=document.createElement('div');d.className='tg';
+            d.innerHTML=v+'<span class="tg-x" onclick="this.parentElement.remove();saveDraft()">×</span>';
+            tags.appendChild(d);
+          });
+        }
+        // Show draft banner
+        const modal=document.querySelector('.modal');
+        if(modal){
+          const banner=document.createElement('div');
+          banner.style.cssText='background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:6px 10px;font-size:11px;color:#854d0e;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px';
+          banner.innerHTML='<span>⚠️ Brouillon restauré automatiquement</span><button onclick="clearDraft();this.parentElement.remove()" style="background:none;border:none;cursor:pointer;font-size:11px;color:#854d0e;text-decoration:underline">Effacer</button>';
+          modal.insertBefore(banner,modal.firstChild.nextSibling);
+        }
+      },50);
+    }
+  }
+}
+
+function buildPSDrop(matches){
+  const drop=document.getElementById('ps-drop');const warn=document.getElementById('ps-warn');
+  if(!drop)return;
+  if(!matches.length){
+    drop.style.display='none';
+    if(warn){warn.textContent='Aucun poste trouvé.';warn.style.display='block';}
+    return;
+  }
+  if(warn)warn.style.display='none';
+  drop.innerHTML=matches.map(p=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="selPoste('${p.id}','${p.titre.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')"><div class="sug-t">${esc(p.titre)}</div><div class="sug-m">${esc(p.client||'')} ${(p.lieux||[]).join(', ')}</div></div>`).join('');
+  drop.style.display='block';
+}
+function filtPSAll(){
+  // Show all postes on focus (most recent first)
+  const src=[...S.postes];
+  if(!src.length)return;
+  buildPSDrop(src.slice(0,10));
+}
+function filtPS(){
+  const val=(document.getElementById('f-ps')?.value||'').trim();
+  const drop=document.getElementById('ps-drop');const warn=document.getElementById('ps-warn');
+  if(!val){
+    // Clear hidden posteId when field is emptied — prevents ghost selection
+    const hid=document.getElementById('f-pid');if(hid)hid.value='';
+    if(drop)drop.style.display='none';
+    if(warn)warn.style.display='none';
+    return;
+  }
+  const matches=[...S.postes].filter(p=>p.titre.toLowerCase().includes(val.toLowerCase())||sim(p.titre,val)>0.3).slice(0,8);
+  buildPSDrop(matches);
+}
+function selPoste(id,titre){const inp=document.getElementById('f-ps');if(inp)inp.value=titre;const hid=document.getElementById('f-pid');if(hid)hid.value=id;const drop=document.getElementById('ps-drop');if(drop)drop.style.display='none';const warn=document.getElementById('ps-warn');if(warn)warn.style.display='none';}
+function filtDis(){const val=(document.getElementById('f-dis')?.value||'').toLowerCase();const drop=document.getElementById('dis-drop');if(!drop)return;const m=val?DISPOS.filter(d=>d.toLowerCase().includes(val)):DISPOS;drop.innerHTML=m.map(d=>`<div onmousedown="event.preventDefault()" onclick="selDis('${d}')">${d}</div>`).join('')+`<div onmousedown="event.preventDefault()" onclick="selDisFree()" style="font-style:italic;color:#9ca3af;border-top:1px solid #f3f4f6">Saisie libre...</div>`;drop.style.display='block';}
+function selDis(v){const inp=document.getElementById('f-dis');if(inp)inp.value=v;const d=document.getElementById('dis-drop');if(d)d.style.display='none';}
+function selDisFree(){const d=document.getElementById('dis-drop');if(d)d.style.display='none';const inp=document.getElementById('f-dis');if(inp){inp.focus();}}
+function filtCity(){const val=(document.getElementById('f-city')?.value||'').toLowerCase().trim();const drop=document.getElementById('city-drop');if(!drop||!val){if(drop)drop.style.display='none';return;}const m=VILLES.filter(v=>v.toLowerCase().startsWith(val)).slice(0,6);if(!m.length){drop.style.display='none';return;}drop.innerHTML=m.map(v=>`<div onmousedown="event.preventDefault()" onclick="addCity('${v}')">${v}</div>`).join('');drop.style.display='block';}
+function addCity(v){const cont=document.getElementById('mob-tags');const inp=document.getElementById('f-city');const drop=document.getElementById('city-drop');if(cont){const ex=[...cont.querySelectorAll('.tg')].map(el=>el.childNodes[0].textContent.trim());if(!ex.includes(v)){const tg=document.createElement('div');tg.className='tg';tg.innerHTML=`${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span>`;cont.appendChild(tg);}}if(inp)inp.value='';if(drop)drop.style.display='none';}
+function cityKey(e){if(e.key==='Enter'){e.preventDefault();const v=(document.getElementById('f-city')?.value||'').trim();if(v)addCity(v);}}
+function filtRem(){const val=(document.getElementById('f-rem')?.value||'').toLowerCase();const drop=document.getElementById('rem-drop');if(!drop)return;const hist=S.remHist.filter(r=>!val||r.toLowerCase().includes(r));if(!hist.length){drop.style.display='none';return;}drop.innerHTML=hist.slice(0,8).map(r=>`<div onmousedown="event.preventDefault()" onclick="selRem(this)">${esc(r)}</div>`).join('');drop.style.display='block';}
+function selRem(el){const inp=document.getElementById('f-rem');if(inp)inp.value=el.textContent;const d=document.getElementById('rem-drop');if(d)d.style.display='none';}
+function fCvUp(type,input){if(!input.files[0])return;const f=input.files[0];eCVFiles[type]=f;const r=new FileReader();r.onload=e=>{eCV[type]={name:f.name,data:e.target.result};const lbl=document.getElementById(type==='o'?'cvol':'cval');if(lbl)lbl.textContent=f.name;const act=document.getElementById(type==='o'?'cvo-act':'cva-act');if(act)act.style.display='flex';const up=lbl?.parentElement;if(up)up.classList.add('has');};r.readAsDataURL(f);}
+function fCvDl(type){const cv=eCV[type];if(!cv)return;const a=document.createElement('a');a.href=cv.data;a.download=cv.name;a.click();}
+function fCvRm(type){eCV[type]=null;const lbl=document.getElementById(type==='o'?'cvol':'cval');if(lbl)lbl.textContent='Choisir fichier';const act=document.getElementById(type==='o'?'cvo-act':'cva-act');if(act)act.style.display='none';const up=lbl?.parentElement;if(up)up.classList.remove('has');}
+function chkDupC(){const val=(document.getElementById('f-nom')?.value||'').trim();const el=document.getElementById('dup-c');if(!el||val.length<3){if(el)el.innerHTML='';return;}const dups=S.candidates.filter(c=>sim(c.nom,val)>0.7);el.innerHTML=dups.length?`<div class="warn-txt">Profil similaire : ${dups.map(d=>esc(d.nom)).join(', ')}</div>`:'';}
+
+async function saveC(id){
+  const nom=(document.getElementById('f-nom')?.value||'').trim();
+  const posteId=document.getElementById('f-pid')?.value||'';
+  const posteSaisi=(document.getElementById('f-ps')?.value||'').trim();
+  if(!nom){
+    const el=document.getElementById('f-nom');
+    if(el){el.style.border='1.5px solid #dc2626';el.focus();setTimeout(()=>{if(el)el.style.border='';},2000);}
+    showToast('Le nom du candidat est obligatoire','warn');return;
+  }
+  // Poste non sélectionné dans la liste
+  if(!posteId){
+    if(!posteSaisi){
+      showToast('Veuillez indiquer un poste','warn');
+      const el=document.getElementById('f-ps');if(el){el.style.border='1.5px solid #dc2626';el.focus();setTimeout(()=>{if(el)el.style.border='';},2000);}
+      return;
+    }
+
+    // Capture current form state before any popup
+    const captureState=()=>({
+      editId:id||null,
+      nom:document.getElementById('f-nom')?.value||'',
+      trigramme:document.getElementById('f-tri')?.value||'',
+      dispo:document.getElementById('f-dis')?.value||'',
+      pretention:document.getElementById('f-pret')?.value||'',
+      freelance:document.getElementById('f-free')?.value||'Non',
+      sourcer:document.getElementById('f-src')?.value||S.srcr,
+      remarque:document.getElementById('f-rem')?.value||'',
+      mobilite:[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim()),
+      posteSearch:posteSaisi,
+      posteId:'',
+      cvO:eCV.o,cvA:eCV.a,
+    });
+
+    // Check for similar existing poste
+    const similar=S.postes.filter(p=>sim(p.titre,posteSaisi)>0.6);
+
+    if(similar.length){
+      const action=await new Promise(resolve=>{
+        const existing=document.getElementById('poste-check-popup');if(existing)existing.remove();
+        const popup=document.createElement('div');
+        popup.id='poste-check-popup';
+        popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center';
+        popup.innerHTML=`
+          <div style="background:#fff;border-radius:12px;padding:24px;width:480px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+            <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+              <span style="font-size:20px">🔍</span> Poste similaire trouvé
+            </div>
+            <div style="font-size:13px;color:#6b7280;margin-bottom:16px">
+              Tu as saisi <strong style="color:#111">"${posteSaisi}"</strong>. Un poste similaire existe déjà :
+            </div>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px;margin-bottom:16px">
+              <div style="font-weight:600;color:#0369a1;font-size:13px">${esc(similar[0].titre)}</div>
+              ${similar[0].client?`<div style="font-size:11px;color:#6b7280;margin-top:2px">${esc(similar[0].client)}</div>`:''}
+            </div>
+            <div style="font-size:12px;color:#374151;margin-bottom:16px">Est-ce le même poste ?</div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+              <button id="pcp-new" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;color:#374151">
+                Non — créer <strong>"${posteSaisi.length>25?posteSaisi.slice(0,25)+'…':posteSaisi}"</strong>
+              </button>
+              <button id="pcp-use" style="padding:8px 16px;background:#0d3b6e;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+                ✓ Oui — utiliser ce poste
+              </button>
+            </div>
+          </div>`;
+        document.body.appendChild(popup);
+        document.getElementById('pcp-use').onclick=()=>{popup.remove();resolve('used');};
+        document.getElementById('pcp-new').onclick=()=>{popup.remove();resolve('create');};
+      });
+
+      if(action==='used'){
+        // Set the similar poste and re-run saveC
+        const hid=document.getElementById('f-pid');if(hid)hid.value=similar[0].id;
+        const ps=document.getElementById('f-ps');if(ps)ps.value=similar[0].titre;
+        await saveC(id);return;
+      }
+      // action === 'create' — save state, create poste, reopen form
+      pendingCandidatState=captureState();
+      const newP={id:uid(),titre:posteSaisi,client:'',secteur:'',lieux:[],urgence:'',statut:'🟢 Actif',salaire:'',experience:'',nbCandidats:'',competences:'',description:''};
+      S.postes.push(newP);
+      try{await pushPoste(newP);}catch(e){console.error('pushPoste:',e);}
+      localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
+      showToast('Poste "'+posteSaisi+'" créé','ok');
+      reopenCandidatFormWithState(newP.id,newP.titre);
+      return;
+    }
+
+    // No similar — ask to create directly
+    const confirmed=await new Promise(resolve=>{
+      const existing=document.getElementById('poste-check-popup');if(existing)existing.remove();
+      const popup=document.createElement('div');
+      popup.id='poste-check-popup';
+      popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center';
+      popup.innerHTML=`
+        <div style="background:#fff;border-radius:12px;padding:24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+          <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">📋</span> Nouveau poste
+          </div>
+          <div style="font-size:13px;color:#6b7280;margin-bottom:16px">
+            Le poste <strong style="color:#111">"${posteSaisi}"</strong> n'existe pas encore dans la liste.<br>
+            Voulez-vous le créer automatiquement ?
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="pcp-cancel" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;color:#374151">Annuler</button>
+            <button id="pcp-create" style="padding:8px 16px;background:#0e7c3a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+              ✓ Créer le poste
+            </button>
+          </div>
+        </div>`;
+      document.body.appendChild(popup);
+      document.getElementById('pcp-create').onclick=()=>{popup.remove();resolve(true);};
+      document.getElementById('pcp-cancel').onclick=()=>{popup.remove();resolve(false);};
+    });
+    if(!confirmed)return;
+    // Save state, create poste, reopen form
+    pendingCandidatState=captureState();
+    const newP={id:uid(),titre:posteSaisi,client:'',secteur:'',lieux:[],urgence:'',statut:'🟢 Actif',salaire:'',experience:'',nbCandidats:'',competences:'',description:''};
+    S.postes.push(newP);
+    try{await pushPoste(newP);}catch(e){console.error('pushPoste:',e);}
+    localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
+    showToast('Poste "'+posteSaisi+'" créé','ok');
+    reopenCandidatFormWithState(newP.id,newP.titre);
+    return;
+  }
+  const rem=(document.getElementById('f-rem')?.value||'').trim();
+  if(rem&&!S.remHist.includes(rem))S.remHist.unshift(rem);
+  if(S.remHist.length>20)S.remHist=S.remHist.slice(0,20);
+  const mobilite=[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
+  const sourcer=isAdmin()?(document.getElementById('f-src')?.value||getMe()):getMe();
+  const data={nom,trigramme:(document.getElementById('f-tri')?.value||'').trim(),posteId,dispo:(document.getElementById('f-dis')?.value||'').trim(),mobilite,pretention:(document.getElementById('f-pret')?.value||'').trim(),freelance:document.getElementById('f-free')?.value||'Non',sourcer,remarque:rem,telephone:(document.getElementById('f-tel')?.value||'').trim(),cvO:eCV.o,cvA:eCV.a,analyse:pendingAnalyse};
+  pendingAnalyse=null;
+  let c;
+  if(id){c=S.candidates.find(x=>x.id===id);if(c)Object.assign(c,data);}
+  else{const sts=S.statuts[sourcer]||[...DEFAULT_STATUTS];c={id:uid(),statut:sts[0],sbId:null,score:null,verdict:null,...data};S.candidates.push(c);}
+  // Clear _fromSB flag — candidate is now owned/edited locally
+  if(c._fromSB) delete c._fromSB;
+  saveLocal();
+  clearDraft();
+  closeM();render();
+  // Sync candidat to shared candidats table
+  syncCandidatToSB(c).catch(e=>console.warn('syncCandidatToSB:',e));
+  // Sync to Supabase if has pretention
+  if(data.pretention&&data.pretention.trim()){
+    try{
+      await syncCandidatProfil(c);
+      await uploadCvAfterSync(c);
+      saveLocal();
+      await fetchProfils();
+      showToast('Profil synchronisé','ok');
+    }catch(e){console.error(e);showToast('Sync Supabase échoué — données sauvegardées localement','warn');}
+  }
+}
+
+// ── VIEW MODAL ──
+function openView(id){
+  const c=S.candidates.find(x=>x.id===id);if(!c)return;
+  const p=gp(c.posteId);
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()"><div class="modal" onclick="event.stopPropagation()">
+    <div class="m-title"><span>${esc(c.nom)} <span style="font-size:11px;font-weight:400;color:#6b7280">${c.trigramme}</span></span><button class="m-close" onclick="closeM()">×</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:10px">
+      <div><span style="color:#6b7280">Sourceur :</span> <strong>${c.sourcer}</strong></div>
+      <div><span style="color:#6b7280">Poste :</span> ${p?esc(p.titre):'—'}</div>
+      <div><span style="color:#6b7280">Dispo :</span> ${c.dispo||'—'}</div>
+      <div><span style="color:#6b7280">Prétention :</span> ${c.pretention||'—'}</div>
+      <div><span style="color:#6b7280">Mobilité :</span> ${(c.mobilite||[]).join(', ')||'—'}</div>
+      <div><span style="color:#6b7280">Freelance :</span> ${c.freelance}</div>
+      ${c.telephone?`<div><span style="color:#6b7280">Téléphone :</span> <strong>${esc(c.telephone)}</strong></div>`:''}
+    </div>
+    ${c.score?`<div style="margin-bottom:10px"><span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="font-size:12px">${c.score}/100 — ${c.verdict}</span></div>`:''}
+    ${c.remarque?`<div style="font-size:12px;margin-bottom:10px;background:#f9fafb;padding:8px 10px;border-radius:8px"><span style="color:#6b7280">Remarque :</span> ${esc(c.remarque)}</div>`:''}
+    <div class="cv-sec"><div style="font-size:12px;font-weight:600;margin-bottom:8px">CVs</div>
+      <div class="cv-row"><span class="cv-lbl">CV original</span><label class="cv-up${c.cvO?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i> ${c.cvO?esc(c.cvO.name):'Choisir'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="vCvUp('${id}','o',this)"></label>${c.cvO?`<button class="btn" style="font-size:11px;padding:2px 6px" onclick="vCvDl('${id}','o')"><i class="ti ti-download" aria-hidden="true"></i></button><button class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="vCvRm('${id}','o')"><i class="ti ti-trash" aria-hidden="true"></i></button>`:''}</div>
+      <div class="cv-row"><span class="cv-lbl">CV anonyme</span><label class="cv-up${c.cvA?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i> ${c.cvA?esc(c.cvA.name):'Choisir'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="vCvUp('${id}','a',this)"></label>${c.cvA?`<button class="btn" style="font-size:11px;padding:2px 6px" onclick="vCvDl('${id}','a')"><i class="ti ti-download" aria-hidden="true"></i></button><button class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="vCvRm('${id}','a')"><i class="ti ti-trash" aria-hidden="true"></i></button>`:''}</div>
+    </div>
+    <hr class="divider">
+    <div style="font-size:12px;font-weight:600;margin-bottom:4px">Bloc mail</div>
+    <div class="bloc-mail" id="bm-prev">${esc(genBlocMail(c))}</div>
+    <div style="margin-top:6px"><button class="btn btn-g" onclick="cpyMail('${id}')"><i class="ti ti-copy" aria-hidden="true"></i> Copier</button></div>
+    ${c.analyse?`<hr class="divider">${renderAnalyse(c.analyse)}`:''}
+    <div class="m-actions"><button class="btn" onclick="closeM()">Fermer</button><button class="btn btn-p" onclick="closeM();openForm('${id}')"><i class="ti ti-edit" aria-hidden="true"></i> Modifier</button></div>
+  </div></div>`;
+}
+
+function openProfilView(sbId){
+  const c=S.sharedProfils.find(x=>x.sbId===sbId);if(!c)return;
+  // Find local candidate with CVs (if available on this device)
+  const local=S.candidates.find(x=>x.sbId===sbId);
+  const cvO=local?.cvO||null;const cvA=local?.cvA||null;
+  const cvNote=local?'':`<div style="font-size:11px;color:#9ca3af;margin-top:4px"><i class="ti ti-info-circle" aria-hidden="true"></i> CVs disponibles uniquement sur l'appareil du sourceur</div>`;
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()"><div class="modal" onclick="event.stopPropagation()">
+    <div class="m-title"><span>${esc(c.nom)} <span style="font-size:11px;font-weight:400;color:#6b7280">${c.trigramme}</span></span><button class="m-close" onclick="closeM()">×</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:12px">
+      <div><span style="color:#6b7280">Sourceur :</span> <strong>${c.sourcer}</strong></div>
+      <div><span style="color:#6b7280">Poste :</span> ${esc(c.posteTitre||'—')}</div>
+      <div><span style="color:#6b7280">Dispo :</span> ${c.dispo||'—'}</div>
+      <div><span style="color:#6b7280">Prétention :</span> <strong>${c.pretention||'—'}</strong></div>
+      <div><span style="color:#6b7280">Mobilité :</span> ${(c.mobilite||[]).join(', ')||'—'}</div>
+      <div><span style="color:#6b7280">Freelance :</span> ${c.freelance}</div>
+      ${c.telephone?`<div><span style="color:#6b7280">Téléphone :</span> <strong>${esc(c.telephone)}</strong></div>`:''}
+    </div>
+    ${c.score?`<div style="margin-bottom:10px"><span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="font-size:12px;padding:3px 10px">${c.score}/100 — ${c.verdict}</span></div>`:''}
+    ${c.remarque?`<div style="font-size:12px;margin-bottom:12px;background:#f9fafb;padding:10px 12px;border-radius:8px;border:1px solid #e5e7eb"><span style="color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:600">Remarque</span><br>${esc(c.remarque)}</div>`:''}
+    <div class="cv-sec">
+      <div style="font-size:12px;font-weight:600;margin-bottom:10px">CVs</div>
+      <div class="cv-row">
+        <span class="cv-lbl">CV original</span>
+        ${cvO
+          ?`<label class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(cvO.name)}</label>
+            <button class="btn" style="font-size:11px;padding:2px 8px" onclick="dlCvShared('${sbId}','o')"><i class="ti ti-download" aria-hidden="true"></i></button>`
+          :`<span style="font-size:11px;color:#9ca3af">${local?'Aucun CV chargé':'Non disponible ici'}</span>
+           ${local?`<label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> Ajouter<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvShared('${sbId}','o',this)"></label>`:''}`
+        }
+      </div>
+      <div class="cv-row">
+        <span class="cv-lbl">CV anonyme</span>
+        ${cvA
+          ?`<label class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(cvA.name)}</label>
+            <button class="btn" style="font-size:11px;padding:2px 8px" onclick="dlCvShared('${sbId}','a')"><i class="ti ti-download" aria-hidden="true"></i></button>`
+          :`<span style="font-size:11px;color:#9ca3af">${local?'Aucun CV chargé':'Non disponible ici'}</span>
+           ${local?`<label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> Ajouter<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvShared('${sbId}','a',this)"></label>`:''}`
+        }
+      </div>
+      ${cvNote}
+    </div>
+    <div class="m-actions">
+      <button class="btn" onclick="closeM()">Fermer</button>
+      ${local?`<button class="btn btn-p" onclick="closeM();openForm('${local.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Modifier</button>`:''}
+    </div>
+  </div></div>`;
+}
+
+function dlCvShared(sbId,type){
+  const local=S.candidates.find(x=>x.sbId===sbId);if(!local)return;
+  const cv=type==='o'?local.cvO:local.cvA;if(!cv)return;
+  const a=document.createElement('a');a.href=cv.data;a.download=cv.name;a.click();
+}
+
+function uploadCvShared(sbId,type,input){
+  const local=S.candidates.find(x=>x.sbId===sbId);if(!local||!input.files[0])return;
+  const f=input.files[0];const r=new FileReader();
+  r.onload=e=>{
+    if(type==='o')local.cvO={name:f.name,data:e.target.result};
+    else local.cvA={name:f.name,data:e.target.result};
+    saveLocal();openProfilView(sbId);
+  };r.readAsDataURL(f);
+}
+
+function genBlocMail(c){const p=gp(c.posteId);return`**${c.nom}**\nProfil : ${c.trigramme||'—'}\nDisponible : ${c.dispo||'—'}\nPrétention salariale : ${c.pretention||'—'}\nMobilité : ${(c.mobilite||[]).join(', ')||'—'}\nFreelance : ${c.freelance}${c.remarque?'\nRemarque : '+c.remarque:''}\nPoste ciblé : ${p?p.titre:'—'}`;}
+function cpyMail(id){const c=S.candidates.find(x=>x.id===id);if(!c)return;navigator.clipboard.writeText(genBlocMail(c)).then(()=>{const el=document.getElementById('bm-prev');if(el){el.style.background='#dcfce7';setTimeout(()=>{if(el)el.style.background='';},700);}}).catch(()=>{});}
+function vCvUp(id,type,input){const c=S.candidates.find(x=>x.id===id);if(!c||!input.files[0])return;const f=input.files[0];const r=new FileReader();r.onload=e=>{if(type==='o')c.cvO={name:f.name,data:e.target.result};else c.cvA={name:f.name,data:e.target.result};saveLocal();openView(id);};r.readAsDataURL(f);
+if(c.sbId){uploadCvToStorage(c.sbId,type,f).then(()=>{fetchProfils();}).catch(e=>console.error('CV storage:',e));}
+}
+function vCvDl(id,type){const c=S.candidates.find(x=>x.id===id);const cv=type==='o'?c?.cvO:c?.cvA;if(!cv)return;const a=document.createElement('a');a.href=cv.data;a.download=cv.name;a.click();}
+function vCvRm(id,type){const c=S.candidates.find(x=>x.id===id);if(!c)return;if(type==='o')c.cvO=null;else c.cvA=null;saveLocal();openView(id);}
+
+// ═══════════════════════════════════════
+// FORM POSTE
+// ═══════════════════════════════════════
+function openPosteForm(id){
+  const isEdit=!!id&&isUUID(id);const p=isEdit?S.postes.find(x=>x.id===id):null;
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()"><div class="modal" onclick="event.stopPropagation()">
+    <div class="m-title">${isEdit?'Modifier':'Ajouter'} un poste<button class="m-close" onclick="closeM()">×</button></div>
+    <div class="fr" style="position:relative"><label class="fl">Titre du poste *</label><input class="fi" id="p-tit" value="${esc(p?.titre||'')}" oninput="chkDupP()"><div id="dup-p"></div><div id="dup-p-conf" style="display:none" class="dup-box"><input type="checkbox" id="p-dup-ok"><label for="p-dup-ok" style="cursor:pointer;margin:0">J'ai vérifié — ce poste n'existe pas déjà</label></div></div>
+    <div class="fg"><div class="fr"><label class="fl">Client</label><input class="fi" id="p-cli" value="${esc(p?.client||'')}"></div><div class="fr"><label class="fl">Secteur</label><input class="fi" id="p-sec" value="${esc(p?.secteur||'')}"></div></div>
+    <div class="fr"><label class="fl">Lieu(x)</label><div style="position:relative"><input class="fi" id="p-city" placeholder="Taper une ville..." autocomplete="off" oninput="filtPCity()" onblur="setTimeout(()=>{const d=document.getElementById('p-city-drop');if(d)d.style.display='none'},220)" onkeydown="pCityKey(event)"><div id="p-city-drop" class="drop-list" style="display:none"></div></div><div id="p-lieu-tags" class="tags-row">${(p?.lieux||[]).map(v=>`<div class="tg">${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span></div>`).join('')}</div></div>
+    <div class="fg"><div class="fr"><label class="fl">Urgence</label><select class="fi" id="p-urg"><option value="">—</option><option value="⚫ Très urgent (Aujourd'hui)"${p?.urgence==="⚫ Très urgent (Aujourd'hui)"?' selected':''}>⚫ Très urgent</option><option value="🔴 Urgent (< 3 jours)"${p?.urgence==='🔴 Urgent (< 3 jours)'?' selected':''}>🔴 Urgent</option><option value="🟡 Normal (1-2 semaines)"${p?.urgence==='🟡 Normal (1-2 semaines)'?' selected':''}>🟡 Normal</option></select></div><div class="fr"><label class="fl">Statut</label><select class="fi" id="p-sta"><option value="🟢 Actif"${(p?.statut||'🟢 Actif')==='🟢 Actif'?' selected':''}>🟢 Actif</option><option value="⛔ Clôturé"${p?.statut==='⛔ Clôturé'?' selected':''}>⛔ Clôturé</option></select></div></div>
+    <div class="fg"><div class="fr"><label class="fl">Salaire max</label><input class="fi" id="p-sal" value="${esc(p?.salaire||'')}"></div><div class="fr"><label class="fl">Expérience (ans)</label><input class="fi" id="p-exp" value="${esc(p?.experience||'')}"></div></div>
+    <div class="fg"><div class="fr"><label class="fl">Nb candidats souhaités</label><input class="fi" id="p-nb" value="${esc(p?.nbCandidats||'')}"></div><div class="fr"><label class="fl">Compétences clés</label><input class="fi" id="p-comp" value="${esc(p?.competences||'')}"></div></div>
+    <div class="fr"><label class="fl">Description du poste</label><textarea class="fi" id="p-desc" rows="3" style="resize:vertical">${esc(p?.description||'')}</textarea></div>
+    <div class="m-actions"><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-p" onclick="saveP('${p?.id||''}')">Enregistrer</button></div>
+  </div></div>`;
+}
+
+function filtPCity(){const val=(document.getElementById('p-city')?.value||'').toLowerCase().trim();const drop=document.getElementById('p-city-drop');if(!drop||!val){if(drop)drop.style.display='none';return;}const m=VILLES.filter(v=>v.toLowerCase().startsWith(val)).slice(0,6);if(!m.length){drop.style.display='none';return;}drop.innerHTML=m.map(v=>`<div onmousedown="event.preventDefault()" onclick="addPCity('${v}')">${v}</div>`).join('');drop.style.display='block';}
+function addPCity(v){const cont=document.getElementById('p-lieu-tags');const inp=document.getElementById('p-city');const drop=document.getElementById('p-city-drop');if(cont){const ex=[...cont.querySelectorAll('.tg')].map(el=>el.childNodes[0].textContent.trim());if(!ex.includes(v)){const tg=document.createElement('div');tg.className='tg';tg.innerHTML=`${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span>`;cont.appendChild(tg);}}if(inp)inp.value='';if(drop)drop.style.display='none';}
+function pCityKey(e){if(e.key==='Enter'){e.preventDefault();const v=(document.getElementById('p-city')?.value||'').trim();if(v)addPCity(v);}}
+let _chkDupTimer=null;
+function chkDupP(){
+  clearTimeout(_chkDupTimer);
+  _chkDupTimer=setTimeout(_chkDupPRun,400);
+}
+function _chkDupPRun(){const val=(document.getElementById('p-tit')?.value||'').trim();const el=document.getElementById('dup-p');const conf=document.getElementById('dup-p-conf');if(!el||val.length<3){if(el)el.innerHTML='';if(conf)conf.style.display='none';return;}const dups=S.postes.filter(p=>sim(p.titre,val)>0.6);if(dups.length){el.innerHTML=`<div class="warn-txt">Similaire : <strong>${esc(dups[0].titre)}</strong> <button class="btn btn-p" style="font-size:10px;padding:1px 8px;margin-left:4px" onclick="openPosteForm('${dups[0].id}')">Utiliser celui-ci</button></div>`;if(conf)conf.style.display='flex';}else{el.innerHTML='';if(conf)conf.style.display='none';}}
+
+async function saveP(id){
+  const titre=(document.getElementById('p-tit')?.value||'').trim();
+  if(!titre){alert('Le titre est obligatoire.');return;}
+  const conf=document.getElementById('p-dup-ok');const warn=document.getElementById('dup-p')?.innerHTML||'';
+  if(warn&&conf&&!conf.checked){alert("Veuillez confirmer que ce poste n'existe pas déjà.");return;}
+  const lieux=[...document.querySelectorAll('#p-lieu-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
+  const data={titre,client:(document.getElementById('p-cli')?.value||'').trim(),secteur:(document.getElementById('p-sec')?.value||'').trim(),lieux,urgence:document.getElementById('p-urg')?.value||'',statut:document.getElementById('p-sta')?.value||'🟢 Actif',salaire:(document.getElementById('p-sal')?.value||'').trim(),experience:(document.getElementById('p-exp')?.value||'').trim(),nbCandidats:(document.getElementById('p-nb')?.value||'').trim(),competences:(document.getElementById('p-comp')?.value||'').trim(),description:(document.getElementById('p-desc')?.value||'').trim()};
+  let targetPoste;
+  if(isUUID(id)){Object.assign(S.postes.find(x=>x.id===id),data);targetPoste=S.postes.find(x=>x.id===id);}
+  else{targetPoste={id:uid(),...data};S.postes.unshift(targetPoste);}
+  const hasPending=!!pendingCandidatState;
+  closeM();render();
+  try{
+    await pushPoste(targetPoste);
+    showToast('Poste sauvegardé','ok');
+    // Re-open candidate form if we came from it
+    if(hasPending){
+      await fetchPostes(); // refresh poste list first
+      reopenCandidatFormWithState(targetPoste.id, targetPoste.titre);
+    }
+  }catch(e){
+    console.error(e);showToast('Erreur sauvegarde Supabase — poste en cache local','warn');
+    if(hasPending)reopenCandidatFormWithState(targetPoste.id, targetPoste.titre);
+  }
+}
+
+async function doDeletePoste(id){
+  const used=S.sharedProfils.some(p=>p.posteTitre===S.postes.find(x=>x.id===id)?.titre);
+  if(used&&!confirm('Des profils sont liés à ce poste. Supprimer quand même ?'))return;
+  try{await deletePosteDB(id);showToast('Poste supprimé','ok');}
+  catch(e){console.error(e);S.postes=S.postes.filter(p=>p.id!==id);showToast('Supprimé localement','warn');}
+  render();
+}
+
+// ═══════════════════════════════════════
+// KANBAN DRAG
+// ═══════════════════════════════════════
+function showPosteCandidats(posteId){
+  const p=S.postes.find(x=>x.id===posteId);if(!p)return;
+  const cands=S.candidates.filter(c=>c.posteId===posteId||c.posteTitre===p.titre);
+  const sbCands=S.sharedProfils.filter(c=>c.posteTitre===p.titre);
+  const all=[...cands,...sbCands.filter(s=>!cands.find(c=>c.nom===s.nom))];
+  const popup=document.createElement('div');
+  popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center';
+  const box=document.createElement('div');
+  box.style.cssText='background:#fff;border-radius:12px;padding:0;width:560px;max-width:95vw;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2)';
+  const header=document.createElement('div');
+  header.style.cssText='padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
+  header.innerHTML='<div><div style="font-size:15px;font-weight:700;color:#111">'+esc(p.titre)+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+all.length+' candidat(s)</div></div>';
+  const btnClose=document.createElement('button');
+  btnClose.innerHTML='×';btnClose.style.cssText='background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af';
+  btnClose.onclick=()=>popup.remove();
+  header.appendChild(btnClose);
+  const body=document.createElement('div');
+  body.style.cssText='overflow-y:auto;flex:1;padding:12px 20px';
+  if(!all.length){body.innerHTML='<div style="text-align:center;padding:32px;color:#9ca3af;font-size:13px">Aucun candidat affecté à ce poste</div>';}
+  else{
+    all.forEach(c=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer';
+      row.innerHTML='<div style="flex:1"><div style="font-weight:600;font-size:13px">'+esc(c.nom||c.trigramme||'?')+'</div>'
+        +'<div style="font-size:11px;color:#6b7280">'+esc(c.sourcer||'—')+' · '+esc(c.dispo||'—')+(c.pretention?' · '+esc(c.pretention):'')+'</div></div>'
+        +(c.score?'<span style="font-size:11px;font-weight:600;color:#0d3b6e">'+c.score+'/100</span>':'');
+      const actions=document.createElement('div');
+      actions.style.cssText='display:flex;gap:4px;flex-shrink:0';
+      // Ajouter au récap
+      const btnMail=document.createElement('button');
+      btnMail.title='Ajouter au mail récap';
+      btnMail.innerHTML='✉';
+      btnMail.style.cssText='padding:3px 7px;background:#e6f0ff;color:#0d3b6e;border:none;border-radius:5px;font-size:12px;cursor:pointer';
+      btnMail.onclick=(e)=>{
+        e.stopPropagation();
+        if(c.id){S.sel.has(c.id)?S.sel.delete(c.id):S.sel.add(c.id);}
+        else if(c.sbId){const k='sb_'+c.sbId;S.sel.has(k)?S.sel.delete(k):S.sel.add(k);}
+        updateMailBtn();
+        btnMail.style.background=S.sel.has(c.id)||S.sel.has('sb_'+c.sbId)?'#0d3b6e':'#e6f0ff';
+        btnMail.style.color=S.sel.has(c.id)||S.sel.has('sb_'+c.sbId)?'#fff':'#0d3b6e';
+      };
+      // Set initial state
+      const isInSel=c.id?S.sel.has(c.id):S.sel.has('sb_'+c.sbId);
+      if(isInSel){btnMail.style.background='#0d3b6e';btnMail.style.color='#fff';}
+      actions.appendChild(btnMail);
+      row.appendChild(actions);
+      if(c.id)row.querySelector('div').onclick=()=>{popup.remove();openForm(c.id);};
+      else if(c.sbId)row.querySelector('div').onclick=()=>{popup.remove();openSharedEdit(c.sbId);};
+      body.appendChild(row);
+    });
+  }
+  box.appendChild(header);box.appendChild(body);
+  popup.appendChild(box);
+  document.body.appendChild(popup);
+  popup.addEventListener('click',e=>{if(e.target===popup)popup.remove();});
+}
+
+function delSharedProfil(sbId){
+  const p=S.sharedProfils.find(x=>x.sbId===sbId);
+  if(!p)return;
+  if(!confirm('Supprimer "'+p.nom+'" des profils partagés ?'))return;
+  // Delete from Supabase profils table
+  sb.from('profils').delete().eq('id',sbId).then(()=>{}).catch(()=>{});
+  S.sharedProfils=S.sharedProfils.filter(x=>x.sbId!==sbId);
+  S.sel.delete('sb_'+sbId);
+  render();
+  showToast(p.nom+' supprimé des profils','ok');
+}
+
+function moveCard(id,dir){
+  const c=S.candidates.find(x=>x.id===id);
+  if(!c)return;
+  // Get sorted column
+  const col=S.candidates
+    .filter(x=>x.sourcer===c.sourcer&&x.statut===c.statut)
+    .sort((a,b)=>(a.order??9999)-(b.order??9999));
+  // Assign order to all cards that don't have one yet
+  // Initialize order for ALL candidates in this col (not just undefined ones)
+  col.forEach((x,i)=>{x.order=i;});
+  const i=col.findIndex(x=>x.id===id);
+  const j=dir==='up'?i-1:i+1;
+  if(j<0||j>=col.length)return;
+  // Swap order values
+  const tmp=col[i].order;
+  col[i].order=col[j].order;
+  col[j].order=tmp;
+  saveLocal();render();
+}
+
+function dst(e,id){S.dragId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>document.querySelector(`[data-id="${id}"]`)?.classList.add('dragging'),0);}
+function den(){document.querySelectorAll('.card.dragging').forEach(el=>el.classList.remove('dragging'));}
+function colDStart(e,idx){S.colDragIdx=idx;e.dataTransfer.effectAllowed='move';setTimeout(()=>document.querySelectorAll('.col')[idx]?.classList.add('col-dragging'),0);}
+function colDEnd(){S.colDragIdx=null;document.querySelectorAll('.col').forEach(el=>el.classList.remove('col-dragging','col-drag-over'));render();}
+function onColOver(e,idx){
+  e.preventDefault();
+  if(S.colDragIdx!==null&&S.colDragIdx!==idx){
+    document.querySelectorAll('.col').forEach((el,i)=>el.classList.toggle('col-drag-over',i===idx));
+  }
+}
+function onColDrop(e,colEnc,toIdx){
+  e.preventDefault();
+  document.querySelectorAll('.col').forEach(el=>el.classList.remove('col-drag-over','col-dragging'));
+  if(S.colDragIdx!==null&&S.colDragIdx!==toIdx){
+    // Column reorder
+    const arr=S.statuts[S.srcr];
+    const[moved]=arr.splice(S.colDragIdx,1);
+    arr.splice(toIdx,0,moved);
+    S.colDragIdx=null;saveLocal();render();
+  }else if(S.dragId){
+    // Card move
+    const col=decodeURIComponent(colEnc);
+    const c=S.candidates.find(x=>x.id===S.dragId);
+    if(c&&c.sourcer===S.srcr){c.statut=col;saveLocal();}
+    S.dragId=null;render();
+  }
+}
+
+// Saves candidate form state then opens poste form
+function openPosteFromCandidatForm(){
+  pendingCandidatState={
+    editId: window._currentEditId||null,
+    nom:document.getElementById('f-nom')?.value||'',
+    trigramme:document.getElementById('f-tri')?.value||'',
+    dispo:document.getElementById('f-dis')?.value||'',
+    pretention:document.getElementById('f-pret')?.value||'',
+    freelance:document.getElementById('f-free')?.value||'Non',
+    sourcer:document.getElementById('f-src')?.value||S.srcr,
+    remarque:document.getElementById('f-rem')?.value||'',
+    mobilite:[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim()),
+    posteSearch:document.getElementById('f-ps')?.value||'',
+    posteId:document.getElementById('f-pid')?.value||'',
+    cvO:eCV.o, cvA:eCV.a,
+  };
+  const searchText=pendingCandidatState.posteSearch||'';
+  closeM();
+  openPosteForm(null);
+  // Pre-fill the title with what the user typed
+  setTimeout(()=>{
+    const t=document.getElementById('p-tit');
+    if(t&&searchText){t.value=searchText;chkDupP();}
+  },80);
+}
+
+// Re-opens candidate form with saved state after poste creation
+function reopenCandidatFormWithState(newPosteId, newPosteTitre){
+  const state=pendingCandidatState;pendingCandidatState=null;
+  openForm(state.editId||null);
+  setTimeout(()=>{
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+    set('f-nom',state.nom);set('f-tri',state.trigramme);set('f-dis',state.dispo);
+    set('f-pret',state.pretention);set('f-rem',state.remarque);
+    const ff=document.getElementById('f-free');if(ff)ff.value=state.freelance;
+    const fs=document.getElementById('f-src');if(fs)fs.value=state.sourcer;
+    // Pre-select new poste
+    if(newPosteId){set('f-ps',newPosteTitre);set('f-pid',newPosteId);}
+    // Restore mobility tags
+    const mob=document.getElementById('mob-tags');
+    if(mob){mob.innerHTML='';(state.mobilite||[]).forEach(v=>{const tg=document.createElement('div');tg.className='tg';tg.innerHTML=`${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span>`;mob.appendChild(tg);});}
+    // Restore CVs
+    eCV={o:state.cvO,a:state.cvA};
+    const updateCvUI=(type,cv)=>{const lbl=document.getElementById(type==='o'?'cvol':'cval');if(lbl)lbl.textContent=cv?cv.name:'Choisir fichier';const act=document.getElementById(type==='o'?'cvo-act':'cva-act');if(act)act.style.display=cv?'flex':'none';if(lbl?.parentElement)lbl.parentElement.classList.toggle('has',!!cv);};
+    updateCvUI('o',eCV.o);updateCvUI('a',eCV.a);
+  },80);
+}
+
+// ═══════════════════════════════════════
+// SOURCEURS + STATUTS
+// ═══════════════════════════════════════
+function setSrc(s){S.srcr=s;render();}
+function addCol(s){const n=prompt('Nom du nouveau statut :');if(n?.trim()){if(!S.statuts[s])S.statuts[s]=[];S.statuts[s].push(n.trim());saveLocal();render();}}
+function renCol(s,idx,val){const old=S.statuts[s][idx];if(val?.trim()&&val.trim()!==old){S.candidates.forEach(c=>{if(c.sourcer===s&&c.statut===old)c.statut=val.trim();});S.statuts[s][idx]=val.trim();saveLocal();}}
+function delCol(s,idx){if(S.statuts[s].length<=1){alert('Il faut au moins un statut.');return;}const st=S.statuts[s][idx];const n=S.candidates.filter(c=>c.sourcer===s&&c.statut===st).length;if(n>0&&!confirm(`${n} profil(s) dans cette colonne. Supprimer ?`))return;S.statuts[s].splice(idx,1);saveLocal();render();}
+function delCand(id){
+  const c=S.candidates.find(x=>x.id===id);if(!c)return;
+  if(!confirm('Déplacer "'+c.nom+'" vers la corbeille ?'))return;
+  S.trash=S.trash||[];
+  S.trash.unshift({...c,_trashedAt:new Date().toISOString()});
+  S.candidates=S.candidates.filter(x=>x.id!==id);
+  S.sel.delete(id);
+  saveLocal();render();
+  showToast(c.nom+' déplacé en corbeille','ok');
+}
+function restoreCand(id){
+  const c=(S.trash||[]).find(x=>x.id===id);if(!c)return;
+  const{_trashedAt,...restored}=c;
+  // Put in first statut of their sourceur
+  const sts=S.statuts[restored.sourcer]||[...DEFAULT_STATUTS];
+  restored.statut=sts[0];
+  S.candidates.push(restored);
+  S.trash=S.trash.filter(x=>x.id!==id);
+  saveLocal();
+  if(S.tab==='trash'){const m=document.getElementById('main');if(m){m.innerHTML=rTrash();renderTrashTable();}}else render();
+  showToast(restored.nom+' restauré','ok');
+}
+function hardDelCand(id){
+  const c=(S.trash||[]).find(x=>x.id===id);if(!c)return;
+  if(!confirm('Supprimer définitivement "'+c.nom+'" ? Cette action est irréversible.'))return;
+  if(c.sbId)sb.from('profils').delete().eq('id',c.sbId).then(()=>{}).catch(()=>{});
+  deleteCandidatFromSB(id).catch(()=>{});
+  S.trash=S.trash.filter(x=>x.id!==id);
+  saveLocal();
+  if(S.tab==='trash'){const m=document.getElementById('main');if(m){m.innerHTML=rTrash();renderTrashTable();}}else render();
+  showToast(c.nom+' supprimé définitivement','warn');
+}
+// Trash search state
+let _trashQ='';
+function filterTrash(val){_trashQ=(val||'').toLowerCase();renderTrashTable();}
+function renderTrashTable(){
+  const trash=S.trash||[];
+  const list=_trashQ?trash.filter(c=>c.nom.toLowerCase().includes(_trashQ)||((c.posteTitre||'').toLowerCase().includes(_trashQ))):trash;
+  const tbody=document.getElementById('trash-tbody');
+  if(!tbody)return;
+  if(!list.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:#9ca3af">Aucun résultat</td></tr>';return;}
+  tbody.innerHTML='';
+  list.forEach(c=>{
+    const date=c._trashedAt?new Date(c._trashedAt).toLocaleDateString('fr-FR'):'—';
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="padding:8px 10px;font-weight:600">'+esc(c.nom)+'</td>'
+      +'<td style="padding:8px 10px;color:#6b7280;font-size:12px">'+esc(c.posteTitre||'—')+'</td>'
+      +'<td style="padding:8px 10px;color:#6b7280;font-size:12px">'+esc(c.sourcer||'—')+'</td>'
+      +'<td style="padding:8px 10px;color:#9ca3af;font-size:11px">'+date+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap"></td>';
+    const btnR=document.createElement('button');
+    btnR.textContent='↩ Restaurer';
+    btnR.style.cssText='padding:4px 10px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-right:6px';
+    btnR.onclick=()=>restoreCand(c.id);
+    const btnD=document.createElement('button');
+    btnD.textContent='✕ Supprimer';
+    btnD.style.cssText='padding:4px 10px;background:#fff;color:#dc2626;border:1.5px solid #fca5a5;border-radius:6px;font-size:12px;cursor:pointer';
+    btnD.onclick=()=>hardDelCand(c.id);
+    tr.lastElementChild.appendChild(btnR);
+    tr.lastElementChild.appendChild(btnD);
+    tbody.appendChild(tr);
+  });
+}
+function rTrash(){
+  const trash=S.trash||[];
+  return '<div style="padding:16px">'
+    +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
+    +'<h2 style="font-size:16px;font-weight:700;color:#111">🗑 Corbeille</h2>'
+    +'<span style="font-size:12px;color:#9ca3af">'+trash.length+' profil(s)</span>'
+    +'</div>'
+    +(trash.length
+      ?'<input id="trash-search" value="'+esc(_trashQ)+'" oninput="filterTrash(this.value)" placeholder="Rechercher par nom ou poste..." style="width:100%;max-width:360px;padding:7px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:12px;font-family:inherit">'
+      +'<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)">'
+      +'<thead><tr style="background:#f9fafb;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">'
+      +'<th style="padding:8px 10px;text-align:left;font-weight:600">Nom</th>'
+      +'<th style="padding:8px 10px;text-align:left;font-weight:600">Poste</th>'
+      +'<th style="padding:8px 10px;text-align:left;font-weight:600">Sourceur</th>'
+      +'<th style="padding:8px 10px;text-align:left;font-weight:600">Supprimé le</th>'
+      +'<th style="padding:8px 10px"></th></tr></thead>'
+      +'<tbody id="trash-tbody"></tbody></table>'
+      :'<div style="text-align:center;padding:48px;color:#9ca3af">La corbeille est vide</div>')
+    +'</div>';
+}
+function addSrc(){const val=(document.getElementById('new-src')?.value||'').trim();if(!val||S.sourceurs.includes(val)){alert('Nom invalide ou déjà existant.');return;}S.sourceurs.push(val);S.statuts[val]=[...DEFAULT_STATUTS];saveLocal();render();}
+function delSrc(s){const n=S.candidates.filter(c=>c.sourcer===s).length;if(n>0&&!confirm(`${n} profil(s) de ${s} seront perdus. Continuer ?`))return;S.sourceurs=S.sourceurs.filter(x=>x!==s);delete S.statuts[s];if(S.srcr===s)S.srcr=S.sourceurs[0];saveLocal();render();}
+function mvSt(s,idx,dir){const arr=S.statuts[s];const ni=idx+dir;if(ni<0||ni>=arr.length)return;[arr[idx],arr[ni]]=[arr[ni],arr[idx]];saveLocal();render();}
+function addSt(s){const val=(document.getElementById('new-st')?.value||'').trim();if(!val)return;if(!S.statuts[s])S.statuts[s]=[];S.statuts[s].push(val);saveLocal();render();}
+function delSt(s,idx){if(S.statuts[s].length<=1){alert('Il faut au moins un statut.');return;}const st=S.statuts[s][idx];const n=S.candidates.filter(c=>c.sourcer===s&&c.statut===st).length;if(n>0&&!confirm(`${n} profil(s) ont ce statut. Supprimer ?`))return;S.statuts[s].splice(idx,1);saveLocal();render();}
+
+// ═══════════════════════════════════════
+// IMPORT / EXPORT
+// ═══════════════════════════════════════
+// ── Normalize helpers ──
+function mapFreelance(val){
+  if(!val||val==='nan'||val.trim()==='')return'Non';
+  const v=val.trim().toLowerCase();
+  if(v==='oui'||v==='yes'||v==='true')return'Oui';
+  if(v==='non'||v==='no'||v==='false')return'Non';
+  if(v.startsWith('cdi')&&v.length<6)return'CDI';
+  if(v.includes('cdi')&&v.length<20)return'CDI';
+  return'À valider';
+}
+
+function mapStatut(raw,sourcer){
+  if(!raw)return null;
+  const s=raw.trim();
+  const map={
+    '📦 Archiver':'📦 Archiver','📦Archiver':'📦 Archiver',
+    '✅ Envoyer':'✅ À envoyer','✅Envoyer':'✅ À envoyer','✅ À envoyer':'✅ À envoyer',
+    '📤 À appeler':'📤 À appeler','📤 A appeler':'📤 À appeler','📤A appeler':'📤 À appeler',
+    '⏳ En attente':'⏳ En attente',
+    '🆕 Nouveau':'🆕 Nouveau',
+  };
+  if(map[s])return map[s];
+  // Statuts perso Notion (Profils de X) → premier statut du sourceur
+  return(S.statuts[sourcer]||[...DEFAULT_STATUTS])[0];
+}
+
+function parseRow(row,sourcer){
+  const nom=(row['Nom et prénom']||row['nom']||'').trim();
+  if(!nom)return null;
+  const pr=(row['Poste ciblé']||row['poste']||'').replace(/\s{0,5}\(https?:\/\/[^)]+\)/g,'').trim();
+  const found=S.postes.find(p=>sim(p.titre,pr)>0.55);
+  const mobilite=[];
+  const mob=(row['Mobilité']||'').trim();
+  const lieu=(row['Lieu']||'').trim();
+  if(mob)mobilite.push(mob);else if(lieu)mobilite.push(lieu);
+  const srcRaw=(row['Sourcer']||'').trim();
+  const srcMap={'Ormani':'Mehdi','Tafinar':'Mehdi','said.aabadi':'Said'};
+  const src=srcMap[srcRaw]||(S.sourceurs.includes(srcRaw)?srcRaw:sourcer);
+  const statut=mapStatut(row['Statut interne']||'',src)||(S.statuts[src]||[...DEFAULT_STATUTS])[0];
+  return{
+    id:uid(),nom,
+    trigramme:(row['Trigramme']||'').trim(),
+    posteId:found?found.id:'',posteTitre:pr,
+    dispo:(row['Disponibilité']||'').trim(),
+    mobilite,
+    pretention:(row['Prétention salariale']||'').trim(),
+    freelance:mapFreelance(row['Freelance']||''),
+    remarque:(row['Remarque profil']||'').trim(),
+    sourcer:src,statut,
+    sbId:null,score:null,verdict:null,cvO:null,cvA:null,
+  };
+}
+
+// Global pending import state
+let _importPending = null;
+
+function impCSV(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const rows=parseCSV(ev.target.result);
+    if(rows.length<2){showToast('Fichier CSV vide ou invalide','warn');return;}
+    const headers=rows[0].map(h=>h.trim());
+    const dataRows=rows.slice(1).map(vals=>{
+      const obj={};headers.forEach((h,j)=>obj[h]=(vals[j]||'').trim());return obj;
+    }).filter(row=>(row['Nom et prénom']||row['nom']||'').trim());
+    const nouveaux=[];const doublons=[];
+    dataRows.forEach(row=>{
+      const parsed=parseRow(row,getMe()||S.srcr);
+      if(!parsed)return;
+      const existing=S.candidates.find(c=>sim(c.nom,parsed.nom)>0.88);
+      if(existing)doublons.push({parsed,existing});
+      else nouveaux.push(parsed);
+    });
+    _importPending={nouveaux,doublons};
+    showImportModal();
+  };
+  r.readAsText(file,'UTF-8');
+}
+
+function showImportModal(){
+  if(!_importPending)return;
+  const{nouveaux,doublons}=_importPending;
+  const total=nouveaux.length+doublons.length;
+
+  const editStyle='width:100%;font-family:var(--fs);font-size:11px;border:1px solid transparent;border-radius:4px;padding:2px 4px;background:transparent;color:#111;cursor:text';
+  const editStyleFocus='outline:none;border-color:#93c5fd;background:#fff';
+
+  const mkInput=(val,placeholder='')=>
+    `<input value="${esc(val||'')}" placeholder="${placeholder}"
+      style="${editStyle}"
+      onfocus="this.style.cssText='${editStyle};${editStyleFocus}'"
+      onblur="this.style.cssText='${editStyle}'">`;
+
+  const newRows=nouveaux.map((c,i)=>`<tr>
+    <td style="padding:4px 6px"><input type="checkbox" checked data-idx="${i}" data-type="new" style="accent-color:var(--green)"></td>
+    <td style="padding:4px 6px;font-weight:500">${mkInput(c.nom,'Nom')}</td>
+    <td style="padding:4px 6px">${mkInput(c.trigramme,'XXXX')}</td>
+    <td style="padding:4px 6px">${mkInput(c.posteTitre,'Poste ciblé')}</td>
+    <td style="padding:4px 6px">${mkInput(c.dispo,'Dispo')}</td>
+    <td style="padding:4px 6px">${mkInput(c.pretention,'Prétention')}</td>
+    <td style="padding:4px 6px">${mkInput(c.sourcer,'Sourceur')}</td>
+  </tr>`).join('');
+  const dupRows=doublons.map((d,i)=>{
+    const ex=d.existing;
+    return`<tr style="background:#fef9c3">
+      <td style="padding:4px 6px"><input type="checkbox" data-idx="${i}" data-type="dup" style="accent-color:#854d0e"></td>
+      <td style="padding:4px 6px">
+        ${mkInput(d.parsed.nom,'Nom')}
+        <span style="font-size:10px;color:#854d0e;display:block;margin-top:2px">⚠ Existant : ${esc(ex.nom)} — Zone ${esc(ex.sourcer||'?')} · ${esc(ex.statut||'?')}</span>
+      </td>
+      <td style="padding:4px 6px">${mkInput(d.parsed.trigramme,'XXXX')}</td>
+      <td style="padding:4px 6px">${mkInput(d.parsed.posteTitre,'Poste ciblé')}</td>
+      <td style="padding:4px 6px">${mkInput(d.parsed.dispo,'Dispo')}</td>
+      <td style="padding:4px 6px">${mkInput(d.parsed.pretention,'Prétention')}</td>
+      <td style="padding:4px 6px">${mkInput(d.parsed.sourcer,'Sourceur')}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
+  <div class="modal" style="width:740px;max-height:90vh" onclick="event.stopPropagation()">
+    <div class="m-title"><i class="ti ti-file-import" aria-hidden="true"></i> Prévisualisation — ${total} profil(s) à importer<button class="m-close" onclick="closeM()">×</button></div>
+    ${doublons.length>0?`<div style="background:#fef9c3;border-radius:8px;padding:8px 12px;font-size:12px;color:#854d0e;margin-bottom:10px">⚠ <strong>${doublons.length} doublon(s)</strong> — fond jaune. La zone et le statut de l'existant sont affichés. Coche pour importer quand même.</div>`:''}
+    <div style="overflow:auto;max-height:48vh;border:1px solid #e5e7eb;border-radius:8px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead style="position:sticky;top:0;background:#f9fafb;z-index:1">
+          <tr>
+            <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;width:30px"><input type="checkbox" checked onclick="toggleAllImport(this)" style="accent-color:var(--green)"></th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left">Nom</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left">Tri.</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left">Poste</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left">Dispo</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left">Prétention</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left">Sourceur</th>
+          </tr>
+        </thead>
+        <tbody id="import-tbody">${newRows}${dupRows}</tbody>
+      </table>
+    </div>
+    ${doublons.length>0?`<div style="margin-top:10px;display:flex;gap:8px;align-items:center;font-size:12px;color:#6b7280">
+      <span>Pour les doublons cochés :</span>
+      <select id="dup-mode" class="fi" style="width:auto;font-size:12px">
+        <option value="skip">Ignorer (ne pas importer)</option>
+        <option value="add">Importer en double</option>
+        <option value="replace">Remplacer l'existant (garde les CVs)</option>
+      </select>
+    </div>`:''}
+    <div class="m-actions">
+      <button class="btn" onclick="closeM()">Annuler</button>
+      <button class="btn btn-p" onclick="confirmImport()"><i class="ti ti-check" aria-hidden="true"></i> Confirmer l'import</button>
+    </div>
+  </div></div>`;
+}
+
+function toggleAllImport(cb){
+  document.querySelectorAll('#import-tbody input[type=checkbox]').forEach(el=>el.checked=cb.checked);
+}
+
+function confirmImport(){
+  if(!_importPending){closeM();return;}
+  const{nouveaux,doublons}=_importPending;
+  const dupMode=document.getElementById('dup-mode')?.value||'skip';
+  let added=0;
+
+  // Read edited values from each row — inputs are in order: nom, tri, poste, dispo, pret, sourcer
+  const readRow=(tr)=>{
+    const inputs=[...tr.querySelectorAll('input:not([type="checkbox"])')];
+    return{
+      nom:(inputs[0]?.value||'').trim(),
+      trigramme:(inputs[1]?.value||'').trim(),
+      posteTitre:(inputs[2]?.value||'').trim(),
+      dispo:(inputs[3]?.value||'').trim(),
+      pretention:(inputs[4]?.value||'').trim(),
+      sourcer:(inputs[5]?.value||'').trim(),
+    };
+  };
+
+  const rows=[...document.querySelectorAll('#import-tbody tr')];
+  let newIdx=0;let dupIdx=0;
+
+  rows.forEach(tr=>{
+    const cb=tr.querySelector('input[data-type="new"],input[data-type="dup"]');
+    if(!cb)return;
+    const edited=readRow(tr);
+    if(cb.dataset.type==='new'){
+      if(cb.checked&&nouveaux[newIdx]){
+        const c={...nouveaux[newIdx],...edited};
+        // Re-resolve posteId from edited posteTitre
+        const found=S.postes.find(p=>sim(p.titre,edited.posteTitre)>0.55);
+        c.posteId=found?found.id:'';
+        S.candidates.push(c);added++;
+      }
+      newIdx++;
+    } else {
+      if(cb.checked&&doublons[dupIdx]){
+        const parsed={...doublons[dupIdx].parsed,...edited};
+        const found=S.postes.find(p=>sim(p.titre,edited.posteTitre)>0.55);
+        parsed.posteId=found?found.id:'';
+        if(dupMode==='skip'){/* skip */}
+        else if(dupMode==='add'){S.candidates.push(parsed);added++;}
+        else if(dupMode==='replace'){
+          const ri=S.candidates.findIndex(c=>sim(c.nom,doublons[dupIdx].parsed.nom)>0.88);
+          if(ri>=0){const old=S.candidates[ri];S.candidates[ri]={...parsed,id:old.id,sbId:old.sbId,cvO:old.cvO,cvA:old.cvA};}
+          else S.candidates.push(parsed);
+          added++;
+        }
+      }
+      dupIdx++;
+    }
+  });
+
+  _importPending=null;
+  saveLocal();
+  // Sync all newly added candidates to Supabase
+  S.candidates.filter(c=>!c._fromSB).forEach(c=>syncCandidatToSB(c).catch(()=>{}));
+  closeM();render();
+  showToast(added+' profil(s) importé(s)','ok');
+}
+function impCSVPostes(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async ev=>{
+    const lines=ev.target.result.split('\n');if(lines.length<2)return;
+    const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+    const rows=[];for(let i=1;i<lines.length;i++){if(!lines[i].trim())continue;const vals=lines[i].split(',').map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,j)=>obj[h]=vals[j]||'');rows.push(obj);}
+    let added=0;
+    for(const row of rows){
+      const titre=row['Nom complet']||row['titre']||'';if(!titre)return;
+      if(S.postes.some(p=>sim(p.titre,titre)>0.8))continue;
+      const np={id:uid(),titre,client:row['🏢 Client']||'',lieux:[row['📍 Lieu']||''].filter(Boolean),secteur:row["🏭 Secteur d'activité"]||'',urgence:row['⚠️ Urgence']||'',statut:'🟢 Actif',salaire:'',experience:'',nbCandidats:'',competences:'',description:''};
+      S.postes.unshift(np);
+      try{await pushPoste(np);}catch(e){console.error(e);}
+      added++;
+    }
+    render();showToast(`${added} poste(s) importé(s)`,'ok');
+  };r.readAsText(file,'UTF-8');
+}
+
+function expCSV(type){
+  let content,filename;
+  if(type==='c'){const h=['Nom et prénom','Trigramme','Poste ciblé','Disponibilité','Mobilité','Prétention salariale','Freelance','Remarque','Sourceur','Statut','Score','Verdict'];const rows=S.candidates.map(c=>{const p=gp(c.posteId);return[c.nom,c.trigramme,p?p.titre:'',c.dispo,(c.mobilite||[]).join(' | '),c.pretention,c.freelance,c.remarque,c.sourcer,c.statut,c.score||'',c.verdict||''];});content=[h,...rows].map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');filename='candidats_notion_tafinar.csv';}
+  else{const h=['Titre','Client','Lieux','Secteur','Urgence','Statut','Salaire max','Expérience','Nb candidats','Compétences'];const rows=S.postes.map(p=>[p.titre,p.client,(p.lieux||[]).join(' | '),p.secteur,p.urgence,p.statut,p.salaire,p.experience,p.nbCandidats,p.competences]);content=[h,...rows].map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');filename='postes_notion_tafinar.csv';}
+  const blob=new Blob(['\ufeff'+content],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+}
+
+function closeM(){document.getElementById('mroot').innerHTML='';render();}
+
+// ═══════════════════════════════════════
+// URL PARAMS (depuis Recrutement TAFINAR)
+// ═══════════════════════════════════════
+function handleURLParams(){
+  const params=new URLSearchParams(window.location.search);
+  const action=params.get('action');
+  if(!action)return;
+  // Nettoyer l'URL
+  window.history.replaceState({},'',window.location.pathname);
+
+  if(action==='new_profil'){
+    // Pré-remplir le formulaire candidat
+    setTimeout(()=>{
+      openForm(null);
+      setTimeout(()=>{
+        const fn=document.getElementById('f-nom');if(fn)fn.value=decodeURIComponent(params.get('nom')||'');
+        const ft=document.getElementById('f-tri');if(ft)ft.value=decodeURIComponent(params.get('trigramme')||'');
+        const fd=document.getElementById('f-dis');if(fd)fd.value=decodeURIComponent(params.get('dispo')||'');
+        const fp=document.getElementById('f-pret');if(fp)fp.value=decodeURIComponent(params.get('pretention')||'');
+        // Score et verdict
+        const score=params.get('score');const verdict=params.get('verdict');
+        // Recherche du poste
+        const posteNom=decodeURIComponent(params.get('poste')||'');
+        if(posteNom){
+          const fi=document.getElementById('f-ps');if(fi)fi.value=posteNom;
+          const match=S.postes.find(p=>sim(p.titre,posteNom)>0.7);
+          if(match){const hid=document.getElementById('f-pid');if(hid)hid.value=match.id;}
+          else filtPS();
+        }
+        // Stocker score/verdict pour save
+        if(score)window._pendingScore={score:parseInt(score),verdict:verdict||''};
+      },100);
+    },300);
+  }
+
+  if(action==='new_poste'){
+    setTimeout(()=>{
+      openPosteForm(null);
+      setTimeout(()=>{
+        const pt=document.getElementById('p-tit');if(pt)pt.value=decodeURIComponent(params.get('titre')||'');
+        const pd=document.getElementById('p-desc');if(pd)pd.value=decodeURIComponent(params.get('description')||'');
+        const pc=document.getElementById('p-cli');if(pc)pc.value=decodeURIComponent(params.get('client')||'');
+        chkDupP();
+      },100);
+    },300);
+  }
+}
+
+// ═══════════════════════════════════════
+// WHO AM I (sourceur selector)
+// ═══════════════════════════════════════
+// ── SESSION & PERMISSIONS ──
+function getSession(){return JSON.parse(localStorage.getItem('tn_session')||'null');}
+function getMe(){return getSession()?.name||'';}
+function isAdmin(){return getSession()?.name==='Mehdi';}
+function canEditC(sourcer){return isAdmin()||sourcer===getMe();}
+function canManageCols(){return isAdmin();}
+function getZoneColor(name){const m={'Amine':'#22c55e','Said':'#38bdf8','Mehdi':'#0f766e'};return m[name]||'#0d3b6e';}
+
+function renderTopbarUser(){
+  const el=document.getElementById('topbar-user');if(!el)return;
+  const me=getMe();if(!me)return;
+  const adm=isAdmin();
+  el.innerHTML=`<span style="color:#6b7280">Connecté :</span>
+    <strong style="color:${adm?'var(--navy)':'#111'}">${me}${adm?'':''}</strong>
+    <button onclick="logout()" style="padding:3px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:11px;cursor:pointer;background:transparent;font-family:var(--fs);color:#6b7280">Déconnecter</button>`;
+}
+
+function login(name){
+  localStorage.setItem('tn_session',JSON.stringify({name,ts:Date.now()}));
+  document.getElementById('mroot').innerHTML='';
+  S.srcr=name;
+  render();renderTopbarUser();
+  // Load Supabase data after login
+  showLoader(true);
+  Promise.all([fetchPostes(),fetchProfils()]).then(()=>{render();showToast('Données chargées','ok');}).catch(e=>{console.error(e);showToast('Mode hors ligne','warn');}).finally(()=>showLoader(false));
+}
+function logout(){localStorage.removeItem('tn_session');location.reload();}
+
+function showLogin(){
+  const btns=S.sourceurs.map(s=>`<button onclick="login('${s}')" style="display:block;width:100%;padding:16px;margin-bottom:12px;border:2px solid ${s==='Mehdi'?'var(--navy)':'#e5e7eb'};border-radius:12px;background:${s==='Mehdi'?'var(--navy)':'#fff'};color:${s==='Mehdi'?'#fff':'#111'};font-size:16px;font-weight:600;cursor:pointer;font-family:var(--fs)">${s}${s==='Mehdi'?'':''}</button>`).join('');
+  document.getElementById('mroot').innerHTML=`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;z-index:500">
+    <div style="background:#fff;border-radius:16px;padding:40px;width:380px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.12)">
+      <div style="font-size:26px;font-weight:700;color:var(--navy);margin-bottom:6px">Notion TAFINAR</div>
+      <div style="font-size:14px;color:#6b7280;margin-bottom:32px">Qui êtes-vous ?</div>
+      ${btns}
+    </div>
+  </div>`;
+}
+
+function getWho(){return getMe()||S.sourceurs[0];}
+
+// ═══════════════════════════════════════
+// PENDING IMPORT (from Recrutement TAFINAR)
+// ═══════════════════════════════════════
+function checkPendingPoste(){
+  const raw=localStorage.getItem('tn_pending_poste');
+  if(!raw)return;
+  localStorage.removeItem('tn_pending_poste');
+  try{
+    const d=JSON.parse(raw);
+    setTimeout(()=>{
+      if(document.querySelector('#mroot .modal'))return;
+      openPosteForm(null);
+      setTimeout(()=>{
+        const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+        set('p-tit',d.titre);
+        set('p-cli',d.client||'');
+        set('p-desc',d.description||'');
+        if(d.titre)chkDupP();
+      },100);
+    },400);
+  }catch(e){}
+}
+
+function checkPendingImport(){
+  const raw=localStorage.getItem('tn_pending_import');
+  if(!raw)return;
+  localStorage.removeItem('tn_pending_import');
+  try{
+    const d=JSON.parse(raw);
+    pendingAnalyse=d.analyse||null;
+    setTimeout(()=>{
+      if(document.querySelector('#mroot .modal')){return;}
+      openForm(null);
+      setTimeout(()=>{
+        const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+        set('f-nom',d.nom);set('f-tri',d.trigramme);
+        set('f-pret',d.pretention);set('f-dis',d.dispo);
+        if(d.telephone)set('f-tel',d.telephone);
+        const who=getWho();
+        const fsrc=document.getElementById('f-src');if(fsrc)fsrc.value=who;
+        if(d.poste){
+          set('f-ps',d.poste);
+          const match=S.postes.find(p=>sim(p.titre,d.poste)>0.6);
+          if(match){const hid=document.getElementById('f-pid');if(hid)hid.value=match.id;}
+          else filtPS();
+        }
+        if(d.score){
+          const scoreInfo=document.createElement('div');
+          scoreInfo.style.cssText='margin:0 0 10px 0;padding:6px 10px;background:#f0faf4;border-radius:6px;font-size:12px;color:#166534;border:1px solid #86efac';
+          scoreInfo.innerHTML=`<i class="ti ti-chart-bar" aria-hidden="true"></i> Score Recrutement : <strong>${d.score}/100 — ${d.verdict||''}</strong> · <em style="font-size:10px;color:#6b7280">Analyse complète disponible après enregistrement</em>`;
+          const modal=document.querySelector('.modal');
+          if(modal)modal.insertBefore(scoreInfo,modal.querySelector('.fg'));
+        }
+        // Load CV from pending if available
+        const pendCV=localStorage.getItem('tn_pending_cv');
+        if(pendCV){try{const cv=JSON.parse(pendCV);eCV.o=cv;const lbl=document.getElementById('cvol');if(lbl)lbl.textContent=cv.name;const act=document.getElementById('cvo-act');if(act)act.style.display='flex';const up=lbl?.parentElement;if(up)up.classList.add('has');}catch(e){} localStorage.removeItem('tn_pending_cv');}
+        if(d.nom)showToast(`Profil "${d.nom}" pré-rempli depuis l'historique`,'ok');
+      },100);
+    },400);
+  }catch(e){console.error('pending import:',e);}
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+async function init(){
+  loadLocal();
+  const session=getSession();
+  if(!session){showLogin();return;}
+  S.srcr=session.name;
+  renderTopbarUser();
+  render();
+  showLoader(true);
+  try{
+    await Promise.all([fetchPostes(),fetchProfils()]);
+    if(isAdmin()) await fetchCandidats();
+    render();
+    showToast('Données synchronisées','ok');
+  }catch(e){
+    console.error('Supabase init error:',e);
+    showToast('Mode hors ligne — données locales uniquement','warn');
+  }finally{
+    showLoader(false);
+  }
+  handleURLParams();
+  checkPendingImport();
+  checkPendingPoste();
+}
+
+// ═══════════════════════════════════════
+// AUTOSAVE DRAFT
+// ═══════════════════════════════════════
+function saveDraft(){
+  try{
+    const mobilite=[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
+    const draft={
+      nom:document.getElementById('f-nom')?.value||'',
+      tri:document.getElementById('f-tri')?.value||'',
+      ps:document.getElementById('f-ps')?.value||'',
+      pid:document.getElementById('f-pid')?.value||'',
+      dis:document.getElementById('f-dis')?.value||'',
+      mobilite:mobilite,
+      pret:document.getElementById('f-pret')?.value||'',
+      free:document.getElementById('f-free')?.value||'Non',
+      rem:document.getElementById('f-rem')?.value||'',
+      tel:document.getElementById('f-tel')?.value||'',
+      ts:Date.now()
+    };
+    localStorage.setItem('tn_form_draft',JSON.stringify(draft));
+  }catch(e){}
+}
+function clearDraft(){localStorage.removeItem('tn_form_draft');}
+function loadDraft(){
+  try{
+    const raw=localStorage.getItem('tn_form_draft');
+    if(!raw)return false;
+    const d=JSON.parse(raw);
+    // Only load if draft is less than 2 hours old
+    if(!d.ts||Date.now()-d.ts>7200000){clearDraft();return false;}
+    return d;
+  }catch(e){return false;}
+}
+
+
+// ═══════════════════════════════════════
+// PREFILL FROM RECRUTEMENT (postMessage)
+// ═══════════════════════════════════════
+window.addEventListener('message', function(e){
+  // Handle poste prefill from Recrutement
+  if(e.data&&e.data.type==='tn_poste'){
+    const d=e.data.payload;if(!d)return;
+    const tryOpenPoste=function(attempt){
+      if(S.postes.length>0||attempt>10){
+        if(document.querySelector('#mroot .modal'))return;
+        openPosteForm(null);
+        setTimeout(function(){
+          const set=function(id,v){const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
+          set('p-tit',d.titre);
+          set('p-cli',d.client||'');
+          set('p-desc',d.description||'');
+          if(d.titre)chkDupP();
+          showToast('Poste pré-rempli depuis Recrutement TAFINAR','ok');
+        },100);
+      } else {
+        setTimeout(function(){tryOpenPoste(attempt+1);},300);
+      }
+    };
+    tryOpenPoste(0);
+    return;
+  }
+  if(!e.data||e.data.type!=='tn_prefill')return;
+  const d=e.data.payload;
+  if(!d)return;
+  pendingAnalyse=d.analyse||null;
+  // Wait for Supabase data to be ready, then open form
+  const tryOpen=function(attempt){
+    if(S.postes.length||attempt>10){
+      // Don't override a form already open
+      if(document.querySelector('#mroot .modal')){return;}
+      openForm(null);
+      setTimeout(function(){
+        const set=function(id,v){const el=document.getElementById(id);if(el&&v)el.value=v;};
+        set('f-nom',d.nom);
+        set('f-tri',d.trigramme);
+        set('f-pret',d.pretention);
+        set('f-dis',d.dispo);
+        if(d.telephone)set('f-tel',d.telephone);
+        const fsrc=document.getElementById('f-src');
+        if(fsrc)fsrc.value=getWho();
+        if(d.poste){
+          set('f-ps',d.poste);
+          const match=S.postes.find(p=>sim(p.titre,d.poste)>0.6);
+          if(match){const hid=document.getElementById('f-pid');if(hid)hid.value=match.id;}
+          else filtPS();
+        }
+        if(d.score){
+          const modal=document.querySelector('.modal');
+          if(modal){
+            const banner=document.createElement('div');
+            banner.style.cssText='background:#f0faf4;border:1px solid #86efac;border-radius:6px;padding:6px 10px;font-size:12px;color:#166534;margin-bottom:10px;display:flex;align-items:center;gap:6px';
+            banner.innerHTML='<i class="ti ti-chart-bar" aria-hidden="true"></i> Score depuis Recrutement TAFINAR : <strong>'+d.score+'/100 — '+d.verdict+'</strong>';
+            modal.insertBefore(banner,modal.firstChild.nextSibling);
+          }
+        }
+        // Clear draft since we have fresh data
+        clearDraft();
+      },80);
+    } else {
+      setTimeout(function(){tryOpen(attempt+1);},300);
+    }
+  };
+  tryOpen(0);
+});
+
+
+function dlLocalCv(i, btn){
+  const cv=window._dlLocalCVs&&window._dlLocalCVs[i];
+  if(!cv)return;
+  const a=document.createElement('a');
+  a.href=cv.data;
+  a.download=cv.name||'CV.pdf';
+  a.click();
+  btn.innerHTML='<i class="ti ti-check" aria-hidden="true"></i> Téléchargé';
+  btn.style.background='#166534';
+  setTimeout(()=>{
+    btn.innerHTML='<i class="ti ti-download" aria-hidden="true"></i> Télécharger';
+    btn.style.background='#0d3b6e';
+  },2000);
+}
+
+
+init();
+</script>
+</body>
+</html>

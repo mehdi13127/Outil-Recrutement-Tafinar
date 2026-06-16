@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAFINAR v50 — Espace de travail</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#eef0f3;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Topbar ── */
+.topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 16px;
+  background:#fff;
+  border-bottom:1px solid #e5e7eb;
+  flex-shrink:0;
+  z-index:100;
+}
+.logo{font-size:16px;font-weight:700;color:#0d3b6e;letter-spacing:-.3px;margin-right:8px}
+
+.nav-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 14px;
+  border-radius:8px;
+  font-size:13px;font-weight:500;
+  cursor:pointer;
+  border:1.5px solid transparent;
+  font-family:inherit;
+  transition:all .15s;
+}
+/* Recrutement — bleu */
+.nav-rec{
+  background:#e6f0ff;color:#0d3b6e;border-color:#c7d9f5;
+}
+.nav-rec:hover{background:#d0e4ff}
+.nav-rec.active{background:#0d3b6e;color:#fff;border-color:#0d3b6e}
+
+/* Notion — vert */
+.nav-not{
+  background:#dcfce7;color:#0e7c3a;border-color:#bbf7d0;
+}
+.nav-not:hover{background:#c6f5d5}
+.nav-not.active{background:#0e7c3a;color:#fff;border-color:#0e7c3a}
+
+.spacer{flex:1}
+
+/* ── Iframes ── */
+.frames{flex:1;position:relative;overflow:hidden}
+iframe{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  border:none;
+  background:#eef0f3;
+  transition:opacity .15s;
+}
+iframe.hidden{
+  opacity:0;
+  pointer-events:none;
+  z-index:0;
+}
+iframe.visible{
+  opacity:1;
+  pointer-events:auto;
+  z-index:1;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">TAFINAR</span>
+
+  <button class="nav-btn nav-not" id="btn-notion" onclick="switchTo('notion')">
+    <i class="ti ti-layout-kanban" aria-hidden="true"></i>
+    Notion TAFINAR
+  </button>
+
+  <button class="nav-btn nav-rec active" id="btn-rec" onclick="switchTo('rec')">
+    <i class="ti ti-file-search" aria-hidden="true"></i>
+    Recrutement TAFINAR
+  </button>
+</div>
+
+<div class="frames">
+  <iframe id="frame-rec" class="visible" src="recrutement.html" title="Recrutement TAFINAR"></iframe>
+  <iframe id="frame-notion" class="hidden" src="notion.html" title="Notion TAFINAR"></iframe>
+</div>
+
+<script>
+let current = 'rec';
+
+function switchTo(app) {
+  switchToWithData(app, null);
+}
+
+function switchToWithData(app, payload) {
+  const frameRec    = document.getElementById('frame-rec');
+  const frameNotion = document.getElementById('frame-notion');
+  const btnRec      = document.getElementById('btn-rec');
+  const btnNotion   = document.getElementById('btn-notion');
+
+  current = app;
+
+  if (app === 'rec') {
+    frameRec.classList.replace('hidden', 'visible');
+    frameNotion.classList.replace('visible', 'hidden');
+    btnRec.classList.add('active');
+    btnNotion.classList.remove('active');
+  } else {
+    frameNotion.classList.replace('hidden', 'visible');
+    frameRec.classList.replace('visible', 'hidden');
+    btnNotion.classList.add('active');
+    btnRec.classList.remove('active');
+    // Send prefill data to notion iframe
+    if (payload) {
+      if (payload.type === 'tn_poste') {
+        frameNotion.contentWindow.postMessage({type:'tn_poste', payload:payload}, '*');
+      } else {
+        frameNotion.contentWindow.postMessage({type:'tn_prefill', payload:payload}, '*');
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>

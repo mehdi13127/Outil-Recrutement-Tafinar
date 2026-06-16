@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recrutement TAFINAR v50</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.notion-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#0e7c3a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fs);text-decoration:none}
+.notion-btn:hover{background:#0b6330}
+.notion-link-bar{background:#0d3b6e;padding:6px 1rem;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#fff}
+</style>
+<style>
+:root{
+  --tp:#111827;--ts:#6b7280;--tt:#9ca3af;
+  --bp:#fff;--bs:#f9fafb;--bt:rgba(0,0,0,.08);--bse:rgba(0,0,0,.18);
+  --rm:8px;--rl:12px;--fs:system-ui,-apple-system,sans-serif;
+  --gs:#166534;--gb:#dcfce7;--ws:#854d0e;--wb:#fef9c3;
+  --ds:#991b1b;--db:#fee2e2;--is:#1e40af;--ib:#dbeafe;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fs);color:var(--tp);font-size:15px;line-height:1.6;background:#eef0f3;min-height:100vh;padding:1.5rem 1rem 4rem}
+.wrap{max-width:960px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px}
+h1{font-size:21px;font-weight:500}
+.sub{font-size:13px;color:var(--ts);margin-top:1px}
+.tabs{display:flex;gap:6px}
+.tab{padding:6px 14px;border-radius:var(--rm);border:.5px solid var(--bt);background:var(--bp);font-size:13px;cursor:pointer;color:var(--ts);font-family:var(--fs)}
+.tab.active{background:#1e3a5f;color:#fff;border-color:#1e3a5f}
+.card{background:var(--bp);border-radius:var(--rl);border:.5px solid var(--bt);padding:1.25rem;margin-bottom:1rem}
+label{display:block;font-size:11px;font-weight:500;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+select,input[type=password],textarea{width:100%;font-family:var(--fs);font-size:14px;color:var(--tp);background:var(--bp);border:.5px solid var(--bse);border-radius:var(--rm);padding:7px 10px}
+input[type=password]{font-family:monospace}
+select:focus,input:focus,textarea:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.12)}
+.hint{font-size:11px;color:var(--tt);margin-top:4px}
+.cfg-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
+.ptitle{font-size:11px;font-weight:500;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+textarea{resize:vertical;line-height:1.5}
+.lib-row{display:flex;gap:6px;margin-bottom:8px}
+.lib-row select{flex:1}
+.ibtn{padding:6px 10px;border:.5px solid var(--bse);border-radius:var(--rm);background:var(--bp);font-size:13px;cursor:pointer;font-family:var(--fs);color:var(--tp);white-space:nowrap;display:flex;align-items:center;gap:4px}
+.ibtn:hover{background:var(--bs)}
+.ibtn.danger:hover{background:var(--db);color:var(--ds);border-color:var(--ds)}
+.drop{border:1.5px dashed var(--bse);border-radius:var(--rm);padding:16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;position:relative;margin-bottom:8px}
+.drop:hover,.drop.drag{border-color:#60a5fa;background:#f0f7ff}
+.drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop p{font-size:13px;color:var(--ts);pointer-events:none}
+.drop .di{font-size:24px;color:var(--tt);margin-bottom:4px;display:block}
+.flist{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.fitem{display:flex;align-items:center;gap:8px;background:var(--bs);border-radius:var(--rm);padding:5px 9px;font-size:12px}
+.fitem .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fitem .rm2{border:none;background:none;cursor:pointer;color:var(--tt);padding:0;font-size:14px}
+.fitem .rm2:hover{color:var(--ds)}
+.prog-wrap{margin-bottom:1rem}
+.prog-label{font-size:13px;color:var(--ts);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.prog-bar-bg{height:6px;background:var(--bs);border-radius:3px;overflow:hidden}
+.prog-bar{height:6px;background:#1e3a5f;border-radius:3px;transition:width .4s ease}
+.btn{width:100%;padding:11px;background:#1e3a5f;color:#fff;border:none;border-radius:var(--rm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--fs);transition:background .15s,opacity .15s}
+.btn:hover:not(:disabled){background:#163052}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-sm{padding:6px 12px;background:#1e3a5f;color:#fff;border:none;border-radius:var(--rm);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fs);white-space:nowrap}
+.btn-sm:hover{background:#163052}
+.btn-sm.outline{background:transparent;color:#1e3a5f;border:.5px solid #1e3a5f}
+.btn-sm.outline:hover{background:var(--ib)}
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite;flex-shrink:0}
+.sml-spin{width:11px;height:11px;border:1.5px solid var(--bt);border-top-color:#60a5fa;border-radius:50%;animation:rot .8s linear infinite;flex-shrink:0}
+@keyframes rot{to{transform:rotate(360deg)}}
+.key-row{display:flex;gap:6px;align-items:flex-start}
+.key-row input{flex:1}
+.key-status{font-size:11px;margin-top:4px;min-height:14px}
+.ks-ok{color:var(--gs)}.ks-err{color:var(--ds)}.ks-test{color:var(--ts)}
+.mode-info{font-size:11px;margin-top:4px}
+.mi-bal{color:var(--is)}.mi-sev{color:var(--ds)}.mi-lax{color:var(--gs)}
+.report{margin-top:1rem}
+.report-header{background:var(--bp);border:.5px solid var(--bt);border-radius:var(--rl);padding:1.25rem;margin-bottom:.75rem}
+.report-name{font-size:19px;font-weight:600;margin-bottom:2px}
+.report-meta{font-size:13px;color:var(--ts);margin-bottom:10px}
+.score-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.score-big{width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.score-num{font-size:22px;font-weight:600;line-height:1}
+.score-den{font-size:10px;margin-top:1px}
+.sm{background:var(--gb);color:var(--gs)}.sp{background:var(--wb);color:var(--ws)}.sn{background:var(--db);color:var(--ds)}
+.verdict-line{font-size:14px;font-weight:500}
+.verdict-badge{display:inline-block;padding:2px 10px;border-radius:var(--rm);font-size:12px;font-weight:500;margin-top:4px}
+.bm{background:var(--gb);color:var(--gs)}.bpa{background:var(--wb);color:var(--ws)}.bn{background:var(--db);color:var(--ds)}
+.crit-table{width:100%;border-collapse:collapse;font-size:13px}
+.crit-table th{text-align:left;font-size:11px;font-weight:500;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;padding:6px 10px;border-bottom:.5px solid var(--bt);background:var(--bs)}
+.crit-table td{padding:8px 10px;border-bottom:.5px solid var(--bt);vertical-align:top;line-height:1.45}
+.crit-table tr:last-child td{border-bottom:none}
+.crit-table tr:hover td{background:var(--bs)}
+.crit-name{font-weight:500}
+.crit-comment{color:var(--ts);font-size:12px;line-height:1.5}
+.w-pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:500}
+.we{background:#fce7f3;color:#9d174d}.wi{background:#ede9fe;color:#5b21b6}.ws2{background:#f1f5f9;color:#475569}
+.verdict-block{background:var(--ib);border-radius:var(--rm);padding:12px 14px;font-size:13px;color:var(--is);line-height:1}
+.verdict-block p{margin-bottom:6px}.verdict-block p:last-child{margin-bottom:0}
+.rank-table{width:100%;border-collapse:collapse;font-size:13px}
+.rank-table th{text-align:left;font-size:11px;font-weight:500;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;padding:6px 10px;border-bottom:.5px solid var(--bt)}
+.rank-table td{padding:8px 10px;border-bottom:.5px solid var(--bt);vertical-align:middle}
+.rank-table tr:last-child td{border-bottom:none}
+.rank-table tr:hover td{background:var(--bs)}
+.score-pill{display:inline-flex;align-items:center;justify-content:center;width:40px;height:26px;border-radius:var(--rm);font-size:12px;font-weight:600}
+.status-btn{border:none;border-radius:var(--rm);font-size:11px;font-weight:500;cursor:pointer;padding:3px 8px;font-family:var(--fs)}
+.st0{background:#f3f4f6;color:#6b7280}.st1{background:#fef9c3;color:#854d0e}.st2{background:#dcfce7;color:#166534}.st3{background:#fee2e2;color:#991b1b}
+.anon-btn{border:.5px solid #22c55e;border-radius:var(--rm);font-size:11px;font-weight:500;cursor:pointer;padding:3px 8px;font-family:var(--fs);background:#f0fdf4;color:#166534}
+.anon-btn:hover{background:#dcfce7}
+.cv-check-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.cv-check-item{display:flex;align-items:center;gap:8px;background:var(--bs);border-radius:var(--rm);padding:6px 10px;font-size:13px}
+.cv-check-item input[type=checkbox]{width:16px;height:16px;cursor:pointer;flex-shrink:0}
+.cv-check-item label{flex:1;cursor:pointer;margin:0;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--tp)}
+.hist-item{border-bottom:.5px solid var(--bt);padding:10px 0;cursor:pointer}
+.hist-item:last-child{border-bottom:none}
+.hist-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hist-title{font-size:14px;font-weight:500}
+.hist-meta{font-size:12px;color:var(--ts);margin-top:2px}
+.hist-detail{display:none;margin-top:10px}
+.hist-detail.open{display:block}
+.empty{text-align:center;color:var(--tt);font-size:13px;padding:2rem}
+.err{background:var(--db);border-radius:var(--rm);padding:10px 12px;color:var(--ds);font-size:13px;line-height:1.5;margin-top:1rem}
+.model-info{font-size:11px;color:var(--tt);margin-top:4px}
+
+/* Dossier tab */
+.dossier-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+.dossier-table th{background:#1e3a5f;color:#fff;padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-align:left;border-right:.5px solid rgba(255,255,255,.1)}
+.dossier-table th:last-child{border-right:none}
+.dossier-table td{padding:6px 8px;border-bottom:.5px solid var(--bt);border-right:.5px solid var(--bt);vertical-align:middle}
+.dossier-table td:last-child{border-right:none}
+.dossier-table td input,.dossier-table td textarea{width:100%;border:none;background:transparent;font-size:13px;padding:4px 6px;font-family:var(--fs);resize:none}
+.dossier-table td input:focus,.dossier-table td textarea:focus{outline:none;background:#eff6ff;border-radius:3px}
+.dossier-table td textarea{min-height:30px;line-height:1.4}
+.dossier-table tr:hover td{background:rgba(37,99,235,.03)}
+.dossier-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.dossier-row-rm{border:none;background:none;color:var(--ds);cursor:pointer;padding:4px;font-size:14px}
+.dossier-row-rm:hover{background:var(--db);border-radius:4px}
+.add-row-btn{background:transparent;color:#1e3a5f;border:1px dashed var(--bse);border-radius:var(--rm);font-size:13px;cursor:pointer;padding:8px;font-family:var(--fs);width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:5px}
+.add-row-btn:hover{background:var(--bs);border-color:#1e3a5f}
+.dossier-empty{text-align:center;color:var(--tt);font-size:13px;padding:2rem;background:var(--bs);border-radius:var(--rl)}
+
+/* New job button */
+.new-job-row{display:flex;gap:6px;margin-bottom:8px}
+.new-job-row input{flex:1}
+.new-job-btn{background:#22c55e;color:#fff;border:none;border-radius:var(--rm);font-size:12px;font-weight:500;cursor:pointer;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.new-job-btn:hover{background:#16a34a}
+
+/* Cancel button */
+.cancel-btn{background:#dc2626;color:#fff;border:none;border-radius:var(--rm);font-size:12px;font-weight:500;cursor:pointer;padding:6px 12px;margin-left:8px}
+.cancel-btn:hover{background:#b91c1c}
+
+/* Add to dossier */
+.add-dossier-btn{border:.5px solid #1e3a5f;border-radius:var(--rm);font-size:11px;font-weight:500;cursor:pointer;padding:3px 8px;font-family:var(--fs);background:#eff6ff;color:#1e3a5f;margin-left:4px}
+.add-dossier-btn:hover{background:var(--ib)}
+.add-dossier-btn.added{background:#dcfce7;color:#166534;border-color:#166534}
+
+/* Tab badges */
+.tab-badge{display:inline-block;background:#22c55e;color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:600}
+
+@media(max-width:700px){.cfg-grid,.row2{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.cfg-grid,.row2{grid-template-columns:1fr}}
+
+/* ── Anon panel ── */
+.anon-panel{background:var(--bp);border:.5px solid var(--bt);border-radius:var(--rl);margin-top:1rem;overflow:hidden}
+.anon-panel-header{background:#1e3a5f;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.anon-panel-header h3{font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px}
+.edit-hint{font-size:11px;opacity:.6;font-weight:400}
+.anon-iframe-wrap{background:#e5e7eb;padding:20px;overflow:auto}
+#anon-iframe{width:210mm;min-height:297mm;border:none;display:block;margin:0 auto;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+/* ── APEC ── */
+.ja-box{background:var(--bs);border:.5px solid var(--bt);border-radius:var(--rm);padding:12px 14px}
+.ja-title{font-size:13px;font-weight:600;color:var(--tp);margin-bottom:10px}
+.ja-section{margin-bottom:8px}
+.ja-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.ja-label-ess{color:var(--ds)}.ja-label-rec{color:var(--ws)}.ja-label-bool{color:var(--is)}
+.ja-terms{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ja-term{font-size:12px;padding:2px 9px;border-radius:3px;font-weight:500}
+.ja-ess{background:var(--db);color:var(--ds)}.ja-rec{background:var(--wb);color:var(--ws)}
+.ja-bool{display:flex;align-items:center;gap:8px;margin-bottom:4px;background:var(--bp);border:.5px solid var(--bt);border-radius:var(--rm);padding:5px 10px}
+.ja-bool code{flex:1;font-size:12px;color:var(--is);font-family:monospace}
+.ja-copy{background:none;border:.5px solid var(--bt);border-radius:3px;padding:2px 7px;cursor:pointer;font-size:11px;color:var(--ts);font-family:var(--fs);white-space:nowrap}
+.ja-copy:hover{background:var(--ib);color:var(--is)}
+/* anon result cards */
+.anon-result-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bp);border:.5px solid var(--bt);border-radius:var(--rm);padding:10px 14px;margin-bottom:8px;flex-wrap:wrap}
+.anon-result-card .arc-info{font-size:13px;font-weight:500}
+.anon-result-card .arc-sub{font-size:11px;color:var(--ts);margin-top:2px}
+.anon-result-card a.btn-sm{text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+</style>
+</head><body>
+
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span></h1>
+      <div class="sub">Analyse CV &amp; Anonymisation</div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('analyse')"><i class="ti ti-analyze" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Analyse</button>
+      <button class="tab" onclick="showTab('anonymiser')"><i class="ti ti-user-off" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Anonymiser</button>
+      <button class="tab" onclick="showTab('dossier')"><i class="ti ti-clipboard-list" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Dossier Client <span id="dossier-count" style="font-size:11px;opacity:.7"></span></button>
+      <button class="tab" onclick="showTab('historique')"><i class="ti ti-history" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Historique <span id="hist-count" style="font-size:11px;opacity:.7"></span></button>
+    </div>
+  </div>
+
+  <!-- ANALYSE -->
+  <div id="tab-analyse">
+    <div class="card">
+      <div class="cfg-grid">
+        <div>
+          <label>Modele IA</label>
+          <select id="prov" onchange="onProv()">
+            <optgroup label="Claude — lecture PDF native">
+              <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — recommande</option>
+              <option value="claude-opus-4-6">Claude Opus 4.6 — plus puissant</option>
+              <option value="claude-haiku-4-5-20251001" selected>Claude Haiku 4.5 — economique</option>
+            </optgroup>
+            <optgroup label="Gratuits OpenRouter — texte uniquement">
+              <option value="openai/gpt-oss-120b:free">GPT-OSS 120B gratuit</option>
+              <option value="openai/gpt-oss-20b:free">GPT-OSS 20B gratuit</option>
+              <option value="nvidia/nemotron-3-super-120b-a12b:free">Nemotron 3 Super gratuit</option>
+              <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B gratuit</option>
+              <option value="google/gemma-4-31b-it:free">Gemma 4 31B gratuit</option>
+              <option value="nousresearch/hermes-3-llama-3.1-405b:free">Hermes 3 405B gratuit</option>
+            </optgroup>
+            <optgroup label="Payants OpenRouter">
+              <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+              <option value="openai/gpt-4o">GPT-4o</option>
+              <option value="mistralai/mistral-large-2411">Mistral Large</option>
+            </optgroup>
+          </select>
+          <div class="model-info" id="model-info"></div>
+        </div>
+        <div>
+          <label>Cle Anthropic</label>
+          <div class="key-row">
+            <input type="password" id="key-ant" placeholder="sk-ant-..." oninput="saveKeys()">
+            <button class="btn-sm" onclick="testKey('ant')">Test</button>
+          </div>
+          <div class="key-status" id="ks-ant"></div>
+        </div>
+        <div>
+          <label>Cle OpenRouter</label>
+          <div class="key-row">
+            <input type="password" id="key-or" placeholder="sk-or-..." oninput="saveKeys()">
+            <button class="btn-sm" onclick="testKey('or')">Test</button>
+          </div>
+          <div class="key-status" id="ks-or"></div>
+        </div>
+        <div>
+          <label>Mode</label>
+          <select id="mode" onchange="onMode()">
+            <option value="balanced">Equilibre</option>
+            <option value="strict">Severe</option>
+            <option value="lenient">Souple</option>
+          </select>
+          <div class="mode-info" id="mode-info"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="ptitle"><span><i class="ti ti-briefcase" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Description du poste</span></div>
+        <div class="lib-row">
+          <select id="job-lib" onchange="loadJob()" style="flex:1"><option value="">— Sélectionner un poste —</option></select>
+          <button class="new-job-btn" onclick="openNewJobPopup()" title="Créer un nouveau poste"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px"></i>Nouveau poste</button>
+          <button class="ibtn danger" onclick="deleteJob()" title="Supprimer le poste sélectionné"><i class="ti ti-trash" aria-hidden="true"></i></button>
+        </div>
+        <div id="new-job-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center">
+          <div style="background:#fff;border-radius:12px;padding:24px;width:520px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <span style="font-size:16px;font-weight:600;color:#111">Nouveau poste</span>
+              <button onclick="closeNewJobPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af;line-height:1">×</button>
+            </div>
+            <div style="margin-bottom:12px">
+              <label style="display:block;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Nom du poste *</label>
+              <input type="text" id="new-job-name" placeholder="ex: Ingénieur C&C Marseille" style="width:100%;font-family:var(--fs);font-size:14px;color:#111;background:#fff;border:.5px solid rgba(0,0,0,.18);border-radius:var(--rm);padding:8px 10px" oninput="document.getElementById('new-job-name-warn').style.display='none'">
+              <div id="new-job-name-warn" style="display:none;font-size:11px;color:#dc2626;margin-top:4px">Le nom est obligatoire.</div>
+            </div>
+            <div style="margin-bottom:16px">
+              <label style="display:block;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Description du poste *</label>
+              <textarea id="new-job-desc" placeholder="Colle ou tape la description du poste..." style="width:100%;font-family:var(--fs);font-size:13px;color:#111;background:#fff;border:.5px solid rgba(0,0,0,.18);border-radius:var(--rm);padding:8px 10px;min-height:160px;resize:vertical;line-height:1.5"></textarea>
+              <div id="new-job-desc-warn" style="display:none;font-size:11px;color:#dc2626;margin-top:4px">La description est obligatoire.</div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button onclick="closeNewJobPopup()" style="padding:8px 18px;border:.5px solid rgba(0,0,0,.18);border-radius:var(--rm);background:#fff;font-size:13px;cursor:pointer;font-family:var(--fs)">Annuler</button>
+              <button onclick="confirmNewJob()" style="padding:8px 18px;background:#1e3a5f;color:#fff;border:none;border-radius:var(--rm);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fs)"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;margin-right:4px"></i>Créer le poste</button>
+            </div>
+          </div>
+        </div>
+        <textarea id="poste" placeholder="Colle la description du poste." style="flex:1;min-height:220px"></textarea>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <button class="btn-sm outline" id="btn-apec" onclick="analyzeJobForAPEC()"><i class="ti ti-search" aria-hidden="true" style="font-size:12px;margin-right:3px"></i>Analyser le poste par l'IA</button>
+          <button class="btn-sm" onclick="envoyerPosteNotionFromPoste()" style="background:#0e7c3a;color:#fff;border:none" title="Ajouter ce poste à Notion TAFINAR"><i class="ti ti-building-community" aria-hidden="true" style="font-size:12px;margin-right:3px"></i>→ Notion</button>
+          <span style="font-size:11px;color:var(--tt)">GPT-OSS 120B gratuit · cle OpenRouter</span>
+        </div>
+        <div id="job-analysis-box" style="display:none;margin-top:8px"></div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="ptitle">
+          <span><i class="ti ti-users" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>CV candidat(s)</span>
+          <span id="pdf-badge" style="font-size:11px;color:var(--is);background:var(--ib);padding:2px 7px;border-radius:var(--rm)"><i class="ti ti-file-check" aria-hidden="true" style="font-size:11px;margin-right:2px"></i>Lecture PDF native</span>
+        </div>
+        <div id="text-only-note" style="display:none;font-size:11px;color:var(--ws);background:var(--wb);padding:5px 8px;border-radius:var(--rm);margin-bottom:8px">
+          Ce modele ne lit pas le PDF nativement.
+        </div>
+        <div class="drop" id="dropzone" ondragover="evdrag(event,true)" ondragleave="evdrag(event,false)" ondrop="onDrop(event)">
+          <input type="file" accept=".pdf" id="fileInput" multiple onchange="onFiles(this.files)">
+          <span class="di"><i class="ti ti-upload" aria-hidden="true"></i></span>
+          <p><strong>Glisser les CVs PDF ici</strong> ou cliquer pour parcourir</p>
+          <p style="font-size:11px;margin-top:3px;color:var(--tt)">Plusieurs CVs acceptes — classement automatique</p>
+        </div>
+        <div id="flist" class="flist"></div>
+        <div style="font-size:11px;color:var(--tt);text-align:center;margin:4px 0">— ou coller le texte —</div>
+        <textarea id="cv-text" placeholder="Texte du CV (si pas de PDF)..." style="height:80px;font-size:13px"></textarea>
+      </div>
+    </div>
+
+    <div id="prog-wrap" class="prog-wrap" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div class="prog-label" style="margin:0"><div class="sml-spin"></div><span id="prog-label">Analyse en cours...</span></div>
+        <button class="cancel-btn" onclick="analysisCanceled=true"><i class="ti ti-x" aria-hidden="true" style="font-size:12px;vertical-align:-1px;margin-right:3px"></i>Annuler</button>
+      </div>
+      <div class="prog-bar-bg"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
+    </div>
+    <button class="btn" id="btn" onclick="runAnalyse()">
+      <i class="ti ti-analyze" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:5px"></i>Analyser
+    </button>
+    <div id="out"></div>
+  </div>
+
+  <!-- ANONYMISER -->
+  <div id="tab-anonymiser" style="display:none">
+    <div class="card">
+      <div class="ptitle" style="margin-bottom:12px"><i class="ti ti-user-off" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Selectionner les CVs a anonymiser</div>
+      <div id="anon-from-analysis" style="display:none;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--ts);margin-bottom:6px">CVs de l'analyse — coche ceux a anonymiser :</div>
+        <div id="anon-check-list" class="cv-check-list"></div>
+      </div>
+      <div style="font-size:12px;color:var(--ts);margin-bottom:6px" id="anon-upload-label">Uploader de nouveaux PDFs :</div>
+      <div class="drop" id="anon-dropzone" ondragover="aevdrag(event,true)" ondragleave="aevdrag(event,false)" ondrop="aonDrop(event)">
+        <input type="file" accept=".pdf" id="anonFileInput" multiple onchange="aonFiles(this.files)">
+        <span class="di"><i class="ti ti-upload" aria-hidden="true"></i></span>
+        <p><strong>Glisser les PDFs ici</strong> ou cliquer pour parcourir</p>
+      </div>
+      <div id="anon-flist" class="flist"></div>
+      <div style="margin-top:10px;margin-bottom:10px">
+        <label style="margin-bottom:5px">Ou coller le texte du CV directement <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--tt)">(si pas de PDF)</span></label>
+        <textarea id="anon-cv-text" placeholder="Colle ici le texte complet du CV..." style="min-height:100px;font-size:13px"></textarea>
+        <div class="hint">Le texte colle sera traite comme un CV supplementaire</div>
+      </div>
+      <div style="margin-top:10px;margin-bottom:10px;display:flex;gap:12px;align-items:center">
+        <div>
+          <label style="margin-bottom:4px">Langue du CV</label>
+          <select id="anon-lang" style="font-size:13px;padding:5px 10px;width:auto">
+            <option value="fr">Francais</option>
+            <option value="en">Anglais</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:0;margin-bottom:4px">
+        <label for="anon-poste-title" style="margin-bottom:5px">Titre du poste pour tous les CVs <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--tt)">(optionnel)</span></label>
+        <input type="text" id="anon-poste-title" placeholder="Ex : Ingenieur Controle-Commande Civaux" style="font-size:13px">
+        <div class="hint">Si rempli, remplace le titre extrait de chaque CV — pratique pour anonymiser un dossier en masse</div>
+      </div>
+      <div id="anon-prog-wrap" style="display:none;margin-top:12px" class="prog-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="prog-label" style="margin:0"><div class="sml-spin"></div><span id="anon-prog-label">Anonymisation en cours...</span></div>
+          <button class="cancel-btn" onclick="anonCanceled=true"><i class="ti ti-x" aria-hidden="true" style="font-size:12px;vertical-align:-1px;margin-right:3px"></i>Annuler</button>
+        </div>
+        <div class="prog-bar-bg"><div class="prog-bar" id="anon-prog-bar" style="width:0%"></div></div>
+      </div>
+      <button class="btn" style="margin-top:12px" onclick="runAnonymise()">
+        <i class="ti ti-user-off" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:5px"></i>Anonymiser les CVs selectionnes
+      </button>
+      <div id="anon-out"></div>
+    </div>
+    <div id="anon-results"></div>
+  </div>
+
+  
+  <!-- DOSSIER CLIENT -->
+  <div id="tab-dossier" style="display:none">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+        <div class="ptitle" style="margin:0"><i class="ti ti-clipboard-list" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Tableau recapitulatif client</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm outline" onclick="exportDossierExcel()"><i class="ti ti-file-spreadsheet" aria-hidden="true" style="font-size:12px;vertical-align:-1px;margin-right:3px"></i>Export Excel</button>
+          <button class="ibtn danger" onclick="clearDossier()"><i class="ti ti-trash" aria-hidden="true" style="font-size:13px"></i> Vider</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--ts);margin-bottom:10px">Ajoute des profils depuis l\'onglet Analyse via le bouton <span class="add-dossier-btn" style="cursor:default;font-size:10px">+ Dossier</span>, ou cree des lignes manuellement.</div>
+      <div id="dossier-content"></div>
+    </div>
+  </div>
+
+  <!-- HISTORIQUE -->
+  <div id="tab-historique" style="display:none">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px">
+        <div class="ptitle" style="margin:0"><i class="ti ti-history" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Analyses sauvegardees</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm outline" onclick="exportHistoryExcel()"><i class="ti ti-file-spreadsheet" aria-hidden="true" style="font-size:12px;vertical-align:-1px;margin-right:3px"></i>Export Excel</button>
+          <button class="ibtn danger" onclick="clearHistory()"><i class="ti ti-trash" aria-hidden="true" style="font-size:13px"></i> Effacer</button>
+        </div>
+      </div>
+      <!-- Filtres historique -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+        <select id="hf-verdict" onchange="renderHistory()" style="font-size:12px;padding:4px 8px;width:auto">
+          <option value="">Tous les verdicts</option>
+          <option value="Match">Match</option>
+          <option value="Partiel">Partiel</option>
+          <option value="Non-match">Non-match</option>
+        </select>
+        <select id="hf-statut" onchange="renderHistory()" style="font-size:12px;padding:4px 8px;width:auto">
+          <option value="">Tous les statuts</option>
+          <option value="0">Non traite</option>
+          <option value="1">A contacter</option>
+          <option value="2">Entretien</option>
+          <option value="3">Refuse</option>
+        </select>
+        <input type="text" id="hf-poste" oninput="renderHistory()" placeholder="Filtrer par poste..." style="font-size:12px;padding:4px 8px;width:140px">
+        <input type="number" id="hf-score" oninput="renderHistory()" placeholder="Score min" min="0" max="100" style="font-size:12px;padding:4px 8px;width:90px">
+        <input type="date" id="hf-date-from" onchange="renderHistory()" style="font-size:12px;padding:4px 8px;width:auto">
+        <span style="font-size:11px;color:var(--tt)">au</span>
+        <input type="date" id="hf-date-to" onchange="renderHistory()" style="font-size:12px;padding:4px 8px;width:auto">
+        <button class="btn-sm outline" onclick="resetHistFilters()" style="font-size:11px">Reinit.</button>
+        <span id="hf-count" style="font-size:11px;color:var(--tt)"></span>
+      </div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+</div>
+<script>
+const LOGO_B64 = "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";
+
+const CLAUDE = ['claude-sonnet-4-6','claude-opus-4-6','claude-haiku-4-5-20251001'];
+const STATUS_LABELS = ['Non traite','A contacter','Entretien','Refuse'];
+const STATUS_CLASS = ['st0','st1','st2','st3'];
+
+const MODEL_INFO = {
+  'claude-sonnet-4-6':'PDF natif · ~0,01EUR/CV · cle Anthropic',
+  'claude-opus-4-6':'PDF natif · ~0,06EUR/CV · cle Anthropic',
+  'claude-haiku-4-5-20251001':'PDF natif · ~0,002EUR/CV · cle Anthropic',
+  'openai/gpt-oss-120b:free':'Gratuit · cle OpenRouter',
+  'openai/gpt-oss-20b:free':'Gratuit · cle OpenRouter',
+  'nvidia/nemotron-3-super-120b-a12b:free':'Gratuit · cle OpenRouter',
+  'meta-llama/llama-3.3-70b-instruct:free':'Gratuit · cle OpenRouter',
+  'google/gemma-4-31b-it:free':'Gratuit · cle OpenRouter',
+  'nousresearch/hermes-3-llama-3.1-405b:free':'Gratuit · cle OpenRouter',
+  'google/gemini-2.5-flash':'Payant · cle OpenRouter',
+  'openai/gpt-4o-mini':'Payant · cle OpenRouter',
+  'openai/gpt-4o':'Payant · cle OpenRouter',
+  'mistralai/mistral-large-2411':'Payant · cle OpenRouter',
+};
+
+const MODE_INFO = {
+  balanced:['Ponderations intelligentes - secondaires absents ne bloquent pas','mi-bal'],
+  strict:['Essentiel manquant = Non-match immediat','mi-sev'],
+  lenient:['Potentiel valorise - benefice du doute','mi-lax'],
+};
+
+const P_BALANCED = `Tu es un recruteur professionnel generaliste.
+Analyse la correspondance entre le poste et le CV. Lis l'integralite du CV.
+Extrais du CV : prenom, nom, telephone. Si absent : null.
+Identifie TOUS les criteres du poste. Attribue un poids : "essentiel","important","secondaire".
+Bareme : essentiel(ok=3,partial=1.5,ko=0) important(ok=2,partial=1,ko=0) secondaire(ok=1,partial=0.5,ko=0)
+Score=(points_obtenus/points_max)*100 arrondi. Un critere secondaire absent seul ne peut pas faire passer le score sous 50.
+Verdict_court: "Match" si score>=75, "Partiel" si >=50, "Non-match" sinon.
+Verdict : 2-4 phrases courtes, UNE idee par phrase.
+UNIQUEMENT JSON valide, sans markdown, sans backtick.
+{"prenom":"Jean","nom":"Dupont","telephone":"06 12 34 56 78","score":82,"verdict_court":"Match","criteres":[{"nom":"Critere","poids":"essentiel","statut":"ok","commentaire":"court"},{"nom":"Critere","poids":"important","statut":"partial","commentaire":"court"},{"nom":"Critere","poids":"secondaire","statut":"ko","commentaire":"Non mentionne"}],"verdict_phrases":["Phrase 1.","Phrase 2."]}`;
+
+const P_STRICT = `Tu es un recruteur professionnel exigeant.
+Analyse la correspondance entre le poste et le CV. Lis l'integralite du CV.
+Extrais du CV : prenom, nom, telephone. Si absent : null.
+Identifie TOUS les criteres. Sois rigoureux : implicite ou suppose = non valide.
+Poids : "essentiel","important","secondaire".
+Bareme strict : essentiel(ok=3,partial=0.5,ko=0) important(ok=2,partial=0.5,ko=0) secondaire(ok=1,partial=0.3,ko=0)
+Score=(points_obtenus/points_max)*100 arrondi.
+REGLE ABSOLUE : si un critere essentiel est "ko" alors verdict_court="Non-match".
+Verdict_court: "Match" si score>=80 ET aucun essentiel ko, "Partiel" si >=55, "Non-match" sinon.
+UNIQUEMENT JSON valide, sans markdown, sans backtick.
+{"prenom":"Jean","nom":"Dupont","telephone":"06 12 34 56 78","score":82,"verdict_court":"Match","criteres":[{"nom":"Critere","poids":"essentiel","statut":"ok","commentaire":"court"}],"verdict_phrases":["Phrase 1."]}`;
+
+const P_LENIENT = `Tu es un recruteur oriente potentiel.
+Analyse la correspondance entre le poste et le CV. Lis l'integralite du CV.
+Extrais du CV : prenom, nom, telephone. Si absent : null.
+Identifie TOUS les criteres. Valorise les competences transferables.
+Poids (peu d'essentiels) : "essentiel","important","secondaire".
+Bareme souple : essentiel(ok=3,partial=2.5,ko=0.5) important(ok=2,partial=1.5,ko=0.3) secondaire(ok=1,partial=0.8,ko=0.2)
+Score=(points_obtenus/points_max)*100 arrondi.
+Verdict_court: "Match" si score>=65, "Partiel" si >=40, "Non-match" sinon.
+UNIQUEMENT JSON valide, sans markdown, sans backtick.
+{"prenom":"Jean","nom":"Dupont","telephone":"06 12 34 56 78","score":82,"verdict_court":"Match","criteres":[{"nom":"Critere","poids":"essentiel","statut":"ok","commentaire":"court"}],"verdict_phrases":["Phrase 1."]}`;
+
+const PROMPTS = {balanced:P_BALANCED, strict:P_STRICT, lenient:P_LENIENT};
+
+const ANON_PROMPT = `Tu es expert en extraction et mise en forme de CV. Ton role est de transcrire fidelement le contenu professionnel d'un CV en JSON structure, en anonymisant l'identite et en supprimant toute information personnelle.
+
+ETAPE 1 — ANONYMISATION ET SUPPRESSION DES DONNEES PERSONNELLES :
+Remplace prenom et nom par un code de EXACTEMENT 4 LETTRES.
+IDENTIFICATION DU PRENOM ET NOM : Sur un CV, le format peut etre "Prenom NOM" ou "NOM Prenom". Identifie toujours correctement lequel est le prenom (prenom usuel) et lequel est le nom de famille avant d'appliquer la regle. Exemple : "ASSEMAR MOHAMED" → nom=ASSEMAR, prenom=MOHAMED.
+REGLE : lettre1=1ere lettre du PRENOM, lettre2=DERNIERE lettre du PRENOM, lettre3=1ere lettre du NOM, lettre4=DERNIERE lettre du NOM. TOUJOURS 4 LETTRES, JAMAIS 3.
+Exemples : Nicolas Dupont → 1er mot=Nicolas(N+S), dernier mot=Dupont(D+T) → NSDT. Jean Martin → JNMN. ASSEMAR MOHAMED → 1er mot=ASSEMAR(A+R), dernier mot=MOHAMED(M+D) → ARMD. Marie-Claire DUPONT → 1er mot=Marie-Claire(M+E), dernier mot=DUPONT(D+T) → MEDT.
+
+SUPPRIME ABSOLUMENT et partout dans le CV, meme dans l'apercu ou les descriptions :
+- Email, telephone, adresse postale, URL LinkedIn, tout lien personnel
+- Age et date de naissance (ex: "37 ans", "né le 12/03/1987")
+- Situation familiale (marie, celibataire, divorce, pacse, en couple)
+- Nombre d'enfants (ex: "2 enfants", "pere de famille")
+- Nationalite (ex: "Francais", "de nationalite marocaine")
+- Photo ou reference a une photo
+NE supprime rien d'autre. Garde absolument tout le contenu professionnel.
+
+ETAPE 2 — PRESERVATION INTEGRALE DU CONTENU PROFESSIONNEL :
+REGLE ABSOLUE : reproduis TOUT le contenu professionnel mot pour mot, sans rien omettre, sans resumer, sans fusionner. Si une experience a 8 taches, le JSON doit avoir exactement 8 taches. Ne reduis jamais le nombre d'elements. Le permis de conduire est une information professionnelle : le garder.
+
+Le "titre" est le titre/poste principal du candidat. Pour les langues : score 0-1 (natif=1, courant=0.85, avance=0.7, intermediaire=0.55, notions=0.3). Sections dans l'ordre du CV (competences toujours apres experiences) : "apercu", "experiences", "competences", "formation", "certifications", "langues", "generic_tags", "generic_list".
+UNIQUEMENT JSON valide, sans markdown, sans backtick.
+{"code":"NSDT","titre":"Titre principal","sections":[{"type":"apercu","contenu":"texte integral sans infos personnelles"},{"type":"experiences","titre":"Experiences Professionnelles","items":[{"entreprise":"Nom","poste":"Titre","date":"periode","taches":["tache 1 complete","tache 2 complete"]}]},{"type":"competences","titre":"Competences","items":["comp 1","comp 2"]},{"type":"formation","titre":"Formation","items":[{"ecole":"Nom","diplome":"Titre","specialite":"spec","date":"periode"}]},{"type":"certifications","titre":"Certifications","items":[{"nom":"cert","date":"2023"}]},{"type":"langues","titre":"Langues","items":[{"langue":"Francais","niveau":"Bilingue","score":1.0}]},{"type":"generic_tags","titre":"Centres d'interet","items":["item1"]}]}`;
+const ANON_PROMPT_EN = `You are an expert recruiter and professional translator. Your role is to anonymize, remove all personal information, fully translate into English, and structure a CV as JSON.
+
+STEP 1 — ANONYMIZATION AND PERSONAL DATA REMOVAL:
+Replace first name and last name with a code of EXACTLY 4 LETTERS.
+NAME IDENTIFICATION: CVs may use "FirstName LASTNAME" or "LASTNAME FirstName" format. Always correctly identify which is the first name and which is the family name before applying the rule. Example: "ASSEMAR MOHAMED" → last name=ASSEMAR, first name=MOHAMED.
+RULE: letter1=1st letter of FIRST NAME, letter2=LAST letter of FIRST NAME, letter3=1st letter of LAST NAME, letter4=LAST letter of LAST NAME. ALWAYS 4 LETTERS, NEVER 3.
+Examples: Nicolas Dupont → word1=Nicolas(N+S), lastword=Dupont(D+T) → NSDT. ASSEMAR MOHAMED → word1=ASSEMAR(A+R), lastword=MOHAMED(M+D) → ARMD. John Smith → JHSH.
+
+REMOVE ABSOLUTELY everywhere in the CV, including in the summary or any description:
+- Email, phone, postal address, LinkedIn URL, any personal link
+- Age and date of birth (e.g. "37 years old", "born 12/03/1987")
+- Marital status (married, single, divorced, in a relationship)
+- Number of children (e.g. "2 children", "father of 3")
+- Nationality (e.g. "French", "Moroccan nationality")
+- Photo or any reference to a photo
+DO NOT remove anything else. Keep all professional content.
+
+STEP 2 — FULL TRANSLATION TO ENGLISH:
+Translate EVERYTHING into English. Every word of every sentence must be translated: job titles, task descriptions, skills, degrees, certifications, interests, profile summary, section titles. Keep only: company names, school names, city/country names, technical acronyms (SCADA, PLC, SAP...) as-is. Driving licence is professional information: keep it translated.
+
+STEP 3 — COMPLETE CONTENT PRESERVATION:
+ABSOLUTE RULE: reproduce ALL professional content, nothing omitted, nothing summarized, nothing merged. If an experience has 8 tasks, JSON must have exactly 8 translated tasks. Never reduce the number of items.
+
+Section titles in English: experiences="Professional Experience", competences="Skills", formation="Education", certifications="Certifications", langues="Languages". Sections in CV order, skills always after experience. Language scores: native=1, fluent=0.85, advanced=0.7, intermediate=0.55, basic=0.3.
+
+ONLY valid JSON, no markdown, no backtick.
+{"code":"NSDT","titre":"Main Job Title in English","sections":[{"type":"apercu","contenu":"Full profile translated to English, no personal info"},{"type":"experiences","titre":"Professional Experience","items":[{"entreprise":"Company Name","poste":"Job Title in English","date":"period","taches":["Translated task 1","Translated task 2"]}]},{"type":"competences","titre":"Skills","items":["Skill in English"]},{"type":"formation","titre":"Education","items":[{"ecole":"School Name","diplome":"Degree in English","specialite":"Specialization in English","date":"period"}]},{"type":"certifications","titre":"Certifications","items":[{"nom":"Certification name","date":"2023"}]},{"type":"langues","titre":"Languages","items":[{"langue":"French","niveau":"Native","score":1.0}]},{"type":"generic_tags","titre":"Interests","items":["Interest in English"]}]}`;
+
+/* Key helpers */
+function sk(k){return String(k||'').replace(/[^\x21-\x7E]/g,'').trim();}
+function saveKeys(){
+  const a=document.getElementById('key-ant').value;
+  const o=document.getElementById('key-or').value;
+  if(a)localStorage.setItem('cvk_ant',sk(a));
+  if(o)localStorage.setItem('cvk_or',sk(o));
+}
+function loadKeys(){
+  document.getElementById('key-ant').value=localStorage.getItem('cvk_ant')||'';
+  document.getElementById('key-or').value=localStorage.getItem('cvk_or')||'';
+}
+function buildHeaders(t,k){
+  if(t==='ant')return {'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
+  return {'Content-Type':'application/json','Authorization':'Bearer '+k};
+}
+async function testKey(t){
+  const key=sk(document.getElementById('key-'+t).value);
+  const el=document.getElementById('ks-'+t);
+  if(!key){el.className='key-status ks-err';el.textContent='Cle vide.';return;}
+  el.className='key-status ks-test';
+  el.innerHTML='<span style="display:inline-flex;align-items:center;gap:4px"><span class="sml-spin"></span>Test...</span>';
+  try{
+    if(t==='ant'){
+      const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',key),body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'Hi'}]})});
+      const d=await r.json();if(d.error)throw new Error(d.error.message);
+    } else {
+      const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:buildHeaders('or',key),body:JSON.stringify({model:'openai/gpt-oss-20b:free',max_tokens:10,messages:[{role:'user',content:'Hi'}]})});
+      const d=await r.json();if(d.error)throw new Error(typeof d.error==='string'?d.error:d.error.message||JSON.stringify(d.error));
+    }
+    el.className='key-status ks-ok';el.textContent='✅ Cle valide';
+  }catch(e){el.className='key-status ks-err';el.textContent='❌ '+e.message.slice(0,80);}
+}
+
+/* UI */
+function onProv(){
+  const p=document.getElementById('prov').value;
+  document.getElementById('model-info').textContent=MODEL_INFO[p]||'';
+  const native=CLAUDE.includes(p);
+  document.getElementById('pdf-badge').style.display=native?'inline':'none';
+  document.getElementById('text-only-note').style.display=native?'none':'block';
+}
+function onMode(){
+  const m=document.getElementById('mode').value;
+  const [txt,cls]=MODE_INFO[m]||['',''];
+  const el=document.getElementById('mode-info');
+  el.textContent=txt;el.className='mode-info '+cls;
+}
+function showTab(t){
+  ['analyse','anonymiser','dossier','historique'].forEach(n=>{
+    const el = document.getElementById('tab-'+n);
+    if(el) el.style.display = n===t ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el,i)=>{
+    el.classList.toggle('active',['analyse','anonymiser','dossier','historique'][i]===t);
+  });
+  if(t==='historique')renderHistory();
+  if(t==='anonymiser')refreshAnonFromAnalysis();
+  if(t==='dossier')renderDossier();
+}
+
+/* Job library */
+function loadJobLib(){
+  // Migration: strip old analysis data from cvjobs to free localStorage space
+  let lib=JSON.parse(localStorage.getItem('cvjobs')||'{}');
+  let migrated=false;
+  Object.keys(lib).forEach(n=>{
+    const e=lib[n];
+    if(e&&typeof e==='object'&&e.analysis){
+      // Cache in memory before stripping
+      window._analysesCache=window._analysesCache||{};
+      if(!window._analysesCache[n])window._analysesCache[n]=e.analysis;
+      lib[n]={desc:e.desc||''};
+      migrated=true;
+    }
+  });
+  if(migrated){try{localStorage.setItem('cvjobs',JSON.stringify(lib));}catch(err){console.warn('cvjobs migration error',err);}}
+  const sel=document.getElementById('job-lib');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Charger un poste sauvegarde —</option>';
+  Object.keys(lib).sort().forEach(n=>{
+    const o=document.createElement('option');o.value=n;o.textContent=n;
+    if(n===cur)o.selected=true;sel.appendChild(o);
+  });
+}
+function loadJob(){
+  const n=document.getElementById('job-lib').value;if(!n)return;
+  const lib=JSON.parse(localStorage.getItem('cvjobs')||'{}');
+  const entry=lib[n];if(!entry)return;
+  const desc=typeof entry==='string'?entry:(entry.desc||'');
+  document.getElementById('poste').value=desc;
+  // Restore analysis from session memory cache (not localStorage)
+  const cached=(window._analysesCache&&window._analysesCache[n])||null;
+  currentJobAnalysis=cached;
+  const box=document.getElementById('job-analysis-box');
+  if(cached&&box){box.innerHTML=renderJobAnalysis(cached);box.style.display='block';}
+  else if(box){box.style.display='none';box.innerHTML='';currentJobAnalysis=null;}
+}
+function saveJob(){
+  const txt=document.getElementById('poste').value.trim();
+  if(!txt){alert('Description du poste vide.');return;}
+  const name=prompt('Nom pour ce poste :');if(!name||!name.trim())return;
+  const lib=JSON.parse(localStorage.getItem('cvjobs')||'{}');
+  lib[name.trim()]={desc:txt};
+  localStorage.setItem('cvjobs',JSON.stringify(lib));
+  if(currentJobAnalysis){window._analysesCache=window._analysesCache||{};window._analysesCache[name.trim()]=currentJobAnalysis;}
+  loadJobLib();document.getElementById('job-lib').value=name.trim();
+}
+function deleteJob(){
+  const n=document.getElementById('job-lib').value;if(!n){alert('Selectionne un poste.');return;}
+  if(!confirm('Supprimer "'+n+'" ?'))return;
+  const lib=JSON.parse(localStorage.getItem('cvjobs')||'{}');
+  delete lib[n];localStorage.setItem('cvjobs',JSON.stringify(lib));loadJobLib();
+}
+
+/* Files analyse */
+let filesList=[];
+function evdrag(e,add){e.preventDefault();document.getElementById('dropzone').classList.toggle('drag',add);}
+function onDrop(e){e.preventDefault();document.getElementById('dropzone').classList.remove('drag');if(e.dataTransfer.files.length)onFiles(e.dataTransfer.files);}
+function onFiles(files){
+  Array.from(files).forEach(f=>{
+    if((f.type==='application/pdf'||f.name.endsWith('.pdf'))&&!filesList.find(x=>x.name===f.name&&x.size===f.size))filesList.push(f);
+  });
+  renderFileList();
+}
+function removeFile(i){filesList.splice(i,1);renderFileList();refreshAnonFromAnalysis();}
+function renderFileList(){
+  const el=document.getElementById('flist');
+  if(!filesList.length){el.innerHTML='';return;}
+  el.innerHTML=filesList.map((f,i)=>`<div class="fitem"><i class="ti ti-file-type-pdf" aria-hidden="true" style="font-size:14px;color:var(--ds);flex-shrink:0"></i><span class="fn">${f.name}</span><span style="font-size:11px;color:var(--tt);flex-shrink:0">${(f.size/1024).toFixed(0)} Ko</span><button class="rm2" onclick="removeFile(${i})"><i class="ti ti-x" aria-hidden="true"></i></button></div>`).join('');
+}
+
+/* Files anonymiser */
+let anonFilesList=[];
+function aevdrag(e,add){e.preventDefault();document.getElementById('anon-dropzone').classList.toggle('drag',add);}
+function aonDrop(e){e.preventDefault();document.getElementById('anon-dropzone').classList.remove('drag');if(e.dataTransfer.files.length)aonFiles(e.dataTransfer.files);}
+function aonFiles(files){
+  Array.from(files).forEach(f=>{
+    if((f.type==='application/pdf'||f.name.endsWith('.pdf'))&&!anonFilesList.find(x=>x.name===f.name&&x.size===f.size))anonFilesList.push(f);
+  });
+  renderAnonFileList();
+}
+function removeAnonFile(i){anonFilesList.splice(i,1);renderAnonFileList();}
+function renderAnonFileList(){
+  const el=document.getElementById('anon-flist');
+  if(!anonFilesList.length){el.innerHTML='';return;}
+  el.innerHTML=anonFilesList.map((f,i)=>`<div class="fitem"><i class="ti ti-file-type-pdf" aria-hidden="true" style="font-size:14px;color:var(--ds);flex-shrink:0"></i><span class="fn">${f.name}</span><button class="rm2" onclick="removeAnonFile(${i})"><i class="ti ti-x" aria-hidden="true"></i></button></div>`).join('');
+}
+
+/* b64 */
+function toBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=ev=>res(ev.target.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('Lecture fichier echouee'));
+    r.readAsDataURL(file);
+  });
+}
+
+/* JSON parser */
+function pj(t){
+  const s=t.indexOf('{');const e=t.lastIndexOf('}');
+  if(s===-1||e===-1||e<=s)throw new Error('Reponse JSON invalide — reessaie.');
+  try{return JSON.parse(t.slice(s,e+1));}
+  catch(err){throw new Error('Reponse JSON invalide — reessaie.');}
+}
+
+/* API analyse */
+async function callOne(model,poste,file){
+  const cvText=document.getElementById('cv-text').value.trim();
+  const SYS=PROMPTS[document.getElementById('mode').value];
+  const keyA=sk(document.getElementById('key-ant').value);
+  const keyOR=sk(document.getElementById('key-or').value);
+  if(CLAUDE.includes(model)){
+    const content=[];
+    if(file){const b64=await toBase64(file);content.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}});}
+    content.push({type:'text',text:file?'POSTE:\n'+poste+'\n\nAnalyse ce CV pour ce poste.':'POSTE:\n'+poste+'\n\nCV CANDIDAT:\n'+cvText+'\n\nAnalyse ce profil pour ce poste.'});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',keyA),body:JSON.stringify({model:model,max_tokens:2000,system:SYS,messages:[{role:'user',content:content}]})});
+    const d=await r.json();if(d.error)throw new Error(d.error.message);
+    return pj(d.content[0].text);
+  }
+  const profil=cvText||(file?'[PDF: '+file.name+' — colle le texte pour ce modele]':'');
+  const u='POSTE:\n'+poste+'\n\nCV CANDIDAT:\n'+profil;
+  const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:buildHeaders('or',keyOR),body:JSON.stringify({model:model,messages:[{role:'system',content:SYS},{role:'user',content:u}],max_tokens:2000,temperature:0.1})});
+  const d=await r.json();
+  if(d.error)throw new Error(typeof d.error==='string'?d.error:d.error.message||JSON.stringify(d.error));
+  const txt=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
+  if(!txt)throw new Error('Reponse vide du modele.');
+  return pj(txt);
+}
+
+/* API anonymise */
+function getAnonPrompt(){
+  const lang=(document.getElementById('anon-lang')||{}).value||'fr';
+  return lang==='en'?ANON_PROMPT_EN:ANON_PROMPT;
+}
+async function callAnon(file){
+  const keyA=sk(document.getElementById('key-ant').value);
+  if(!keyA)throw new Error('Cle Anthropic requise pour l\'anonymisation.');
+  const sel=document.getElementById('prov').value;
+  const model=(sel==='claude-opus-4-6'||sel==='claude-sonnet-4-6')?sel:'claude-haiku-4-5-20251001';
+  const b64=await toBase64(file);
+  const lang=(document.getElementById('anon-lang')||{}).value||'fr';
+  const userMsg=lang==='en'?'Anonymize and structure this CV as instructed.':'Anonymise et structure ce CV selon les instructions.';
+  const content=[
+    {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+    {type:'text',text:userMsg}
+  ];
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',keyA),body:JSON.stringify({model:model,max_tokens:8000,system:getAnonPrompt(),messages:[{role:'user',content:content}]})});
+  const d=await r.json();if(d.error)throw new Error(d.error.message);
+  return pj(d.content[0].text);
+}
+
+/* Render helpers */
+function sc(s){return s>=75?'sm':s>=50?'sp':'sn';}
+function gb(v){return v==='Match'?'bm':v==='Partiel'?'bpa':'bn';}
+function cname(d){return[d.prenom,d.nom].filter(Boolean).join(' ')||'Candidat inconnu';}
+function statusIcon(s){return s==='ok'?'✅':s==='partial'?'⚠️':'❌';}
+function poidsLabel(p){
+  if(p==='essentiel')return '<span class="w-pill we">Essentiel</span>';
+  if(p==='important')return '<span class="w-pill wi">Important</span>';
+  return '<span class="w-pill ws2">Secondaire</span>';
+}
+function cycleStatus(id,btnId){
+  const key='status_'+id;
+  const s=(parseInt(localStorage.getItem(key)||'0')+1)%4;
+  localStorage.setItem(key,s);
+  const btn=document.getElementById(btnId);
+  if(btn){btn.className='status-btn '+STATUS_CLASS[s];btn.textContent=STATUS_LABELS[s];}
+}
+
+/* Render report */
+function renderReport(d,filename,fileObj,idx){
+  const rows=(d.criteres||[]).map(c=>'<tr><td class="crit-name">'+c.nom+'</td><td style="text-align:center">'+poidsLabel(c.poids)+'</td><td style="text-align:center;font-size:16px">'+statusIcon(c.statut)+'</td><td class="crit-comment">'+c.commentaire+'</td></tr>').join('');
+  const vLines=(d.verdict_phrases||[]).map(p=>'<p>'+p+'</p>').join('');
+  const stKey='status_report_'+idx;
+  const stVal=parseInt(localStorage.getItem(stKey)||'0');
+  return '<div class="report">'
+    +'<div class="report-header">'
+    +'<div class="report-name">'+cname(d)+'</div>'
+    +'<div class="report-meta">'+(d.telephone?'<i class="ti ti-phone" aria-hidden="true" style="font-size:12px;margin-right:3px"></i>'+d.telephone+' &nbsp;&middot;&nbsp; ':'')+'<span style="color:var(--tt)">'+filename+'</span></div>'
+    +'<div class="score-row">'
+    +'<div class="score-big '+sc(d.score)+'"><span class="score-num">'+d.score+'</span><span class="score-den">/100</span></div>'
+    +'<div><div class="verdict-line">'+(d.verdict_court==='Match'?'Profil correspondant':d.verdict_court==='Partiel'?'Correspondance partielle':'Profil non retenu')+'</div>'
+    +'<span class="verdict-badge '+gb(d.verdict_court)+'">'+d.verdict_court+'</span></div>'
+    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+    +'<button class="status-btn '+STATUS_CLASS[stVal]+'" id="sbtn-'+idx+'" onclick="cycleStatus(\'status_report_'+idx+'\',\'sbtn-'+idx+'\')">'+STATUS_LABELS[stVal]+'</button>'
+    +'<button class="anon-btn" onclick="anonFromResult('+idx+')"><i class="ti ti-user-off" aria-hidden="true" style="font-size:11px;margin-right:3px"></i>Anonymiser</button>'
+    +'<button class="add-dossier-btn" id="dbtn-'+idx+'" onclick="addToDossier('+idx+',this)"><i class="ti ti-clipboard-plus" aria-hidden="true" style="font-size:11px;margin-right:3px"></i>+ Dossier</button>'
+    +'<button onclick="envoyerProfilNotion(\''+escH(cname(d))+'\',\'\',document.getElementById(\'job-lib\').value||\'\',' +d.score+',\''+d.verdict_court+'\',\'\',\'\')" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit"><i class="ti ti-building-community" aria-hidden="true" style="font-size:11px"></i>→ Notion</button>'
+    +'</div></div></div>'
+    +'<div class="card" style="padding:0;overflow:hidden"><table class="crit-table"><thead><tr><th>Critere</th><th style="text-align:center">Poids</th><th style="text-align:center">Statut</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="card"><div class="ptitle" style="margin-bottom:8px"><i class="ti ti-message-dots" aria-hidden="true" style="font-size:12px;vertical-align:-1px;margin-right:4px"></i>Verdict</div><div class="verdict-block">'+vLines+'</div></div>'
+    +'</div>';
+}
+
+/* Render ranking */
+function renderRanking(results){
+  const sorted=[...results].sort((a,b)=>(b.data&&b.data.score||0)-(a.data&&a.data.score||0));
+  const sp=s=>s>=75?'background:var(--gb);color:var(--gs)':s>=50?'background:var(--wb);color:var(--ws)':'background:var(--db);color:var(--ds)';
+  const hasMatch=sorted.some(r=>!r.error&&(r.data.verdict_court==='Match'||r.data.verdict_court==='Partiel'));
+  const rows=sorted.map((r,i)=>{
+    if(r.error)return '<tr><td>'+(i+1)+'</td><td style="color:var(--ts)">'+r.filename+'</td><td colspan="4" style="color:var(--ds);font-size:12px">'+r.error+'</td></tr>';
+    const d=r.data;
+    const stKey='status_rank_'+r.origIdx;
+    const stVal=parseInt(localStorage.getItem(stKey)||'0');
+    return '<tr><td style="font-weight:500;color:var(--ts)">'+(i+1)+'</td>'
+      +'<td><div style="font-weight:500">'+cname(d)+'</div><div style="font-size:11px;color:var(--ts)">'+(d.telephone||'—')+'</div></td>'
+      +'<td><span class="score-pill" style="'+sp(d.score)+'">'+d.score+'</span></td>'
+      +'<td><span class="verdict-badge '+gb(d.verdict_court)+'" style="font-size:11px">'+d.verdict_court+'</span></td>'
+      +'<td><button class="status-btn '+STATUS_CLASS[stVal]+'" id="srbtn-'+r.origIdx+'" onclick="cycleStatus(\'status_rank_'+r.origIdx+'\',\'srbtn-'+r.origIdx+'\')" style="font-size:10px;padding:2px 6px">'+STATUS_LABELS[stVal]+'</button></td>'
+      +'<td><button class="anon-btn" onclick="anonFromResult('+r.origIdx+')" style="font-size:10px;padding:2px 6px" title="Anonymiser"><i class="ti ti-user-off" aria-hidden="true" style="font-size:10px"></i></button>'
+      +' <button class="add-dossier-btn" onclick="addToDossier('+r.origIdx+',this)" style="font-size:10px;padding:2px 6px;margin-left:0" title="Ajouter au dossier client"><i class="ti ti-clipboard-plus" aria-hidden="true" style="font-size:10px"></i></button></td>'
+      +'</tr>';
+  }).join('');
+  const bulkBtn=hasMatch?'<button onclick="anonBulkMatches()" style="margin-top:10px;background:#166534;color:#fff;border:none;border-radius:var(--rm);font-size:13px;font-weight:500;cursor:pointer;padding:8px 16px"><i class="ti ti-users" aria-hidden="true" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>Anonymiser les Match / Partiel</button>':'';
+  return '<div class="card" style="margin-top:1rem">'
+    +'<div class="ptitle" style="margin-bottom:12px"><i class="ti ti-trophy" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Classement — '+results.length+' candidat(s)</div>'
+    +'<div style="overflow-x:auto"><table class="rank-table"><thead><tr><th>#</th><th>Candidat</th><th>Score</th><th>Verdict</th><th>Statut</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +bulkBtn+'</div>'
+    +sorted.filter(r=>!r.error).map(r=>renderReport(r.data,r.filename,r.fileObj,r.origIdx)).join('');
+}
+
+/* Anon from result */
+let lastResults=[];
+async function anonFromResult(idx){
+  const r=lastResults[idx];
+  if(!r||r.error){alert('Pas de resultat disponible.');return;}
+  if(!r.fileObj){showTab('anonymiser');alert('PDF non disponible. Utilise l\'onglet Anonymiser.');return;}
+  const btns=document.querySelectorAll('[onclick="anonFromResult('+idx+')"]');
+  btns.forEach(b=>{b.disabled=true;b.textContent='...';});
+  try{const data=await callAnon(r.fileObj);openAnonWindow(data);}
+  catch(e){alert('Erreur : '+e.message);}
+  finally{btns.forEach(b=>{b.disabled=false;b.innerHTML='<i class="ti ti-user-off" aria-hidden="true" style="font-size:11px;margin-right:3px"></i>Anonymiser';});}
+}
+async function anonBulkMatches(){
+  const targets=lastResults.filter(r=>!r.error&&r.fileObj&&(r.data.verdict_court==='Match'||r.data.verdict_court==='Partiel'));
+  if(!targets.length){alert('Aucun Match/Partiel avec PDF disponible.');return;}
+  for(const r of targets){
+    try{const data=await callAnon(r.fileObj);openAnonWindow(data);}
+    catch(e){console.warn('Erreur anon '+r.filename+':'+e.message);}
+  }
+}
+
+/* Refresh anon from analysis */
+function refreshAnonFromAnalysis(){
+  const container=document.getElementById('anon-from-analysis');
+  const list=document.getElementById('anon-check-list');
+  if(!lastResults.length){container.style.display='none';return;}
+  container.style.display='block';
+  list.innerHTML=lastResults.map((r,i)=>{
+    if(r.error)return '';
+    const d=r.data;
+    const name=cname(d);
+    const vclass=gb(d.verdict_court);
+    const checked=d.verdict_court!=='Non-match'?'checked':'';
+    return '<div class="cv-check-item"><input type="checkbox" id="anon-cb-'+i+'" value="'+i+'" '+checked+'><label for="anon-cb-'+i+'">'+name+' <span style="color:var(--tt);font-size:11px">— '+r.filename+'</span></label><span class="verdict-badge '+vclass+'" style="font-size:10px">'+d.verdict_court+' '+d.score+'/100</span></div>';
+  }).join('');
+  document.getElementById('anon-upload-label').textContent="Ou uploader d'autres PDFs :";
+}
+
+/* Build TAFINAR CV HTML */
+function buildTafinarHTML(cvData){
+  const sections=cvData.sections||[];
+  let body='';
+  for(const sec of sections){
+    if(sec.type==='apercu'&&sec.contenu){
+      body+='<div style="margin-bottom:18px"><div class="sh">'+(sec.titre||'Apercu de carriere')+'</div><div class="apercu">'+sec.contenu+'</div></div><div class="divider"></div>';
+    } else if(sec.type==='experiences'&&sec.items&&sec.items.length){
+      body+='<div style="margin-bottom:18px"><div class="sh">'+(sec.titre||'Experiences Professionnelles')+'</div>';
+      sec.items.forEach(function(it){
+        const tasks=(it.taches||[]).map(function(tt){return '<li>'+tt+'</li>';}).join('');
+        body+='<div class="exp-block"><div class="exp-bar"></div><div class="exp-content"><div class="exp-title">'+(it.entreprise||'')+(it.poste?' — '+it.poste:'')+'</div><div class="exp-date">'+(it.date||'')+'</div>'+(tasks?'<ul class="exp-tasks">'+tasks+'</ul>':'')+'</div></div>';
+      });
+      body+='</div><div class="divider"></div>';
+    } else if(sec.type==='competences'&&sec.items&&sec.items.length){
+      body+='<div style="margin-bottom:18px"><div class="sh">'+(sec.titre||'Competences')+'</div><div class="tags">'+sec.items.map(function(i){return '<span class="tag">'+i+'</span>';}).join('')+'</div></div><div class="divider"></div>';
+    } else if(sec.type==='formation'&&sec.items&&sec.items.length){
+      body+='<div style="margin-bottom:18px"><div class="sh">'+(sec.titre||'Formation')+'</div>';
+      sec.items.forEach(function(it){
+        body+='<div class="exp-block"><div class="form-bar"></div><div class="exp-content"><div class="exp-title">'+(it.ecole||'')+'</div><div class="exp-date">'+(it.date||'')+'</div>'+((it.diplome||it.specialite)?'<div style="font-size:10pt;color:#6b7280">'+(it.diplome||'')+(it.diplome&&it.specialite?' — ':'')+(it.specialite||'')+'</div>':'')+'</div></div>';
+      });
+      body+='</div><div class="divider"></div>';
+    } else if(sec.type==='certifications'&&sec.items&&sec.items.length){
+      body+='<div style="margin-bottom:18px"><div class="sh">'+(sec.titre||'Certifications')+'</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+      sec.items.forEach(function(it){
+        const nm=typeof it==='string'?it:(it.nom||'');
+        const dt=typeof it==='object'&&it.date?it.date:'';
+        body+='<div style="display:flex;align-items:flex-start;gap:6px"><div style="width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;margin-top:4px"></div><div><div style="font-size:10pt;color:#374151">'+nm+'</div>'+(dt?'<div style="font-size:9pt;color:#9ca3af">'+dt+'</div>':'')+'</div></div>';
+      });
+      body+='</div></div><div class="divider"></div>';
+    } else if(sec.type==='langues'&&sec.items&&sec.items.length){
+      body+='<div style="margin-bottom:18px"><div class="sh">'+(sec.titre||'Langues')+'</div>';
+      sec.items.forEach(function(it){
+        const w=Math.round((it.score||0.5)*90);
+        body+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:11pt;color:#374151;min-width:80px">'+(it.langue||'')+'</span><span style="font-size:9pt;color:#9ca3af;min-width:90px">'+(it.niveau||'')+'</span><div style="width:90px;height:3px;background:#e5e7eb;border-radius:2px"><div style="width:'+w+'px;height:3px;background:#22c55e;border-radius:2px"></div></div></div>';
+      });
+      body+='</div><div class="divider"></div>';
+    } else if((sec.type==='generic_tags'||sec.type==='generic_list')&&sec.items&&sec.items.length){
+      body+='<div style="margin-bottom:18px"><div class="sh">'+(sec.titre||'Autres')+'</div>';
+      if(sec.type==='generic_tags'){
+        body+='<div>'+sec.items.map(function(i){return '<span style="display:inline-block;background:#f9fafb;border:.5px solid #d1d5db;border-radius:3px;padding:2px 8px;font-size:10pt;color:#374151;margin:2px">'+i+'</span>';}).join('')+'</div>';
+      } else {
+        body+=sec.items.map(function(i){return '<div style="display:flex;gap:6px;margin-bottom:3px"><div style="width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;margin-top:5px"></div><div style="font-size:10pt;color:#374151">'+i+'</div></div>';}).join('');
+      }
+      body+='</div><div class="divider"></div>';
+    }
+  }
+  body=body.replace(/<div class="divider"><\/div>\s*$/,'');
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>CV Anonymise — Profil '+(cvData.code||'')+'</title>'
+    +'<style>'
+    +'@page{size:A4;margin:0}'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:\'Helvetica Neue\',Arial,sans-serif;background:#fff;color:#111;font-size:13pt;line-height:1.55}'
+    +'.no-print{text-align:center;padding:14px;background:#f3f4f6}'
+    +'.cv{width:210mm;background:#fff;padding:0}'
+    +'.header{padding:22px 28px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}'
+    +'.logo-wrap img{height:72px;width:144px;display:block;object-fit:contain}'
+    +'.header-right{text-align:right}'
+    +'.profil-code{font-size:22px;font-weight:700;color:#111;letter-spacing:1px}'
+    +'.green-bar{height:2.5px;background:#22c55e;width:55%;margin-left:auto;margin-top:5px}'
+    +'.poste-title{font-size:11pt;color:#6b7280;margin-top:5px;line-height:1.4;text-align:right}'
+    +'.separator{height:3px;background:linear-gradient(to right,#2563eb,#22c55e)}'
+    +'.body{padding:20px 28px 32px}'
+    +'.sh{font-size:9pt;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}'
+    +'.exp-block{display:flex;gap:8px;margin-bottom:12px}'
+    +'.exp-bar{width:2px;background:#2563eb;border-radius:1px;flex-shrink:0}'
+    +'.form-bar{width:2px;background:#22c55e;border-radius:1px;flex-shrink:0}'
+    +'.exp-content{flex:1;padding-left:5px}'
+    +'.exp-title{font-size:12pt;font-weight:700;color:#111;margin-bottom:2px}'
+    +'.exp-date{font-size:10pt;color:#9ca3af;margin-bottom:4px}'
+    +'.exp-tasks{padding-left:14px}'
+    +'.exp-tasks li{font-size:11pt;color:#374151;margin-bottom:3px;line-height:1.5}'
+    +'.divider{height:.5px;background:#e5e7eb;margin:14px 0}'
+    +'.tags{display:flex;flex-wrap:wrap;gap:5px}'
+    +'.tag{font-size:10pt;color:#2563eb;border:.5px solid #bfdbfe;border-radius:3px;padding:2px 8px;background:#eff6ff}'
+    +'.apercu{font-size:11pt;color:#374151;line-height:1.6;padding:10px 12px;background:#f9fafb;border-left:2px solid #22c55e;border-radius:0 4px 4px 0}'
+    +'@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}'
+    +'</style></head><body>'
+    +'<div class="no-print"><button onclick="window.print()" style="background:#1e3a5f;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">Imprimer / Telecharger PDF</button></div>'
+    +'<div class="cv">'
+    +'<div class="header"><div class="logo-wrap"><img src="data:image/png;base64,'+LOGO_B64+'" alt="TAFINAR"></div>'
+    +'<div class="header-right"><div class="profil-code">Profil '+(cvData.code||'')+'</div><div class="green-bar"></div><div class="poste-title">'+(cvData.titre||'')+'</div></div></div>'
+    +'<div class="separator"></div>'
+    +'<div class="body">'+body+'</div>'
+    +'</div></body></html>';
+}
+
+/* openAnonWindow — appele depuis anonFromResult (analyse tab) */
+function openAnonWindow(data){
+  const forcedTitle=document.getElementById('anon-poste-title').value.trim();
+  if(forcedTitle)data.titre=forcedTitle;
+  const container=document.getElementById('anon-results')||document.getElementById('out');
+  addAnonResultCard(data,'CV anonymise',container);
+  showTab('anonymiser');
+}
+
+/* History */
+function saveToHistory(data,filename,poste,mode){
+  const hist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+  hist.unshift({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),heure:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),poste:poste.slice(0,80),mode:mode,filename:filename,prenom:data.prenom,nom:data.nom,telephone:data.telephone,score:data.score,verdict_court:data.verdict_court,criteres:data.criteres||[],verdict_phrases:data.verdict_phrases||[]});
+  if(hist.length>300)hist.splice(300);
+  localStorage.setItem('cvhist',JSON.stringify(hist));
+  const c=document.getElementById('hist-count');
+  if(c)c.textContent='('+(JSON.parse(localStorage.getItem('cvhist')||'[]').length)+')';
+}
+function renderHistory(){
+  const allHist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+  // Apply filters (graceful — elements may not exist on first load)
+  const fVerdict=(document.getElementById('hf-verdict')||{}).value||'';
+  const fStatut=(document.getElementById('hf-statut')||{}).value||'';
+  const fPoste=((document.getElementById('hf-poste')||{}).value||'').toLowerCase().trim();
+  const fScore=parseInt((document.getElementById('hf-score')||{}).value||'0')||0;
+  const fDateFrom=(document.getElementById('hf-date-from')||{}).value||'';
+  const fDateTo=(document.getElementById('hf-date-to')||{}).value||'';
+  const hist=allHist.filter(function(h){
+    if(fVerdict&&h.verdict_court!==fVerdict)return false;
+    if(fStatut){const stVal=parseInt(localStorage.getItem('hist_status_'+h.id)||'0');if(String(stVal)!==fStatut)return false;}
+    if(fPoste&&!(h.poste||'').toLowerCase().includes(fPoste))return false;
+    if(fScore&&(h.score||0)<fScore)return false;
+    if(fDateFrom||fDateTo){
+      // Convert DD/MM/YYYY to YYYY-MM-DD for comparison
+      const parts=(h.date||'').split('/');
+      const dStr=parts.length===3?parts[2]+'-'+parts[1]+'-'+parts[0]:'';
+      if(fDateFrom&&dStr&&dStr<fDateFrom)return false;
+      if(fDateTo&&dStr&&dStr>fDateTo)return false;
+    }
+    return true;
+  });
+  const cntEl=document.getElementById('hf-count');
+  if(cntEl)cntEl.textContent=hist.length<allHist.length?hist.length+'/'+allHist.length+' affiches':'';
+  const el=document.getElementById('hist-list');
+  const c=document.getElementById('hist-count');
+  if(c)c.textContent=hist.length?'('+hist.length+')':'';
+  if(!hist.length){el.innerHTML='<div class="empty">Aucune analyse sauvegardee</div>';return;}
+  const sp=function(s){return s>=75?'background:var(--gb);color:var(--gs)':s>=50?'background:var(--wb);color:var(--ws)':'background:var(--db);color:var(--ds)';};
+  const ml={balanced:'Equilibre',strict:'Severe',lenient:'Souple'};
+  el.innerHTML=hist.map(function(h,i){
+    const name=[h.prenom,h.nom].filter(Boolean).join(' ')||h.filename;
+    const rows=(h.criteres||[]).map(function(c){return '<tr><td class="crit-name">'+c.nom+'</td><td style="text-align:center">'+poidsLabel(c.poids)+'</td><td style="text-align:center;font-size:15px">'+statusIcon(c.statut)+'</td><td class="crit-comment">'+c.commentaire+'</td></tr>';}).join('');
+    const vLines=(h.verdict_phrases||[]).map(function(p){return '<p>'+p+'</p>';}).join('');
+    const stKey='hist_status_'+h.id;
+    const stVal=parseInt(localStorage.getItem(stKey)||'0');
+    return '<div class="hist-item" onclick="toggleHist('+i+')">'
+      +'<div class="hist-top"><div style="display:flex;align-items:flex-start;gap:10px;flex:1"><div><div class="hist-title" style="display:flex;align-items:center;gap:8px">'+name
+      +'<button onclick="event.stopPropagation();envoyerHistVersNotion('+i+')" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:#0e7c3a;color:#fff;border:none;border-radius:5px;font-size:10px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap"><i class=\'ti ti-building-community\' aria-hidden=\'true\' style=\'font-size:10px\'></i>→ Notion</button>'
+      +'</div><div class="hist-meta">'+h.date+' a '+h.heure+' &middot; '+(ml[h.mode]||'')+' &middot; '+h.poste+'</div></div></div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<button class="status-btn '+STATUS_CLASS[stVal]+'" id="hst-'+i+'" onclick="event.stopPropagation();cycleHistStatus('+i+',\''+h.id+'\')" style="font-size:10px">'+STATUS_LABELS[stVal]+'</button>'
+      +'<span class="score-pill" style="'+sp(h.score)+'">'+h.score+'</span></div></div>'
+      +'<div class="hist-detail" id="hd-'+i+'">'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">'
+      +(h.telephone?'<span style="font-size:12px;color:var(--ts)"><i class="ti ti-phone" aria-hidden="true" style="font-size:11px;margin-right:2px"></i>'+h.telephone+'</span>':'')
+      +'<span class="verdict-badge '+gb(h.verdict_court)+'" style="font-size:11px">'+h.verdict_court+'</span>'
+      +'<span style="font-size:11px;color:var(--tt)">'+h.filename+'</span></div>'
+      +(rows?'<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px"><table class="crit-table"><thead><tr><th>Critere</th><th style="text-align:center">Poids</th><th style="text-align:center">Statut</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'')
+      +(vLines?'<div class="verdict-block">'+vLines+'</div>':'')
+      +'</div></div>';
+  }).join('');
+}
+function resetHistFilters(){
+  ['hf-verdict','hf-statut','hf-poste','hf-score','hf-date-from','hf-date-to'].forEach(function(id){
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  renderHistory();
+}
+
+function toggleHist(i){const el=document.getElementById('hd-'+i);if(el)el.classList.toggle('open');}
+function cycleHistStatus(i,id){
+  const key='hist_status_'+id;const s=(parseInt(localStorage.getItem(key)||'0')+1)%4;
+  localStorage.setItem(key,s);
+  const btn=document.getElementById('hst-'+i);
+  if(btn){btn.className='status-btn '+STATUS_CLASS[s];btn.textContent=STATUS_LABELS[s];}
+}
+function clearHistory(){if(!confirm('Effacer tout l\'historique ?'))return;localStorage.removeItem('cvhist');renderHistory();}
+function exportCSV(){
+  const hist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+  if(!hist.length){alert('Historique vide.');return;}
+  const ml={balanced:'Equilibre',strict:'Severe',lenient:'Souple'};
+  const rows=[['Date','Heure','Nom','Prenom','Telephone','Poste','Score','Verdict','Mode','Fichier']];
+  hist.forEach(function(h){rows.push([h.date,h.heure,h.nom||'',h.prenom||'',h.telephone||'',h.poste,h.score,h.verdict_court,ml[h.mode]||'',h.filename]);});
+  const csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='historique_recrutement.csv';a.click();
+}
+
+/* Run analyse */
+async function runAnalyse(){
+  const model=document.getElementById('prov').value;
+  const keyA=sk(document.getElementById('key-ant').value);
+  const keyOR=sk(document.getElementById('key-or').value);
+  const poste=document.getElementById('poste').value.trim();
+  const cvText=document.getElementById('cv-text').value.trim();
+  const isNative=CLAUDE.includes(model);
+  if(!poste){alert('Renseigne la description du poste.');return;}
+  if(!filesList.length&&!cvText){alert('Charge au moins un CV PDF ou colle le texte.');return;}
+  if(isNative&&!keyA){alert('Renseigne ta cle Anthropic.');return;}
+  if(!isNative&&!keyOR){alert('Renseigne ta cle OpenRouter.');return;}
+  const targets=filesList.length?filesList:[null];
+  const btn=document.getElementById('btn');
+  btn.disabled=true;
+  btn.innerHTML='<span style="display:flex;align-items:center;justify-content:center;gap:8px"><span class="spin"></span>Analyse en cours...</span>';
+  const pw=document.getElementById('prog-wrap');
+  const pb=document.getElementById('prog-bar');
+  const pl=document.getElementById('prog-label');
+  const out=document.getElementById('out');
+  pw.style.display='block';out.innerHTML='';
+  const results=[];
+  analysisCanceled = false;
+  for(let i=0;i<targets.length;i++){
+    if(analysisCanceled){pl.textContent='Analyse annulee — '+results.length+'/'+targets.length+' analyses';break;}
+    const f=targets[i];
+    pl.textContent=f?'Analyse '+(i+1)+'/'+targets.length+' — '+f.name:'Analyse en cours...';
+    pb.style.width=Math.round((i/targets.length)*100)+'%';
+    try{
+      const data=await callOne(model,poste,f);
+      // African phone filter
+      if(isAfricanPhone(data.telephone)){
+        data.verdict_court = 'Non-match';
+        data.verdict_phrases = data.verdict_phrases || [];
+        data.verdict_phrases.unshift('Candidat exclu : numero de telephone hors France (Afrique).');
+      }
+      results.push({data:data,filename:f?f.name:'Texte colle',fileObj:f,origIdx:i});
+      saveToHistory(data,f?f.name:'Texte colle',document.getElementById('job-lib').value||poste.slice(0,60),document.getElementById('mode').value);
+    }catch(e){
+      results.push({error:e.message,filename:f?f.name:'Texte colle',fileObj:f,origIdx:i});
+    }
+  }
+  pb.style.width='100%';
+  pl.textContent='Termine — '+results.filter(function(r){return !r.error;}).length+'/'+results.length+' analyse(s)';
+  lastResults=results;
+  out.innerHTML=results.length===1
+    ?(results[0].error?'<div class="err"><strong>Erreur :</strong> '+results[0].error+'</div>':renderReport(results[0].data,results[0].filename,results[0].fileObj,0))
+    :renderRanking(results);
+  btn.disabled=false;
+  btn.innerHTML='<i class="ti ti-analyze" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:5px"></i>Analyser';
+  setTimeout(function(){pw.style.display='none';},3000);
+  refreshAnonFromAnalysis();
+}
+
+/* Run anonymise */
+let anonCanceled = false;
+async function runAnonymise(){
+  const keyA=sk(document.getElementById('key-ant').value);
+  if(!keyA){alert('La cle Anthropic est requise pour l\'anonymisation.');return;}
+  const toAnon=[];const labels=[];const origNames=[];
+  document.querySelectorAll('#anon-check-list input[type=checkbox]:checked').forEach(function(cb){
+    const idx=parseInt(cb.value);
+    if(lastResults[idx]&&lastResults[idx].fileObj){
+      toAnon.push(lastResults[idx].fileObj);
+      labels.push(lastResults[idx].filename+' (analyse)');
+      const d=lastResults[idx].data;
+      origNames.push([d.prenom,d.nom].filter(Boolean).join(' ')||'');
+    }
+  });
+  anonFilesList.forEach(function(f){toAnon.push(f);labels.push(f.name+' (upload)');origNames.push('');});
+  // Texte manuel
+  const anonText=document.getElementById('anon-cv-text').value.trim();
+  if(anonText){toAnon.push({_isText:true,text:anonText,name:'CV saisi manuellement'});labels.push('CV saisi manuellement');origNames.push('');}
+  if(!toAnon.length){alert('Selectionne au moins un CV a anonymiser.');return;}
+  const forcedTitle=document.getElementById('anon-poste-title').value.trim();
+  let msg='CVs a anonymiser ('+toAnon.length+') :\n\n'+labels.map(function(l,i){return (i+1)+'. '+l;}).join('\n');
+  if(forcedTitle)msg+='\n\nTitre applique a tous : "'+forcedTitle+'"';
+  msg+='\n\nConfirmer ?';
+  if(!confirm(msg))return;
+  const pw=document.getElementById('anon-prog-wrap');
+  const pb=document.getElementById('anon-prog-bar');
+  const pl=document.getElementById('anon-prog-label');
+  const out=document.getElementById('anon-out');
+  const resultsEl=document.getElementById('anon-results');
+  pw.style.display='block';out.innerHTML='';resultsEl.innerHTML='';anonCanceled=false;
+  for(let i=0;i<toAnon.length;i++){
+    if(anonCanceled){pl.textContent='Annule — '+i+'/'+toAnon.length+' traite(s)';break;}
+    const f=toAnon[i];
+    pl.textContent='Anonymisation '+(i+1)+'/'+toAnon.length+' — '+f.name;
+    pb.style.width=Math.round((i/toAnon.length)*100)+'%';
+    try{
+      const data=f._isText ? await callAnonText(f.text) : await callAnon(f);
+      if(forcedTitle)data.titre=forcedTitle;
+      addAnonResultCard(data,f.name,resultsEl,origNames[i]);
+    }catch(e){out.innerHTML+='<div class="err"><strong>'+f.name+' :</strong> '+e.message+'</div>';}
+  }
+  if(!anonCanceled){pb.style.width='100%';pl.textContent='Termine — '+toAnon.length+' CV(s) traite(s)';}
+  setTimeout(function(){pw.style.display='none';},3000);
+}
+
+function addAnonResultCard(data,filename,container,originalName){
+  const rawHtml=buildTafinarHTML(data);
+  // Split closing tags so HTML parser doesn't terminate the script early
+  const SC='<'+'script>';
+  const SCE='<'+'/script>';
+  const STE='<'+'/style>';
+  const BOE='<'+'/body>';
+  const editCSS='[contenteditable]{outline:none}[contenteditable]:hover{background:rgba(37,99,235,.06);border-radius:2px;cursor:text}[contenteditable]:focus{background:rgba(37,99,235,.1);border-radius:2px;box-shadow:0 0 0 1.5px #2563eb}';
+  const editJS=SC+'window.addEventListener("load",function(){'
+    +'var sel=[".profil-code",".poste-title",".exp-title",".exp-date",".exp-tasks li",".tag",".apercu","li","p"];'
+    +'sel.forEach(function(s){try{document.querySelectorAll(s).forEach(function(el){'
+    +'if(!el.querySelector("ul,ol,table")&&el.textContent.trim()){el.contentEditable="true";el.spellcheck=false;}'
+    +'});}catch(e){}});});'+SCE;
+  const editableHtml=rawHtml
+    .replace(STE,editCSS+STE)
+    .replace(BOE,editJS+BOE);
+  const blob=new Blob([editableHtml],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const card=document.createElement('div');
+  card.className='anon-result-card';
+  const nameDisp=originalName?' <span style="color:var(--ts);font-size:11px">('+escH(originalName)+')</span>':'';
+  const info=document.createElement('div');
+  info.innerHTML='<div class="arc-info"><i class="ti ti-user-check" style="font-size:13px;margin-right:5px;color:var(--gs)"></i>Profil '+escH(data.code||'?')+nameDisp+' \u2014 '+escH(data.titre||'')+'</div><div class="arc-sub">'+escH(filename)+'</div>';
+  const link=document.createElement('a');
+  link.href=url;link.target='_blank';link.className='btn-sm';
+  link.style.cssText='background:#22c55e;text-decoration:none;display:inline-flex;align-items:center;gap:5px';
+  link.innerHTML='<i class="ti ti-printer" style="font-size:13px"></i>Ouvrir / Imprimer';
+  link.addEventListener('click',function(){setTimeout(function(){URL.revokeObjectURL(url);},120000);});
+  card.appendChild(info);card.appendChild(link);
+  container.appendChild(card);
+}
+
+
+/* ── NEW: Cancel mechanism ── */
+let analysisCanceled = false;
+
+/* ── NEW: Save job inline ── */
+function openNewJobPopup(){
+  const popup = document.getElementById('new-job-popup');
+  if(!popup) return;
+  // Pre-fill description if textarea already has content
+  const existingDesc = (document.getElementById('poste')?.value||'').trim();
+  const descField = document.getElementById('new-job-desc');
+  if(existingDesc && descField && !descField.value.trim()) descField.value = existingDesc;
+  document.getElementById('new-job-name').value = '';
+  document.getElementById('new-job-name-warn').style.display = 'none';
+  document.getElementById('new-job-desc-warn').style.display = 'none';
+  popup.style.display = 'flex';
+  setTimeout(()=>{ document.getElementById('new-job-name').focus(); }, 50);
+}
+
+function closeNewJobPopup(){
+  const popup = document.getElementById('new-job-popup');
+  if(popup) popup.style.display = 'none';
+}
+
+function confirmNewJob(){
+  const name = (document.getElementById('new-job-name')?.value||'').trim();
+  const desc = (document.getElementById('new-job-desc')?.value||'').trim();
+  let ok = true;
+  if(!name){ document.getElementById('new-job-name-warn').style.display='block'; ok=false; }
+  if(!desc){ document.getElementById('new-job-desc-warn').style.display='block'; ok=false; }
+  if(!ok) return;
+  const lib = JSON.parse(localStorage.getItem('cvjobs')||'{}');
+  const existing = lib[name];
+  const savedAnalysis = (existing&&typeof existing==='object') ? existing.analysis : null;
+  lib[name] = {desc: desc}; // analysis stored in memory only (no quota issue)
+  localStorage.setItem('cvjobs', JSON.stringify(lib));
+  // Cache analysis in memory for this session
+  if(currentJobAnalysis || savedAnalysis){
+    window._analysesCache = window._analysesCache || {};
+    window._analysesCache[name] = currentJobAnalysis || savedAnalysis;
+  }
+  loadJobLib();
+  const sel = document.getElementById('job-lib');
+  if(sel) sel.value = name;
+  document.getElementById('poste').value = desc;
+  const box = document.getElementById('job-analysis-box');
+  if(box){ box.style.display='none'; box.innerHTML=''; }
+  closeNewJobPopup();
+  // Toast confirmation
+  const badge = document.createElement('div');
+  badge.style.cssText='position:fixed;bottom:24px;right:24px;background:#166534;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.15);display:flex;align-items:center;gap:8px';
+  badge.innerHTML='<i class="ti ti-check" aria-hidden="true"></i> Poste "'+name+'" enregistré';
+  document.body.appendChild(badge);
+  setTimeout(()=>{ badge.style.transition='opacity .4s'; badge.style.opacity='0'; setTimeout(()=>badge.remove(),400); }, 2500);
+}
+
+// Close popup on backdrop click or Escape
+document.addEventListener('click', function(e){
+  const popup = document.getElementById('new-job-popup');
+  if(popup && e.target===popup) closeNewJobPopup();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape') closeNewJobPopup();
+});
+
+/* ── NEW: Phone country detection ── */
+const AFRICA_PREFIXES = ['+212','+213','+216','+218','+220','+221','+222','+223','+224','+225','+226','+227','+228','+229','+230','+231','+232','+233','+234','+235','+236','+237','+238','+239','+240','+241','+242','+243','+244','+245','+246','+247','+248','+249','+250','+251','+252','+253','+254','+255','+256','+257','+258','+260','+261','+262','+263','+264','+265','+266','+267','+268','+269','+27','+290','+291','+297','+298','+299'];
+function isAfricanPhone(phone){
+  if(!phone) return false;
+  const clean = String(phone).replace(/[\s.-]/g,'');
+  return AFRICA_PREFIXES.some(p => clean.startsWith(p));
+}
+
+/* ── NEW: Dossier client ── */
+function getDossier(){
+  return JSON.parse(localStorage.getItem('cvdossier')||'[]');
+}
+function setDossier(arr){
+  localStorage.setItem('cvdossier', JSON.stringify(arr));
+  updateDossierCount();
+}
+function updateDossierCount(){
+  const c = document.getElementById('dossier-count');
+  const n = getDossier().length;
+  if(c) c.textContent = n ? '('+n+')' : '';
+}
+function addToDossier(idx, btn){
+  const r = lastResults[idx];
+  if(!r || r.error){alert('Donnees indisponibles.');return;}
+  const d = r.data;
+  // Build quadrigramme: 1ère+dernière lettre du 1er mot + 1ère+dernière lettre du dernier mot
+  let quad = '';
+  const fullName = ((d.prenom||'')+' '+(d.nom||'')).trim() || '';
+  if(fullName){
+    const words = fullName.split(/\s+/).filter(Boolean);
+    if(words.length>=2){
+      const w1=words[0];const w2=words[words.length-1];
+      quad=(w1[0]||'').toUpperCase()+(w1[w1.length-1]||'').toUpperCase()+(w2[0]||'').toUpperCase()+(w2[w2.length-1]||'').toUpperCase();
+    }else if(words.length===1){
+      const w=words[0];quad=(w[0]||'').toUpperCase()+(w[1]||'').toUpperCase()+(w[w.length-2]||'').toUpperCase()+(w[w.length-1]||'').toUpperCase();
+    }
+  }
+  const arr = getDossier();
+  // Check duplicate
+  if(arr.find(x => x.filename === r.filename)){
+    alert('Ce profil est deja dans le dossier.');
+    return;
+  }
+  arr.push({
+    id: Date.now(),
+    quad: quad,
+    nom_complet: ((d.prenom||'') + ' ' + (d.nom||'')).trim(),
+    telephone: d.telephone || '',
+    poste_analyse: document.getElementById('job-lib').value || document.getElementById('poste').value.trim().slice(0,60) || '',
+    score: d.score,
+    verdict: d.verdict_court,
+    disponibilite: '',
+    mobilite: '',
+    pretention: '',
+    tjm: '',
+    cv_anonyme: '',
+    remarques: '',
+    filename: r.filename
+  });
+  setDossier(arr);
+  if(btn){btn.classList.add('added');btn.innerHTML = '<i class="ti ti-check" aria-hidden="true" style="font-size:11px;margin-right:3px"></i>Ajoute';}
+}
+function removeDossierRow(id){
+  if(!confirm('Retirer ce profil du dossier ?'))return;
+  const arr = getDossier().filter(x => x.id !== id);
+  setDossier(arr);
+  renderDossier();
+}
+function addEmptyDossierRow(){
+  const arr = getDossier();
+  arr.push({
+    id: Date.now(),
+    quad:'', nom_complet:'', telephone:'',
+    disponibilite:'', mobilite:'', pretention:'', tjm:'',
+    cv_anonyme:'', remarques:'', filename:'', score:'', verdict:''
+  });
+  setDossier(arr);
+  renderDossier();
+}
+function updateDossierField(id, field, value){
+  const arr = getDossier();
+  const row = arr.find(x => x.id === id);
+  if(row){row[field] = value;setDossier(arr);}
+}
+function clearDossier(){
+  if(!confirm('Vider tout le dossier client ?'))return;
+  localStorage.removeItem('cvdossier');
+  updateDossierCount();
+  renderDossier();
+}
+function renderDossier(){
+  const arr = getDossier();
+  const el = document.getElementById('dossier-content');
+  if(!arr.length){
+    el.innerHTML = '<div class="dossier-empty">Aucun profil dans le dossier. Ajoute des profils depuis l\'onglet Analyse.</div><button class="add-row-btn" onclick="addEmptyDossierRow()"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px"></i>Ajouter une ligne vide</button>';
+    return;
+  }
+  const sp=function(s){return s>=75?'background:var(--gb);color:var(--gs)':s>=50?'background:var(--wb);color:var(--ws)':'background:var(--db);color:var(--ds)';};
+  let html = '<div style="overflow-x:auto"><table class="dossier-table"><thead><tr>';
+  html += '<th style="width:120px">Nom complet</th>';
+  html += '<th style="width:60px">Quadri.</th>';
+  html += '<th style="width:45px">Score</th>';
+  html += '<th style="width:100px">Tel.</th>';
+  html += '<th style="min-width:130px">Poste analyse</th>';
+  html += '<th style="width:110px">Disponibilite</th>';
+  html += '<th style="width:110px">Mobilite</th>';
+  html += '<th style="width:100px">Pretention</th>';
+  html += '<th style="width:80px">TJM</th>';
+  html += '<th style="width:90px">CV anonyme</th>';
+  html += '<th>Remarques</th>';
+  html += '<th style="width:40px"></th></tr></thead><tbody>';
+  arr.forEach(r => {
+    const scoreStyle=r.score?sp(parseInt(r.score)||0):'';
+    html += '<tr>';
+    html += '<td><input type="text" value="'+escA(r.nom_complet||'')+'" placeholder="Nom Prenom" onchange="updateDossierField('+r.id+',\'nom_complet\',this.value)"></td>';
+    html += '<td><input type="text" value="'+escA(r.quad)+'" onchange="updateDossierField('+r.id+',\'quad\',this.value)"></td>';
+    html += '<td style="text-align:center">'+(r.score?'<span class="score-pill" style="'+scoreStyle+'">'+r.score+'</span>':'<span style="color:var(--tt);font-size:11px">—</span>')+'</td>';
+    html += '<td><input type="text" value="'+escA(r.telephone||'')+'" placeholder="06 XX XX" onchange="updateDossierField('+r.id+',\'telephone\',this.value)"></td>';
+    html += '<td><input type="text" value="'+escA(r.poste_analyse||r.verdict||'')+'" placeholder="Intitule poste" onchange="updateDossierField('+r.id+',\'poste_analyse\',this.value)"></td>';
+    html += '<td><input type="text" value="'+escA(r.disponibilite)+'" placeholder="Date / Immediat" onchange="updateDossierField('+r.id+',\'disponibilite\',this.value)"></td>';
+    html += '<td><input type="text" value="'+escA(r.mobilite)+'" placeholder="Region / France" onchange="updateDossierField('+r.id+',\'mobilite\',this.value)"></td>';
+    html += '<td><input type="text" value="'+escA(r.pretention)+'" placeholder="50K euros" onchange="updateDossierField('+r.id+',\'pretention\',this.value)"></td>';
+    html += '<td><input type="text" value="'+escA(r.tjm)+'" placeholder="450 euros" onchange="updateDossierField('+r.id+',\'tjm\',this.value)"></td>';
+    html += '<td><input type="text" value="'+escA(r.cv_anonyme)+'" placeholder="Profil XXXX" onchange="updateDossierField('+r.id+',\'cv_anonyme\',this.value)"></td>';
+    html += '<td><textarea placeholder="Notes..." onchange="updateDossierField('+r.id+',\'remarques\',this.value)">'+escA(r.remarques)+'</textarea></td>';
+    html += '<td><button class="dossier-row-rm" onclick="removeDossierRow('+r.id+')" title="Retirer"><i class="ti ti-x" aria-hidden="true"></i></button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<button class="add-row-btn" onclick="addEmptyDossierRow()"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px"></i>Ajouter une ligne vide</button>';
+  el.innerHTML = html;
+}
+function escA(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ── NEW: Excel exports ── */
+function exportDossierExcel(){
+  const arr = getDossier();
+  if(!arr.length){alert('Dossier vide.');return;}
+  if(typeof XLSX==='undefined'){alert('Bibliotheque Excel non chargee.');return;}
+  const wb = XLSX.utils.book_new();
+  const data = [
+    ['Nom complet','Quadrigramme','Score','Telephone','Poste analyse','Disponibilite','Mobilite','Pretention salariale','TJM','CV anonyme','Remarques']
+  ];
+  arr.forEach(r => data.push([
+    r.nom_complet||'',
+    r.quad||'',
+    r.score||'',
+    r.telephone||'',
+    r.poste_analyse||'',
+    r.disponibilite||'',
+    r.mobilite||'',
+    r.pretention||'',
+    r.tjm||'',
+    r.cv_anonyme||'',
+    r.remarques||''
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:20},{wch:12},{wch:8},{wch:16},{wch:25},{wch:18},{wch:18},{wch:18},{wch:12},{wch:18},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Dossier Client');
+  XLSX.writeFile(wb, 'TAFINAR_Dossier_Client.xlsx');
+}
+
+function exportHistoryExcel(){
+  const hist = JSON.parse(localStorage.getItem('cvhist')||'[]');
+  if(!hist.length){alert('Historique vide.');return;}
+  if(typeof XLSX==='undefined'){alert('Bibliotheque Excel non chargee.');return;}
+  const ml = {balanced:'Equilibre',strict:'Severe',lenient:'Souple'};
+  const data = [
+    ['Date','Heure','Nom','Prenom','Telephone','Poste','Score','Verdict','Mode','Fichier']
+  ];
+  hist.forEach(h => data.push([h.date,h.heure,h.nom||'',h.prenom||'',h.telephone||'',h.poste,h.score,h.verdict_court,ml[h.mode]||'',h.filename]));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:11},{wch:8},{wch:18},{wch:14},{wch:16},{wch:30},{wch:8},{wch:11},{wch:11},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Historique');
+  XLSX.writeFile(wb, 'TAFINAR_Historique.xlsx');
+}
+
+/* Init */
+loadKeys();onProv();onMode();loadJobLib();updateDossierCount();
+(function(){
+  const hist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+  const c=document.getElementById('hist-count');
+  if(c&&hist.length)c.textContent='('+hist.length+')';
+})();
+
+/* ── No-popup anon panel ── */
+let currentAnonHTML = '';
+
+function openAnonWindow(data){
+  currentAnonHTML = buildTafinarHTML(data);
+  
+  // Remove existing panel
+  const old = document.getElementById('anon-result-panel');
+  if(old) old.remove();
+
+  // Build panel
+  const panel = document.createElement('div');
+  panel.id = 'anon-result-panel';
+  panel.className = 'anon-panel';
+  panel.innerHTML = `
+    <div class="anon-panel-header">
+      <h3><i class="ti ti-user-check" aria-hidden="true"></i>CV Anonymise — Profil ${escH(data.code||'')} <span class="edit-hint">Clique sur le texte pour modifier</span></h3>
+      <div style="display:flex;gap:8px">
+        <button onclick="downloadAnonPDF()" style="background:#22c55e;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;padding:8px 16px;display:flex;align-items:center;gap:5px"><i class="ti ti-download" aria-hidden="true" style="font-size:13px"></i>Telecharger PDF</button>
+        <button onclick="document.getElementById('anon-result-panel').remove()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;padding:8px 10px"><i class="ti ti-x" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div class="anon-iframe-wrap">
+      <iframe id="anon-iframe" title="CV Anonymise"></iframe>
+    </div>
+  `;
+
+  // Inject after anon-out or out
+  const target = document.getElementById('anon-out') || document.getElementById('out');
+  if(target){
+    if(target.id === 'anon-out') target.innerHTML = '';
+    target.after ? target.after(panel) : target.parentNode.insertBefore(panel, target.nextSibling);
+    if(target.id === 'anon-out') target.appendChild(panel);
+  } else {
+    document.body.appendChild(panel);
+  }
+
+  // Write HTML into iframe
+  const iframe = document.getElementById('anon-iframe');
+  // Inject editable script into the HTML
+  const editableHTML = currentAnonHTML.replace(
+    '</style>',
+    `
+    [contenteditable]{outline:none}
+    [contenteditable]:hover{background:rgba(37,99,235,.06);border-radius:2px;cursor:text}
+    [contenteditable]:focus{background:rgba(37,99,235,.1);border-radius:2px;box-shadow:0 0 0 1.5px #2563eb}
+    .no-print{display:none}
+    </style>`
+  ).replace(
+    '</body>',
+    `<script>
+    // Make text elements editable
+    function makeEditable(){
+      const sel = [
+        '.profil-code','.poste-title','.exp-title','.exp-date',
+        '.exp-tasks li','.tag','.apercu',
+        '[style*="color:#374151"]','[style*="color:#6b7280"]',
+        '[style*="color:#9ca3af"]','[style*="font-size:11pt"]',
+        '[style*="font-size:10pt"]','[style*="font-size:12pt"]','li','p'
+      ];
+      sel.forEach(function(s){
+        try{
+          document.querySelectorAll(s).forEach(function(el){
+            if(!el.querySelector('ul,ol,table') && el.textContent.trim()){
+              el.contentEditable='true';
+              el.spellcheck=false;
+            }
+          });
+        }catch(e){}
+      });
+    }
+    window.addEventListener('load', makeEditable);
+    <\/script>
+    </body>`
+  );
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  iframeDoc.open();
+  iframeDoc.write(editableHTML);
+  iframeDoc.close();
+
+  // Auto-resize iframe to content height
+  iframe.onload = function(){
+    try{
+      const h = iframe.contentDocument.body.scrollHeight;
+      iframe.style.height = Math.max(h + 40, 400) + 'px';
+    }catch(e){}
+  };
+
+  panel.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ── APEC job analysis ── */
+let currentJobAnalysis = null;
+const JOB_ANALYSIS_PROMPT = 'Tu es un expert senior en recrutement. Analyse la description de poste et reponds UNIQUEMENT en JSON valide, sans markdown, sans backtick, sans commentaire. CHAMPS : "titre" = titre court du poste (ex: "Ingenieur C&C Nucleaire"). "titres_recherche" = 4-6 variantes exactes du titre a rechercher sur APEC/LinkedIn (ex: ["Ingenieur automatisme", "Ingenieur C&C", "Automaticien industriel"]). "essentiels" = 5-8 competences, outils ou certifications INDISPENSABLES, mots courts et precis, ZERO langue, ZERO ville, ZERO experience. "recommandes" = 4-6 competences utiles non bloquantes, mots courts, zero doublon avec essentiels. "booleens" = 2-3 formules booleennes COURTES et REALISTES pour APEC : combiner UNIQUEMENT titre du poste + competences techniques, utiliser AND OR et parentheses, JAMAIS de langue (francais, anglais), JAMAIS de ville, JAMAIS d annees d experience — ces filtres reduisent trop les resultats. Exemple correct : ("Ingenieur automatisme" OR "Ingenieur C&C") AND (PCS7 OR "TIA Portal" OR STEP7). Reponse JSON stricte : {"titre":"...","titres_recherche":["..."],"essentiels":["..."],"recommandes":["..."],"booleens":["..."]}';
+async function callAnonText(text){
+  const keyA=sk(document.getElementById('key-ant').value);
+  if(!keyA)throw new Error('Cle Anthropic requise.');
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',keyA),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8000,system:getAnonPrompt(),messages:[{role:'user',content:((document.getElementById('anon-lang')||{}).value==='en'?'Anonymize and structure this CV as instructed.':'Anonymise et structure ce CV selon les instructions.')+'\n\nCV:\n'+text}]})});
+  const d=await r.json();if(d.error)throw new Error(d.error.message);
+  return pj(d.content[0].text);
+}
+
+async function analyzeJobForAPEC(){
+  const txt=document.getElementById('poste').value.trim();
+  if(!txt){alert('Description du poste vide.');return;}
+  const keyOR=sk(document.getElementById('key-or').value);
+  if(!keyOR){alert('Cle OpenRouter requise pour cette fonction.');return;}
+  const btn=document.getElementById('btn-apec');
+  const box=document.getElementById('job-analysis-box');
+  btn.disabled=true;btn.innerHTML='<span class="sml-spin"></span> Analyse...';
+  box.innerHTML='';box.style.display='none';
+  try{
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:buildHeaders('or',keyOR),body:JSON.stringify({model:'openai/gpt-oss-120b:free',messages:[{role:'system',content:JOB_ANALYSIS_PROMPT},{role:'user',content:'DESCRIPTION DU POSTE:\n'+txt}],max_tokens:800,temperature:0.1})});
+    const d=await r.json();
+    if(d.error)throw new Error(typeof d.error==='string'?d.error:d.error.message||JSON.stringify(d.error));
+    const raw=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
+    if(!raw)throw new Error('Reponse vide. Reessaie dans quelques secondes.');
+    const analysis=pj(raw);
+    currentJobAnalysis=analysis;
+    // Store in session memory cache only (not localStorage)
+    const jobName=document.getElementById('job-lib').value;
+    if(jobName){
+      window._analysesCache=window._analysesCache||{};
+      window._analysesCache[jobName]=analysis;
+    }
+    box.innerHTML=renderJobAnalysis(analysis);box.style.display='block';
+  }catch(e){
+    box.innerHTML='<div class="err">'+e.message+'</div>';box.style.display='block';
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-search" aria-hidden="true" style="font-size:12px;margin-right:3px"></i>Analyser le poste par l\'IA';
+  }
+}
+function renderJobAnalysis(a){
+  if(!a)return '';
+  const titres=(a.titres_recherche||[]).map(function(t){return '<span class="ja-term" style="background:var(--ib);color:var(--is)">'+escH(t)+'</span>';}).join('');
+  const ess=(a.essentiels||[]).map(function(t){return '<span class="ja-term ja-ess">'+t+'</span>';}).join('');
+  const rec=(a.recommandes||[]).map(function(t){return '<span class="ja-term ja-rec">'+t+'</span>';}).join('');
+  const bools=(a.booleens||[]).map(function(b,i){return '<div class="ja-bool"><code>'+escH(b)+'</code><button class="ja-copy" onclick="copyJA(&quot;bool&quot;,'+i+')">&#8998; Copier</button></div>';}).join('');
+  return '<div class="ja-box">'
+    +'<div class="ja-title"><i class="ti ti-briefcase" style="font-size:12px;margin-right:4px"></i>'+escH(a.titre||'')+'</div>'
+    +(titres?'<div class="ja-section"><div class="ja-label" style="color:#6366f1"><i class="ti ti-search" style="font-size:11px;margin-right:3px"></i>Noms alternatifs du poste</div><div class="ja-terms">'+titres+'<button class="ja-copy" onclick="copyJA(&quot;titres&quot;)" style="margin-left:4px">&#8998; Tout copier</button></div></div>':'')
+    +(ess?'<div class="ja-section"><div class="ja-label ja-label-ess"><i class="ti ti-star" style="font-size:11px;margin-right:3px"></i>Mots-clés essentiels</div><div class="ja-terms">'+ess+'<button class="ja-copy" onclick="copyJA(&quot;ess&quot;)" style="margin-left:4px">&#8998; Tout copier</button></div></div>':'')
+    +(rec?'<div class="ja-section"><div class="ja-label ja-label-rec"><i class="ti ti-plus" style="font-size:11px;margin-right:3px"></i>Mots-clés recommandés</div><div class="ja-terms">'+rec+'<button class="ja-copy" onclick="copyJA(&quot;rec&quot;)" style="margin-left:4px">&#8998; Tout copier</button></div></div>':'')
+    +(bools?'<div class="ja-section"><div class="ja-label ja-label-bool"><i class="ti ti-code" style="font-size:11px;margin-right:3px"></i>Formules booléennes APEC</div>'+bools+'</div>':'')
+    +'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bt)"><button onclick="envoyerPosteNotionFromAnalysis()" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit"><i class="ti ti-building-community" aria-hidden="true" style="font-size:12px"></i>Ajouter ce poste à Notion TAFINAR</button></div>'
+    +'</div>';
+}
+function copyJA(type,idx){
+  if(!currentJobAnalysis)return;
+  let txt='';
+  if(type==='ess')txt=(currentJobAnalysis.essentiels||[]).join(' ');
+  else if(type==='rec')txt=(currentJobAnalysis.recommandes||[]).join(' ');
+  else if(type==='bool')txt=(currentJobAnalysis.booleens||[])[idx]||'';
+  else if(type==='titres')txt=(currentJobAnalysis.titres_recherche||[]).join(' OR ');
+  if(!txt)return;
+  navigator.clipboard.writeText(txt).catch(function(){var el=document.createElement('textarea');el.value=txt;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);});
+}
+
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function downloadAnonPDF(){
+  if(!currentAnonHTML){alert('Aucun CV genere.');return;}
+  // Ouvre une nouvelle fenetre propre pour impression PDF avec texte natif copiable
+  const printHTML = currentAnonHTML.replace(
+    /(@page\s*\{[^}]*\})/g,
+    '@page{size:A4;margin:14mm 0}'
+  ).replace(
+    '</style>',
+    '.no-print{display:none!important}</style>'
+  );
+  const win = window.open('', '_blank');
+  if(!win){alert('Veuillez autoriser les popups pour telecharger le PDF.');return;}
+  win.document.open();
+  win.document.write(printHTML);
+  win.document.close();
+  win.addEventListener('load', function(){
+    setTimeout(function(){ win.print(); }, 300);
+  });
+}
+
+/* ── NOTION TAFINAR INTEGRATION ── */
+const SB_URL='https://lqqgweqsscyfrqosbcah.supabase.co';
+const SB_KEY='sb_publishable_HpXipfY__RmCKOqeGZZMHQ_wJ83l2Yi';
+const sbClient=window.supabase.createClient(SB_URL,SB_KEY);
+
+// Ouvrir Notion TAFINAR avec un profil pré-rempli
+function envoyerProfilNotion(nom,trigramme,poste,score,verdict,dispo,pretention){
+  const payload={nom:nom||'',trigramme:trigramme||'',poste:poste||'',score:score||'',verdict:verdict||'',dispo:dispo||'',pretention:pretention||''};
+  window.parent.switchToWithData('notion',payload);
+}
+
+// Ouvrir Notion TAFINAR avec un poste pré-rempli
+function envoyerPosteNotion(titre,description,client){
+  const payload={type:'tn_poste',titre:titre||'',description:description||'',client:client||''};
+  if(window.parent&&window.parent.switchToWithData){
+    window.parent.switchToWithData('notion',payload);
+  } else {
+    // Fallback: localStorage
+    localStorage.setItem('tn_pending_poste',JSON.stringify(payload));
+    window.parent.switchTo('notion');
+  }
+}
+
+// Envoyer le poste analysé vers Notion TAFINAR
+function envoyerPosteNotionFromPoste(){
+  const titre=document.getElementById('job-lib').value||document.getElementById('poste').value.split('\n')[0].slice(0,60)||'Nouveau poste';
+  const description=document.getElementById('poste').value||'';
+  envoyerPosteNotion(titre,description,'');
+}
+
+function envoyerPosteNotionFromAnalysis(){
+  if(!currentJobAnalysis){alert('Lancez d\'abord une analyse de poste.');return;}
+  const titre=currentJobAnalysis.titre||document.getElementById('job-lib').value||'';
+  const description=document.getElementById('poste').value||'';
+  envoyerPosteNotion(titre,description,'');
+}
+
+function envoyerHistVersNotion(idx){
+  const allHist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+  const h=allHist[idx];if(!h)return;
+  const nom=([h.prenom,h.nom].filter(Boolean).join(' ')).trim()||h.filename||'';
+  const words=nom.split(/\s+/).filter(Boolean);
+  let tri='';
+  if(words.length>=2){const w1=words[0];const w2=words[words.length-1];tri=(w1[0]||'').toUpperCase()+(w1[w1.length-1]||'').toUpperCase()+(w2[0]||'').toUpperCase()+(w2[w2.length-1]||'').toUpperCase();}
+  const payload={
+    nom,trigramme:tri,
+    poste:h.poste||'',
+    score:h.score||null,
+    verdict:h.verdict_court||'',
+    telephone:h.telephone||'',
+    dispo:'',pretention:'',
+    analyse:{
+      criteres:h.criteres||[],
+      verdictPhrases:h.verdict_phrases||[],
+      verdictCourt:h.verdict_court||'',
+      score:h.score||null,
+      date:h.date||'',
+      mode:h.mode||'',
+      poste:h.poste||'',
+    },
+  };
+  window.parent.switchToWithData('notion', payload);
+}
+function addNotionBtnToReport(nom,trigramme,poste,score,verdict,dispo,pretention){
+  return `<button onclick="envoyerProfilNotion('${escH(nom)}','${escH(trigramme)}','${escH(poste)}','${score}','${escH(verdict)}','${escH(dispo)}','${escH(pretention)}')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:8px"><i class="ti ti-plus" aria-hidden="true"></i> Créer profil dans Notion TAFINAR</button>`;
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</body>
+</html>
