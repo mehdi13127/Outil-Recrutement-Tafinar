@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v50</title>
+<title>Recrutement TAFINAR v51</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -421,6 +421,7 @@ textarea{resize:vertical;line-height:1.5}
           <option value="3">Refuse</option>
         </select>
         <input type="text" id="hf-poste" oninput="renderHistory()" placeholder="Filtrer par poste..." style="font-size:12px;padding:4px 8px;width:140px">
+        <input type="text" id="hf-tel" oninput="renderHistory()" placeholder="Téléphone..." style="font-size:12px;padding:4px 8px;width:120px">
         <input type="number" id="hf-score" oninput="renderHistory()" placeholder="Score min" min="0" max="100" style="font-size:12px;padding:4px 8px;width:90px">
         <input type="date" id="hf-date-from" onchange="renderHistory()" style="font-size:12px;padding:4px 8px;width:auto">
         <span style="font-size:11px;color:var(--tt)">au</span>
@@ -980,6 +981,7 @@ function renderHistory(){
   const fVerdict=(document.getElementById('hf-verdict')||{}).value||'';
   const fStatut=(document.getElementById('hf-statut')||{}).value||'';
   const fPoste=((document.getElementById('hf-poste')||{}).value||'').toLowerCase().trim();
+  const fTel=((document.getElementById('hf-tel')||{}).value||'').toLowerCase().trim();
   const fScore=parseInt((document.getElementById('hf-score')||{}).value||'0')||0;
   const fDateFrom=(document.getElementById('hf-date-from')||{}).value||'';
   const fDateTo=(document.getElementById('hf-date-to')||{}).value||'';
@@ -987,6 +989,7 @@ function renderHistory(){
     if(fVerdict&&h.verdict_court!==fVerdict)return false;
     if(fStatut){const stVal=parseInt(localStorage.getItem('hist_status_'+h.id)||'0');if(String(stVal)!==fStatut)return false;}
     if(fPoste&&!(h.poste||'').toLowerCase().includes(fPoste))return false;
+    if(fTel&&!(h.telephone||'').toLowerCase().includes(fTel))return false;
     if(fScore&&(h.score||0)<fScore)return false;
     if(fDateFrom||fDateTo){
       // Convert DD/MM/YYYY to YYYY-MM-DD for comparison
@@ -1012,7 +1015,7 @@ function renderHistory(){
     const stKey='hist_status_'+h.id;
     const stVal=parseInt(localStorage.getItem(stKey)||'0');
     return '<div class="hist-item" onclick="toggleHist('+i+')">'
-      +'<div class="hist-top"><div style="display:flex;align-items:flex-start;gap:10px;flex:1"><div><div class="hist-title" style="display:flex;align-items:center;gap:8px">'+name
+      +'<div class="hist-top"><div style="display:flex;align-items:flex-start;gap:10px;flex:1"><div><div class="hist-title" style="display:flex;align-items:center;gap:8px">'+name+(h.telephone?'<span style="font-size:11px;color:var(--ts);font-weight:400"><i class="ti ti-phone" aria-hidden="true" style="font-size:10px;margin-right:2px"></i>'+h.telephone+'</span>':'')
       +'<button onclick="event.stopPropagation();envoyerHistVersNotion('+i+')" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:#0e7c3a;color:#fff;border:none;border-radius:5px;font-size:10px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap"><i class=\'ti ti-building-community\' aria-hidden=\'true\' style=\'font-size:10px\'></i>→ Notion</button>'
       +'</div><div class="hist-meta">'+h.date+' a '+h.heure+' &middot; '+(ml[h.mode]||'')+' &middot; '+h.poste+'</div></div></div>'
       +'<div style="display:flex;align-items:center;gap:6px">'
