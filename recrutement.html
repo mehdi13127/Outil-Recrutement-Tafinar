@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v53</title>
+<title>Recrutement TAFINAR v54</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -191,7 +191,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v53</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v54</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -969,7 +969,9 @@ function openAnonWindow(data){
 /* History */
 function saveToHistory(data,filename,poste,mode){
   const hist=JSON.parse(localStorage.getItem('cvhist')||'[]');
-  hist.unshift({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),heure:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),poste:poste.slice(0,80),mode:mode,filename:filename,prenom:data.prenom,nom:data.nom,telephone:data.telephone,score:data.score,verdict_court:data.verdict_court,criteres:data.criteres||[],verdict_phrases:data.verdict_phrases||[]});
+  // Keep only essential fields to avoid localStorage quota
+  const critSlim=(data.criteres||[]).map(c=>({nom:c.nom,poids:c.poids,statut:c.statut}));
+  hist.unshift({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),heure:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),poste:poste.slice(0,80),mode:mode,filename:filename,prenom:data.prenom,nom:data.nom,telephone:data.telephone,score:data.score,verdict_court:data.verdict_court,criteres:critSlim,verdict_phrases:(data.verdict_phrases||[]).slice(0,3)});
   if(hist.length>300)hist.splice(300);
   localStorage.setItem('cvhist',JSON.stringify(hist));
   const c=document.getElementById('hist-count');
@@ -1688,6 +1690,31 @@ function envoyerHistVersNotion(idx){
 function addNotionBtnToReport(nom,trigramme,poste,score,verdict,dispo,pretention){
   return `<button onclick="envoyerProfilNotion('${escH(nom)}','${escH(trigramme)}','${escH(poste)}','${score}','${escH(verdict)}','${escH(dispo)}','${escH(pretention)}')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:8px"><i class="ti ti-plus" aria-hidden="true"></i> Créer profil dans Notion TAFINAR</button>`;
 }
+
+// Nettoyage automatique localStorage au chargement
+(function(){
+  try{
+    var hist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+    var cleaned=false;
+    hist.forEach(function(h){
+      if(h.pdfData){delete h.pdfData;cleaned=true;}
+      if(h.cvBase64){delete h.cvBase64;cleaned=true;}
+      if(h.criteres&&h.criteres[0]&&h.criteres[0].commentaire){
+        h.criteres=h.criteres.map(function(c){return{nom:c.nom,poids:c.poids,statut:c.statut};});
+        cleaned=true;
+      }
+      if(h.verdict_phrases&&h.verdict_phrases.length>3){h.verdict_phrases=h.verdict_phrases.slice(0,3);cleaned=true;}
+    });
+    if(cleaned)localStorage.setItem('cvhist',JSON.stringify(hist));
+  }catch(e){}
+  try{localStorage.removeItem('tn_postes_cache');}catch(e){}
+  try{
+    var jobs=JSON.parse(localStorage.getItem('cvjobs')||'{}');
+    var changed=false;
+    Object.keys(jobs).forEach(function(k){if(jobs[k]&&jobs[k].analysis){delete jobs[k].analysis;changed=true;}});
+    if(changed)localStorage.setItem('cvjobs',JSON.stringify(jobs));
+  }catch(e){}
+})();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
