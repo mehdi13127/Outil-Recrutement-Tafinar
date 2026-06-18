@@ -1026,15 +1026,36 @@ let _histLoaded=false;
 async function loadHistFromSB(){
   if(!sbClient)return;
   try{
+    // First: migrate localStorage data to Supabase if not done yet
+    const migrated=localStorage.getItem('cvhist_migrated');
+    if(!migrated){
+      const local=JSON.parse(localStorage.getItem('cvhist')||'[]');
+      if(local.length>0){
+        // Send all local entries to Supabase in batches of 50
+        for(let i=0;i<local.length;i+=50){
+          const batch=local.slice(i,i+50).map(h=>({
+            id:h.id||Date.now()+i,
+            sourcer:h.sourcer||'Mehdi',
+            date:h.date||'',heure:h.heure||'',
+            poste:h.poste||'',mode:h.mode||'',
+            filename:h.filename||'',prenom:h.prenom||'',
+            nom:h.nom||'',telephone:h.telephone||'',
+            score:h.score||null,verdict_court:h.verdict_court||'',
+            criteres:(h.criteres||[]).map(c=>({nom:c.nom,poids:c.poids,statut:c.statut})),
+            verdict_phrases:(h.verdict_phrases||[]).slice(0,3)
+          }));
+          await sbClient.from('cvhist').upsert(batch,{onConflict:'id'});
+        }
+        localStorage.setItem('cvhist_migrated','1');
+      } else {
+        localStorage.setItem('cvhist_migrated','1');
+      }
+    }
+    // Now load from Supabase
     const{data,error}=await sbClient.from('cvhist').select('*').order('id',{ascending:false}).limit(500);
     if(error)throw error;
     _histData=data||[];
     _histLoaded=true;
-    // Merge with localStorage cache (new entries not yet in SB)
-    const local=JSON.parse(localStorage.getItem('cvhist')||'[]');
-    local.forEach(l=>{
-      if(!_histData.find(s=>s.id===l.id))_histData.unshift(l);
-    });
     renderHistory();
     loadHistCount();
   }catch(e){
