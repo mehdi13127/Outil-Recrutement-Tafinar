@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v54</title>
+<title>Recrutement TAFINAR v55</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -191,7 +191,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v54</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v55</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -602,6 +602,7 @@ function showTab(t){
     const el = document.getElementById('tab-'+n);
     if(el) el.style.display = n===t ? 'block' : 'none';
   });
+  if(t==='historique'&&!_histLoaded) loadHistFromSB();
   document.querySelectorAll('.tab').forEach((el,i)=>{
     el.classList.toggle('active',['analyse','anonymiser','dossier','historique'][i]===t);
   });
@@ -968,17 +969,84 @@ function openAnonWindow(data){
 
 /* History */
 function saveToHistory(data,filename,poste,mode){
-  const hist=JSON.parse(localStorage.getItem('cvhist')||'[]');
-  // Keep only essential fields to avoid localStorage quota
   const critSlim=(data.criteres||[]).map(c=>({nom:c.nom,poids:c.poids,statut:c.statut}));
-  hist.unshift({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),heure:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),poste:poste.slice(0,80),mode:mode,filename:filename,prenom:data.prenom,nom:data.nom,telephone:data.telephone,score:data.score,verdict_court:data.verdict_court,criteres:critSlim,verdict_phrases:(data.verdict_phrases||[]).slice(0,3)});
-  if(hist.length>300)hist.splice(300);
-  localStorage.setItem('cvhist',JSON.stringify(hist));
-  const c=document.getElementById('hist-count');
-  if(c)c.textContent='('+(JSON.parse(localStorage.getItem('cvhist')||'[]').length)+')';
+  const entry={
+    id:Date.now(),
+    sourcer:getCurrentSourcer(),
+    date:new Date().toLocaleDateString('fr-FR'),
+    heure:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+    poste:poste.slice(0,80),mode:mode,filename:filename,
+    prenom:data.prenom,nom:data.nom,telephone:data.telephone,
+    score:data.score,verdict_court:data.verdict_court,
+    criteres:critSlim,
+    verdict_phrases:(data.verdict_phrases||[]).slice(0,3)
+  };
+  // Save to Supabase (primary storage)
+  if(sbClient){
+    sbClient.from('cvhist').insert(entry).then(({error})=>{
+      if(error)console.warn('cvhist Supabase save error:',error);
+    });
+  }
+  // Also keep last 50 in localStorage as fast cache
+  try{
+    const hist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+    hist.unshift(entry);
+    if(hist.length>50)hist.splice(50);
+    localStorage.setItem('cvhist',JSON.stringify(hist));
+  }catch(e){
+    // quota exceeded - clear and retry
+    localStorage.removeItem('cvhist');
+    try{localStorage.setItem('cvhist',JSON.stringify([entry]));}catch(e2){}
+  }
+  // Update count
+  loadHistCount();
 }
+
+function getCurrentSourcer(){
+  // Try to get from session or return default
+  try{
+    const s=JSON.parse(localStorage.getItem('tn_session')||'{}');
+    return s.name||'Mehdi';
+  }catch(e){return 'Mehdi';}
+}
+
+async function loadHistCount(){
+  try{
+    if(sbClient){
+      const{count}=await sbClient.from('cvhist').select('*',{count:'exact',head:true});
+      const c=document.getElementById('hist-count');
+      if(c)c.textContent='('+(count||0)+')';
+    }
+  }catch(e){}
+}
+// Supabase history state
+let _histData=[];
+let _histLoaded=false;
+
+async function loadHistFromSB(){
+  if(!sbClient)return;
+  try{
+    const{data,error}=await sbClient.from('cvhist').select('*').order('id',{ascending:false}).limit(500);
+    if(error)throw error;
+    _histData=data||[];
+    _histLoaded=true;
+    // Merge with localStorage cache (new entries not yet in SB)
+    const local=JSON.parse(localStorage.getItem('cvhist')||'[]');
+    local.forEach(l=>{
+      if(!_histData.find(s=>s.id===l.id))_histData.unshift(l);
+    });
+    renderHistory();
+    loadHistCount();
+  }catch(e){
+    // Fallback to localStorage
+    _histData=JSON.parse(localStorage.getItem('cvhist')||'[]');
+    _histLoaded=true;
+    renderHistory();
+  }
+}
+
 function renderHistory(){
-  const allHist=JSON.parse(localStorage.getItem('cvhist')||'[]');
+  const allHist=_histLoaded?_histData:JSON.parse(localStorage.getItem('cvhist')||'[]');
   // Apply filters (graceful — elements may not exist on first load)
   const fVerdict=(document.getElementById('hf-verdict')||{}).value||'';
   const fStatut=(document.getElementById('hf-statut')||{}).value||'';
