@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v55</title>
+<title>Notion TAFINAR v56</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -147,7 +147,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v55</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v56</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -361,6 +361,22 @@ async function fetchProfils(){
 // SUPABASE CANDIDATS (vue partagée Mehdi)
 // ═══════════════════════════════════════
 
+async function syncAllCandidatsToSB(){
+  // Push all local candidates to Supabase
+  const myCands=S.candidates.filter(c=>c.sourcer===getMe()&&!c._fromSB);
+  if(myCands.length===0)return;
+  // Check how many are already in SB
+  const{data:existing}=await sb.from('candidats').select('local_id').eq('sourcer',getMe());
+  const existingIds=new Set((existing||[]).map(r=>r.local_id));
+  const toSync=myCands.filter(c=>!existingIds.has(c.id));
+  if(toSync.length===0)return;
+  // Sync missing ones
+  for(const c of toSync){
+    await syncCandidatToSB(c).catch(e=>console.warn('bulk sync error:',e));
+  }
+  if(toSync.length>0)showToast(toSync.length+' candidats synchronisés vers Supabase','ok');
+}
+
 async function syncCandidatToSB(c){
   const payload={
     local_id:c.id,
@@ -376,12 +392,17 @@ async function syncCandidatToSB(c){
     score:c.score||null,
     verdict:c.verdict||null,
     telephone:c.telephone||'',
-    order:c.order||null,
     updated_at:new Date().toISOString(),
   };
-  // Upsert by local_id
-  const{error}=await sb.from('candidats').upsert(payload,{onConflict:'local_id'});
-  if(error)throw error;
+  // Check if exists then insert or update
+  const{data:existing}=await sb.from('candidats').select('id').eq('local_id',c.id).maybeSingle();
+  if(existing){
+    const{error}=await sb.from('candidats').update(payload).eq('local_id',c.id);
+    if(error)console.error('syncCandidatToSB update error:',error);
+  }else{
+    const{error}=await sb.from('candidats').insert(payload);
+    if(error)console.error('syncCandidatToSB insert error:',error);
+  }
 }
 
 async function deleteCandidatFromSB(localId){
@@ -2220,6 +2241,8 @@ async function init(){
   try{
     await Promise.all([fetchPostes(),fetchProfils()]);
     await fetchCandidats();
+    // Push all local candidates to Supabase if table is empty (first time setup)
+    await syncAllCandidatsToSB();
     render();
     showToast('Données synchronisées','ok');
   }catch(e){
