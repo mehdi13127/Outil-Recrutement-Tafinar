@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v56</title>
+<title>Notion TAFINAR v57</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -147,7 +147,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v56</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v57</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -414,65 +414,69 @@ async function fetchCandidats(){
   const{data,error}=await sb.from('candidats').select('*').order('created_at',{ascending:false});
   if(error)throw error;
   const all=data||[];
-  // Restore OWN candidates if localStorage was empty (safety net)
-  const myCands=all.filter(r=>r.sourcer===me);
-  const myLocalCands=S.candidates.filter(c=>c.sourcer===me&&!c._fromSB);
-  if(myLocalCands.length===0&&myCands.length>0){
-    // localStorage was wiped - restore from Supabase
-    myCands.forEach(r=>{
-      if(!S.candidates.find(c=>c.id===r.local_id)){
-        S.candidates.push({
-          id:r.local_id,
-          nom:r.nom||'',trigramme:r.trigramme||'',
-          posteId:'',posteTitre:r.poste_titre||'',
-          dispo:r.dispo||'',
-          mobilite:tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]),
-          pretention:r.pretention||'',
-          freelance:r.freelance||'Non',
-          remarque:r.remarque||'',
-          sourcer:r.sourcer||'',
-          statut:r.statut||'',
-          score:r.score||null,verdict:r.verdict||null,
-          telephone:r.telephone||'',
-          sbId:null,cvO:null,cvA:null,analyse:null,
-          order:r.order||null,
-        });
-      }
+
+  // SUPABASE EST LA SOURCE PRINCIPALE
+  // Reconstruire S.candidates depuis Supabase + garder ce qui est local mais pas encore dans SB
+  const sbIds=new Set(all.map(r=>r.local_id));
+
+  // Garder les candidats locaux qui ne sont pas encore dans Supabase
+  const localOnly=S.candidates.filter(c=>!c._fromSB&&!sbIds.has(c.id));
+
+  // Reconstruire depuis Supabase
+  S.candidates=[];
+
+  // Mes candidats depuis Supabase
+  all.filter(r=>r.sourcer===me).forEach(r=>{
+    S.candidates.push({
+      id:r.local_id,
+      nom:r.nom||'',trigramme:r.trigramme||'',
+      posteId:'',posteTitre:r.poste_titre||'',
+      dispo:r.dispo||'',
+      mobilite:tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]),
+      pretention:r.pretention||'',
+      freelance:r.freelance||'Non',
+      remarque:r.remarque||'',
+      sourcer:r.sourcer||'',
+      statut:r.statut||'',
+      score:r.score||null,verdict:r.verdict||null,
+      telephone:r.telephone||'',
+      sbId:null,cvO:null,cvA:null,analyse:null,
     });
-    // Save restored candidates to localStorage
-    saveLocal();
-    showToast('Données restaurées depuis Supabase ✅','ok');
-  }
-  // Inject candidates from other sourceurs (read-only view)
-  const others=all.filter(r=>r.sourcer!==me);
-  others.forEach(r=>{
-    const existing=S.candidates.find(c=>c.id===r.local_id);
-    if(!existing){
-      S.candidates.push({
-        id:r.local_id,
-        nom:r.nom||'',trigramme:r.trigramme||'',
-        posteId:'',posteTitre:r.poste_titre||'',
-        dispo:r.dispo||'',
-        mobilite:tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]),
-        pretention:r.pretention||'',
-        freelance:r.freelance||'Non',
-        remarque:r.remarque||'',
-        sourcer:r.sourcer||'',
-        statut:r.statut||'',
-        score:r.score||null,verdict:r.verdict||null,
-        telephone:r.telephone||'',
-        sbId:null,cvO:null,cvA:null,analyse:null,
-        _fromSB:true,
-      });
-    }
   });
-  // Re-resolve posteId from posteTitre
+
+  // Candidats locaux pas encore sync
+  localOnly.forEach(c=>S.candidates.push(c));
+
+  // Candidats des autres sourceurs (lecture seule)
+  all.filter(r=>r.sourcer!==me).forEach(r=>{
+    S.candidates.push({
+      id:r.local_id,
+      nom:r.nom||'',trigramme:r.trigramme||'',
+      posteId:'',posteTitre:r.poste_titre||'',
+      dispo:r.dispo||'',
+      mobilite:tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]),
+      pretention:r.pretention||'',
+      freelance:r.freelance||'Non',
+      remarque:r.remarque||'',
+      sourcer:r.sourcer||'',
+      statut:r.statut||'',
+      score:r.score||null,verdict:r.verdict||null,
+      telephone:r.telephone||'',
+      sbId:null,cvO:null,cvA:null,analyse:null,
+      _fromSB:true,
+    });
+  });
+
+  // Résoudre posteId depuis posteTitre
   S.candidates.forEach(c=>{
     if(!c.posteId&&c.posteTitre){
       const p=S.postes.find(p=>sim(p.titre,c.posteTitre)>0.55);
       if(p)c.posteId=p.id;
     }
   });
+
+  // Sauvegarder dans localStorage
+  saveLocal();
 }
 
 async function pushPoste(p){
