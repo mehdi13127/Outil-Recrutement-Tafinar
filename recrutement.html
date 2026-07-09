@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v57</title>
+<title>Recrutement TAFINAR v58</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -191,7 +191,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v57</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v58</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -1645,7 +1645,7 @@ async function analyzeJobForAPEC(){
   btn.disabled=true;btn.innerHTML='<span class="sml-spin"></span> Analyse...';
   box.innerHTML='';box.style.display='none';
   try{
-    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:buildHeaders('or',keyOR),body:JSON.stringify({model:'openai/gpt-oss-120b:free',messages:[{role:'system',content:JOB_ANALYSIS_PROMPT},{role:'user',content:'DESCRIPTION DU POSTE:\n'+txt}],max_tokens:800,temperature:0.1})});
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:buildHeaders('or',keyOR),body:JSON.stringify({model:document.getElementById('model-select')?.value||'openai/gpt-oss-120b:free',messages:[{role:'system',content:JOB_ANALYSIS_PROMPT},{role:'user',content:'DESCRIPTION DU POSTE:\n'+txt}],max_tokens:800,temperature:0.1})});
     const d=await r.json();
     if(d.error)throw new Error(typeof d.error==='string'?d.error:d.error.message||JSON.stringify(d.error));
     const raw=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
