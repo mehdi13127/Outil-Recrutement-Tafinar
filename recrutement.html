@@ -1638,17 +1638,17 @@ async function callAnonText(text){
 async function analyzeJobForAPEC(){
   const txt=document.getElementById('poste').value.trim();
   if(!txt){alert('Description du poste vide.');return;}
-  const keyOR=sk(document.getElementById('key-or').value);
-  if(!keyOR){alert('Cle OpenRouter requise pour cette fonction.');return;}
+  const keyA=sk(document.getElementById('key-ant').value);
+  if(!keyA){alert('Cle Anthropic requise pour cette fonction.');return;}
   const btn=document.getElementById('btn-apec');
   const box=document.getElementById('job-analysis-box');
   btn.disabled=true;btn.innerHTML='<span class="sml-spin"></span> Analyse...';
   box.innerHTML='';box.style.display='none';
   try{
-    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:buildHeaders('or',keyOR),body:JSON.stringify({model:document.getElementById('model-select')?.value||'openai/gpt-oss-120b:free',messages:[{role:'system',content:JOB_ANALYSIS_PROMPT},{role:'user',content:'DESCRIPTION DU POSTE:\n'+txt}],max_tokens:800,temperature:0.1})});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',keyA),body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:800,system:JOB_ANALYSIS_PROMPT,messages:[{role:'user',content:'DESCRIPTION DU POSTE:\n'+txt}]})});
     const d=await r.json();
-    if(d.error)throw new Error(typeof d.error==='string'?d.error:d.error.message||JSON.stringify(d.error));
-    const raw=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
+    if(d.error)throw new Error(d.error.message);
+    const raw=d.content&&d.content[0]&&d.content[0].text;
     if(!raw)throw new Error('Reponse vide. Reessaie dans quelques secondes.');
     const analysis=pj(raw);
     currentJobAnalysis=analysis;
