@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Restaurer les postes TAFINAR</title>
+<style>
+body{font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f3f4f6;margin:0}
+.card{background:#fff;border-radius:12px;padding:32px;width:480px;box-shadow:0 4px 20px rgba(0,0,0,.1);text-align:center}
+h1{font-size:18px;color:#0d3b6e;margin-bottom:8px}
+p{color:#6b7280;font-size:13px;margin-bottom:24px}
+button{background:#0d3b6e;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.ok{color:#0e7c3a;font-weight:600;margin-top:16px;font-size:14px;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Restaurer les postes TAFINAR</h1>
+  <p>35 postes seront restaurés dans ton navigateur.</p>
+  <button onclick="restore()">Restaurer mes postes</button>
+  <div class="ok" id="ok">✅ 35 postes restaurés ! Tu peux fermer cette page.</div>
+</div>
+<script>
+function restore(){
+  const cvjobs = {"Architecture mécanique CREO Lyon CGEMJP00349784": {"desc": "Architecture mécanique CREO Lyon CGEMJP00349784"}, "Architecture mécanique CREO_Lyon CGEMJP00349784": {"desc": "Architecture mécanique CREO_Lyon CGEMJP00349784"}, "Architecture Système ADAS": {"desc": "Architecture Système ADAS"}, "Architecture Système Châssis": {"desc": "Architecture Système Châssis"}, "Architecture Système PWT": {"desc": "Architecture Système PWT"}, "AZTBNO_DRE eMotor CGEMJP00350210": {"desc": "AZTBNO_DRE eMotor CGEMJP00350210"}, "Calibrateur itinérant GMP": {"desc": "Calibrateur itinérant GMP"}, "Chef de projet_Roche la Molière_L3_Pas de télétravail CGEMJP00350211": {"desc": "Chef de projet_Roche la Molière_L3_Pas de télétravail CGEMJP00350211"}, "Essayeur Automatisme": {"desc": "Essayeur Automatisme"}, "étude électricité SPIE": {"desc": "étude électricité SPIE"}, "FICHE DE POSTE : Chef de Projet NPI / Approvisionnement (H/F": {"desc": "FICHE DE POSTE : Chef de Projet NPI / Approvisionnement (H/F"}, "FLYING CALIBRATOR — GMP / HEV / BEV": {"desc": "FLYING CALIBRATOR — GMP / HEV / BEV"}, "Flying GV automobile": {"desc": "Flying GV automobile"}, "FR  Electrical Electronics & Semiconductors Engineer_L3 CGEMJP00350700": {"desc": "FR  Electrical Electronics & Semiconductors Engineer_L3 CGEMJP00350700"}, "Ingénieur Projet Expediting": {"desc": "Ingénieur Projet Expediting"}, "INGÉNIEUR VALIDATION FONCTIONNELLE": {"desc": "INGÉNIEUR VALIDATION FONCTIONNELLE"}, "Ingénieurs Electronique Banc de tests": {"desc": "Ingénieurs Electronique Banc de tests"}, "M&O_1JTZWQ_Toxicologie (pharmacien)_-_L3_Partiel": {"desc": "M&O_1JTZWQ_Toxicologie (pharmacien)_-_L3_Partiel"}, "M&O_5STH7R_Support Gestion de CGEMJP00349998": {"desc": "M&O_5STH7R_Support Gestion de CGEMJP00349998"}, "M&O_64TBR0_Ingénieur R&T Pile à combustible_Toulouse_L2_Partiel CGEMJP00349937": {"desc": "M&O_64TBR0_Ingénieur R&T Pile à combustible_Toulouse_L2_Partiel CGEMJP00349937"}, "M&O_9BT5CT_Chef de Projet_Toulouse_L3_Pas de télétravail CGEMJP00349422": {"desc": "M&O_9BT5CT_Chef de Projet_Toulouse_L3_Pas de télétravail CGEMJP00349422"}, "M&O_C5TDM6_Sustainability Regulatory Intelligence _Toulouse_L2_Partiel": {"desc": "M&O_C5TDM6_Sustainability Regulatory Intelligence _Toulouse_L2_Partiel"}, "M&O_E6T8OJ_Chef de Projet Maitr CGEMJP00350810": {"desc": "M&O_E6T8OJ_Chef de Projet Maitr CGEMJP00350810"}, "M&O_G6TM9T_Ingénieur Packaging_Lille_L3_Pas de télétravail": {"desc": "M&O_G6TM9T_Ingénieur Packaging_Lille_L3_Pas de télétravail"}, "M&O_N6T31N_Pïlote Industrialisati CGEMJP00350778": {"desc": "M&O_N6T31N_Pïlote Industrialisati CGEMJP00350778"}, "Metteur au Point BEV – Précision de Couple BP": {"desc": "Metteur au Point BEV – Précision de Couple BP"}, "METTEUR AU POINT BEV / HEV — CALIBRATION GMP": {"desc": "METTEUR AU POINT BEV / HEV — CALIBRATION GMP"}, "Metteur au Point GMP Polyvalent – Matrice CAN (CI / BP)": {"desc": "Metteur au Point GMP Polyvalent – Matrice CAN (CI / BP)"}, "METTEUR AU POINT HEV / HMI / CI": {"desc": "METTEUR AU POINT HEV / HMI / CI"}, "Mission d'ASIC Verification Engineer (ARM) | PARIS | L3 | Remote partiel.": {"desc": "Mission d'ASIC Verification Engineer (ARM) | PARIS | L3 | Remote partiel."}, "Mission de Pilote supply chain (planif/ordo/SAP) | Pont-Audemer | L3 | Non remot": {"desc": "Mission de Pilote supply chain (planif/ordo/SAP) | Pont-Audemer | L3 | Non remot"}, "Mission de Technicien ADAS | Saint Ouen | L2 | Non remote": {"desc": "Mission de Technicien ADAS | Saint Ouen | L2 | Non remote"}, "Mission de Technicien de validation véhicule ADAS | Lure | L1 | Non remote": {"desc": "Mission de Technicien de validation véhicule ADAS | Lure | L1 | Non remote"}, "Nous recherchons une trentaine de profils Flying GV pour des missions dans le se": {"desc": "Nous recherchons une trentaine de profils Flying GV pour des missions dans le se"}, "Test poste": {"desc": "Test poste"}};
+  localStorage.setItem('cvjobs', JSON.stringify(cvjobs));
+  document.getElementById('ok').style.display='block';
+}
+</script>
+</body>
+</html>
