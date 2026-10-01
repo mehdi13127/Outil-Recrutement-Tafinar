@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v58</title>
+<title>Notion TAFINAR v59</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -147,7 +147,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v58</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v59</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -162,6 +162,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
   <button class="btn-link" onclick="window.parent.switchTo('rec')"><i class="ti ti-arrows-exchange" aria-hidden="true"></i> Recrutement TAFINAR</button>
 </div>
 
+<div id="banner"></div>
 <div class="content" id="main"></div>
 <div id="mroot"></div>
 <div id="toast" class="toast hide"></div>
@@ -180,13 +181,67 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY);
 const VILLES = ["Paris","Lyon","Marseille","Toulouse","Nice","Nantes","Strasbourg","Montpellier","Bordeaux","Lille","Rennes","Reims","Saint-Étienne","Toulon","Le Havre","Grenoble","Dijon","Angers","Nîmes","Brest","Tours","Amiens","Limoges","Perpignan","Metz","Besançon","Orléans","Rouen","Caen","Nancy","Mulhouse","Avignon","Pau","Versailles","Poitiers","Courbevoie","Boulogne-Billancourt","Bourges","La Rochelle","Calais","Antibes","Cannes","Issy-les-Moulineaux","Saint-Nazaire","Levallois-Perret","Quimper","Troyes","Valence","Évreux","Blois","Chartres","Cergy","Marignane","Vitrolles","Aubagne","Istres","Fos-sur-Mer","Salon-de-Provence","Arles","Béziers","Sète","Montauban","Albi","Tarbes","Thionville","Saint-Dizier","Belfort","Montbéliard","Chalon-sur-Saône","Annecy","Chambéry","Fréjus","Draguignan","Hyères","La Ciotat","Martigues","Saint-Raphaël","Menton","Grasse","Sophia Antipolis","Lorient","Vannes","Saint-Brieuc","Lannion","Cherbourg","Bayeux","Deauville","La Roche-sur-Yon","Niort","Angoulême","Saintes","Rochefort","Royan","Libourne","Périgueux","Bergerac","Agen","Mont-de-Marsan","Dax","Bayonne","Biarritz","Anglet","Rueil-Malmaison","Nanterre","Vitry-sur-Seine","Créteil","Dunkerque","Colombes","Tourcoing","Roubaix","Valenciennes","Aubervilliers","Aulnay-sous-Bois","Asnières-sur-Seine","Fontenay-sous-Bois","Noisy-le-Grand","Sartrouville","France entière","Île-de-France","PACA","Occitanie","Bretagne","Grand Est","Normandie","Hauts-de-France","Remote","Full remote"];
 const DISPOS = ["Immédiatement","1 mois","2 mois","3 mois"];
 const DEFAULT_STATUTS = ['🆕 Nouveau','📤 À appeler','✅ À envoyer','⏳ En attente','📦 Archiver'];
+// ═══════════════════════════════════════
+// STATE  (v59 : Supabase = seule source de vérité)
+// ═══════════════════════════════════════
+let eCV = {o:null, a:null};        // CV affichés dans le formulaire {name,url}
+let eCVFiles = {o:null, a:null};   // nouveaux fichiers choisis (pas encore envoyés)
+let pendingAnalyse = null;
+let S = {
+  tab: 's',
+  srcr: 'Mehdi',
+  sourceurs: ['Mehdi','Said','Amine'],
+  statuts: {Mehdi:[...DEFAULT_STATUTS],Said:[...DEFAULT_STATUTS],Amine:[...DEFAULT_STATUTS]},
+  kanbanKnown: new Set(),  // sourceurs présents dans kanban_config
+  candidates: [],   // Supabase — tous les profils actifs
+  trash: [],        // Supabase — profils supprimés (deleted_at)
+  postes: [],       // Supabase
+  sel: new Set(),   // ids sélectionnés pour le mail
+  remHist: [],
+  dragId: null,
+  colDragIdx: null,
+  pView: 'list',
+  profilSort: 'nom',
+  posteView: 'grid',
+  posteSort: 'date',
+};
 
 // ═══════════════════════════════════════
-// STATE
+// UTILS
 // ═══════════════════════════════════════
-let eCV = {o:null, a:null};
-let eCVFiles = {o:null, a:null};
-let pendingAnalyse = null;
+function uid(){return 'x'+Math.random().toString(36).substr(2,9)+Date.now().toString(36).slice(-3)}
+function isUUID(s){return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s||'')}
+function sim(a,b){a=(a||'').toLowerCase().trim();b=(b||'').toLowerCase().trim();if(a===b)return 1;if(!a||!b)return 0;if(a.includes(b)||b.includes(a))return.85;const sa=new Set(a.split(/\s+/));const sb2=new Set(b.split(/\s+/));return[...sa].filter(x=>sb2.has(x)).length/new Set([...sa,...sb2]).size;}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function tryJSON(s,d){if(s===null||s===undefined)return d;if(typeof s!=='string')return s;try{const r=JSON.parse(s);return(r===null||r===undefined)?d:r;}catch{return d;}}
+function gp(id){return S.postes.find(p=>p.id===id);}
+function normNom(s){return (s||'').toLowerCase().replace(/\s+/g,' ').trim();}
+
+let toastTimer;
+function showToast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast '+(type||'ok');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{el.className='toast hide';},type==='warn'?7000:3500);
+}
+function showLoader(v){document.getElementById('loader').style.display=v?'flex':'none';}
+function updateMailBtn(){
+  const btn=document.getElementById('mail-btn');if(!btn)return;
+  const n=S.sel.size;
+  btn.innerHTML=`<i class="ti ti-mail" aria-hidden="true"></i> Mail récap${n>0?` <strong>(${n})</strong>`:''}`;
+  btn.style.opacity=n>0?'1':'.4';
+  btn.style.pointerEvents=n>0?'auto':'none';
+}
+
+// ═══════════════════════════════════════
+// LOCAL STORAGE — uniquement des préférences (rien de métier)
+// ═══════════════════════════════════════
+function saveLocal(){try{localStorage.setItem('tn_remhist',JSON.stringify(S.remHist));}catch(e){}}
+function loadLocal(){
+  try{const rh=localStorage.getItem('tn_remhist');if(rh)S.remHist=tryJSON(rh,[]);}catch(e){}
+}
+let pendingCandidatState = null;
+
 
 // ── Render analysis block (from Recrutement TAFINAR) ──
 function renderAnalyse(analyse){
@@ -215,92 +270,6 @@ function renderAnalyse(analyse){
     ${verdict?`<div class="verdict-analyse">${verdict}</div>`:''}
   </div>`;
 }
-let S = {
-  tab: 's',
-  srcr: 'Mehdi',
-  sourceurs: ['Mehdi','Said','Amine'],
-  statuts: {Mehdi:[...DEFAULT_STATUTS],Said:[...DEFAULT_STATUTS],Amine:[...DEFAULT_STATUTS]},
-  candidates: [],   // localStorage — private per device
-  postes: [],       // Supabase — shared
-  sharedProfils: [],// Supabase — shared (with pretention)
-  sel: new Set(),   // selected for mail
-  remHist: [],
-  dragId: null,
-  colDragIdx: null,
-  pView: 'list',
-  profilSort: 'nom',
-  posteView: 'grid',
-  posteSort: 'date',
-  trash: [],
-};
-
-// ═══════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════
-function uid(){return 'x'+Math.random().toString(36).substr(2,9)}
-function isUUID(s){return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s||'')}
-function sim(a,b){a=(a||'').toLowerCase().trim();b=(b||'').toLowerCase().trim();if(a===b)return 1;if(a.includes(b)||b.includes(a))return.85;const sa=new Set(a.split(/\s+/));const sb2=new Set(b.split(/\s+/));return[...sa].filter(x=>sb2.has(x)).length/new Set([...sa,...sb2]).size;}
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
-function tryJSON(s,d){if(s===null||s===undefined)return d;try{const r=JSON.parse(s);return(r===null||r===undefined)?d:r;}catch{return d;}}
-function gp(id){return S.postes.find(p=>p.id===id);}
-
-let toastTimer;
-function showToast(msg,type='ok'){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.className='toast '+(type||'ok');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>{el.className='toast hide';},3500);
-}
-
-function showLoader(v){document.getElementById('loader').style.display=v?'flex':'none';}
-function updateMailBtn(){
-  const btn=document.getElementById('mail-btn');if(!btn)return;
-  const n=S.sel.size;
-  btn.innerHTML=`<i class="ti ti-mail" aria-hidden="true"></i> Mail récap${n>0?` <strong>(${n})</strong>`:''}`;
-  btn.style.opacity=n>0?'1':'.4';
-  btn.style.pointerEvents=n>0?'auto':'none';
-}
-
-// ═══════════════════════════════════════
-// LOCAL STORAGE
-// ═══════════════════════════════════════
-function saveLocal(){
-  try{
-    localStorage.setItem('tn_sourceurs',JSON.stringify(S.sourceurs));
-    localStorage.setItem('tn_statuts',JSON.stringify(S.statuts));
-    localStorage.setItem('tn_remhist',JSON.stringify(S.remHist));
-    S.sourceurs.forEach(src=>{
-      const cands=S.candidates.filter(c=>c.sourcer===src);
-      localStorage.setItem('tn_cands_'+src,JSON.stringify(cands));
-    });
-    localStorage.setItem('tn_trash',JSON.stringify(S.trash||[]));
-  }catch(e){console.error('saveLocal',e);}
-}
-
-function loadLocal(){
-  try{
-    const ss=localStorage.getItem('tn_sourceurs');if(ss)S.sourceurs=tryJSON(ss,S.sourceurs);
-    const sts=localStorage.getItem('tn_statuts');if(sts)S.statuts=tryJSON(sts,S.statuts);
-    S.sourceurs.forEach(src=>{if(!S.statuts[src])S.statuts[src]=[...DEFAULT_STATUTS];});
-    const rh=localStorage.getItem('tn_remhist');if(rh)S.remHist=tryJSON(rh,[]);
-    S.candidates=[];
-    S.sourceurs.forEach(src=>{
-      const saved=localStorage.getItem('tn_cands_'+src);
-      const cands=tryJSON(saved,[]);
-      S.candidates.push(...cands);
-    });
-    // Load postes cache as fallback
-    const pc=localStorage.getItem('tn_postes_cache');
-    if(pc&&!S.postes.length)S.postes=tryJSON(pc,[]);
-    S.trash=tryJSON(localStorage.getItem('tn_trash'),[]);
-  }catch(e){console.error('loadLocal',e);}
-}
-
-// ═══════════════════════════════════════
-// PENDING STATE (form preservation)
-// ═══════════════════════════════════════
-let pendingCandidatState = null;
-
 // ═══════════════════════════════════════
 // CSV PARSER (handles quoted fields)
 // ═══════════════════════════════════════
@@ -324,159 +293,143 @@ function parseCSV(text){
   if(field)cur.push(field);if(cur.some(f=>f.trim()))rows.push(cur);
   return rows;
 }
+// ═══════════════════════════════════════
+// COUCHE DONNÉES — tout passe par Supabase
+// ═══════════════════════════════════════
+const CV_BUCKET='tafinar-cvs';
 
-// ═══════════════════════════════════════
-// SUPABASE OPS
-// ═══════════════════════════════════════
+// Lecture paginée (Supabase limite à 1000 lignes par requête)
+async function fetchAllRows(table,orderCol){
+  let all=[];const step=1000;
+  for(let from=0;;from+=step){
+    const{data,error}=await sb.from(table).select('*').order(orderCol,{ascending:false}).order('id',{ascending:false}).range(from,from+step-1);
+    if(error)throw error;
+    all=all.concat(data||[]);
+    if(!data||data.length<step)break;
+  }
+  return all;
+}
+
 async function fetchPostes(){
-  const{data,error}=await sb.from('postes').select('*').order('created_at',{ascending:false});
-  if(error)throw error;
-  S.postes=(data||[]).map(p=>({
+  const data=await fetchAllRows('postes','created_at');
+  S.postes=data.map(p=>({
     id:p.id,titre:p.titre||'',client:p.client||'',
     lieux:tryJSON(p.lieux,[]),secteur:p.secteur||'',
     urgence:p.urgence||'',statut:p.statut||'🟢 Actif',
     salaire:p.salaire||'',experience:p.experience||'',
     nbCandidats:p.nb_candidats||'',competences:p.competences||'',
     description:p.description||'',analyseIA:p.analyse_ia||null,
-  }));
-  localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
-}
-
-async function fetchProfils(){
-  const{data,error}=await sb.from('profils').select('*').order('created_at',{ascending:false});
-  if(error)throw error;
-  S.sharedProfils=(data||[]).map(p=>({
-    sbId:p.id,nom:p.nom||'',trigramme:p.trigramme||'',
-    posteTitre:p.poste_titre||'',dispo:p.dispo||'',
-    mobilite:tryJSON(p.mobilite,p.mobilite?[p.mobilite]:[]),
-    pretention:p.pretention||'',freelance:p.freelance||'Non',
-    remarque:p.remarque||'',sourcer:p.sourcer||'',
-    score:p.score||null,verdict:p.verdict||null,
-    cvOriginalUrl:p.cv_original_url||null,cvOriginalName:p.cv_original_name||null,
-    cvAnonymeUrl:p.cv_anonyme_url||null,cvAnonymeName:p.cv_anonyme_name||null,
+    created_at:p.created_at||null,
   }));
 }
 
-// ═══════════════════════════════════════
-// SUPABASE CANDIDATS (vue partagée Mehdi)
-// ═══════════════════════════════════════
-
-async function syncAllCandidatsToSB(){
-  // Push all local candidates to Supabase
-  const myCands=S.candidates.filter(c=>c.sourcer===getMe()&&!c._fromSB);
-  if(myCands.length===0)return;
-  // Check how many are already in SB
-  const{data:existing}=await sb.from('candidats').select('local_id').eq('sourcer',getMe());
-  const existingIds=new Set((existing||[]).map(r=>r.local_id));
-  const toSync=myCands.filter(c=>!existingIds.has(c.id));
-  if(toSync.length===0)return;
-  // Sync missing ones
-  for(const c of toSync){
-    await syncCandidatToSB(c).catch(e=>console.warn('bulk sync error:',e));
-  }
-  if(toSync.length>0)showToast(toSync.length+' candidats synchronisés vers Supabase','ok');
+function rowToCand(r){
+  let mob=tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]);
+  if(!Array.isArray(mob))mob=mob?[String(mob)]:[];
+  return{
+    id:r.local_id,
+    nom:r.nom||'',trigramme:r.trigramme||'',
+    posteId:'',posteTitre:r.poste_titre||'',
+    dispo:r.dispo||'',mobilite:mob,
+    pretention:r.pretention||'',freelance:r.freelance||'Non',
+    remarque:r.remarque||'',sourcer:r.sourcer||'',
+    statut:r.statut||'',ordre:(r.ordre===null||r.ordre===undefined)?null:Number(r.ordre),
+    score:r.score||null,verdict:r.verdict||null,
+    telephone:r.telephone||'',
+    cvOUrl:r.cv_original_url||null,cvOName:r.cv_original_name||null,
+    cvAUrl:r.cv_anonyme_url||null,cvAName:r.cv_anonyme_name||null,
+    analyse:r.analyse_cv||null,
+    createdAt:r.created_at||'',deletedAt:r.deleted_at||null,
+  };
 }
 
-async function syncCandidatToSB(c){
-  const payload={
-    local_id:c.id,
-    nom:c.nom,trigramme:c.trigramme||'',
+function candToRow(c){
+  return{
+    local_id:c.id,nom:c.nom,trigramme:c.trigramme||'',
     poste_titre:c.posteTitre||(gp(c.posteId)?.titre||''),
-    dispo:c.dispo||'',
-    mobilite:JSON.stringify(c.mobilite||[]),
-    pretention:c.pretention||'',
-    freelance:c.freelance||'Non',
-    remarque:c.remarque||'',
-    sourcer:c.sourcer||'',
-    statut:c.statut||'',
-    score:c.score||null,
-    verdict:c.verdict||null,
+    dispo:c.dispo||'',mobilite:JSON.stringify(c.mobilite||[]),
+    pretention:c.pretention||'',freelance:c.freelance||'Non',
+    remarque:c.remarque||'',sourcer:c.sourcer||'',statut:c.statut||'',
+    ordre:(c.ordre===undefined?null:c.ordre),
+    score:c.score||null,verdict:c.verdict||null,
     telephone:c.telephone||'',
+    cv_original_url:c.cvOUrl||null,cv_original_name:c.cvOName||null,
+    cv_anonyme_url:c.cvAUrl||null,cv_anonyme_name:c.cvAName||null,
+    analyse_cv:c.analyse||null,
+    deleted_at:c.deletedAt||null,
     updated_at:new Date().toISOString(),
   };
-  // Check if exists then insert or update
-  const{data:existing}=await sb.from('candidats').select('id').eq('local_id',c.id).maybeSingle();
-  if(existing){
-    const{error}=await sb.from('candidats').update(payload).eq('local_id',c.id);
-    if(error)console.error('syncCandidatToSB update error:',error);
-  }else{
-    const{error}=await sb.from('candidats').insert(payload);
-    if(error)console.error('syncCandidatToSB insert error:',error);
-  }
 }
 
-async function deleteCandidatFromSB(localId){
-  await sb.from('candidats').delete().eq('local_id',localId);
+function resolvePostes(){
+  S.candidates.concat(S.trash).forEach(c=>{
+    c.posteId='';
+    if(!c.posteTitre)return;
+    let p=S.postes.find(p=>normNom(p.titre)===normNom(c.posteTitre));
+    if(!p)p=S.postes.find(p=>sim(p.titre,c.posteTitre)>0.55);
+    if(p)c.posteId=p.id;
+  });
 }
 
 async function fetchCandidats(){
-  const me=getMe();
-  const{data,error}=await sb.from('candidats').select('*').order('created_at',{ascending:false});
+  const all=await fetchAllRows('candidats','created_at');
+  const cands=all.filter(r=>r.local_id).map(rowToCand);
+  S.candidates=cands.filter(c=>!c.deletedAt);
+  S.trash=cands.filter(c=>c.deletedAt).sort((a,b)=>String(b.deletedAt).localeCompare(String(a.deletedAt)));
+  // les sélections qui n'existent plus sont retirées
+  const ids=new Set(S.candidates.map(c=>c.id));
+  [...S.sel].forEach(k=>{if(!ids.has(k))S.sel.delete(k);});
+  resolvePostes();
+}
+
+async function fetchKanban(){
+  const{data,error}=await sb.from('kanban_config').select('*').order('position',{ascending:true});
   if(error)throw error;
-  const all=data||[];
-
-  // SUPABASE EST LA SOURCE PRINCIPALE
-  // Reconstruire S.candidates depuis Supabase + garder ce qui est local mais pas encore dans SB
-  const sbIds=new Set(all.map(r=>r.local_id));
-
-  // Garder les candidats locaux qui ne sont pas encore dans Supabase
-  const localOnly=S.candidates.filter(c=>!c._fromSB&&!sbIds.has(c.id));
-
-  // Reconstruire depuis Supabase
-  S.candidates=[];
-
-  // Mes candidats depuis Supabase
-  all.filter(r=>r.sourcer===me).forEach(r=>{
-    S.candidates.push({
-      id:r.local_id,
-      nom:r.nom||'',trigramme:r.trigramme||'',
-      posteId:'',posteTitre:r.poste_titre||'',
-      dispo:r.dispo||'',
-      mobilite:tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]),
-      pretention:r.pretention||'',
-      freelance:r.freelance||'Non',
-      remarque:r.remarque||'',
-      sourcer:r.sourcer||'',
-      statut:r.statut||'',
-      score:r.score||null,verdict:r.verdict||null,
-      telephone:r.telephone||'',
-      sbId:null,cvO:null,cvA:null,analyse:null,
-    });
+  const rows=data||[];
+  S.kanbanKnown=new Set(rows.map(r=>r.sourcer));
+  const names=rows.map(r=>r.sourcer);
+  ['Mehdi','Said','Amine'].forEach(n=>{if(!names.includes(n))names.push(n);});
+  S.sourceurs=names;
+  const st={};
+  names.forEach(n=>{
+    const row=rows.find(r=>r.sourcer===n);
+    const arr=row?tryJSON(row.statuts,[]):[];
+    st[n]=(Array.isArray(arr)&&arr.length)?arr:[...DEFAULT_STATUTS];
   });
+  S.statuts=st;
+  if(!S.sourceurs.includes(S.srcr))S.srcr=S.sourceurs.includes(getMe())?getMe():S.sourceurs[0];
+}
 
-  // Candidats locaux pas encore sync
-  localOnly.forEach(c=>S.candidates.push(c));
+let _loading=false;
+async function loadAll(silent){
+  if(_loading)return;
+  _loading=true;
+  try{
+    await Promise.all([fetchPostes(),fetchKanban()]);
+    await fetchCandidats();
+    S._lastLoad=Date.now();
+    render();
+  }catch(e){
+    console.error('loadAll',e);
+    showToast('Connexion à la base impossible — réessaie dans un instant','warn');
+  }finally{_loading=false;}
+}
 
-  // Candidats des autres sourceurs (lecture seule)
-  all.filter(r=>r.sourcer!==me).forEach(r=>{
-    S.candidates.push({
-      id:r.local_id,
-      nom:r.nom||'',trigramme:r.trigramme||'',
-      posteId:'',posteTitre:r.poste_titre||'',
-      dispo:r.dispo||'',
-      mobilite:tryJSON(r.mobilite,r.mobilite?[r.mobilite]:[]),
-      pretention:r.pretention||'',
-      freelance:r.freelance||'Non',
-      remarque:r.remarque||'',
-      sourcer:r.sourcer||'',
-      statut:r.statut||'',
-      score:r.score||null,verdict:r.verdict||null,
-      telephone:r.telephone||'',
-      sbId:null,cvO:null,cvA:null,analyse:null,
-      _fromSB:true,
-    });
-  });
-
-  // Résoudre posteId depuis posteTitre
-  S.candidates.forEach(c=>{
-    if(!c.posteId&&c.posteTitre){
-      const p=S.postes.find(p=>sim(p.titre,c.posteTitre)>0.55);
-      if(p)c.posteId=p.id;
-    }
-  });
-
-  // Sauvegarder dans localStorage
-  saveLocal();
+// ── Écritures ──
+function fail(e,msg){
+  console.error(e);
+  showToast((msg||'Enregistrement impossible')+' — les données sont rechargées depuis la base','warn');
+  loadAll();
+}
+async function dbUpd(id,fields){
+  const{error}=await sb.from('candidats').update({...fields,updated_at:new Date().toISOString()}).eq('local_id',id);
+  if(error)throw error;
+}
+async function saveKanban(src){
+  const pos=Math.max(0,S.sourceurs.indexOf(src));
+  const{error}=await sb.from('kanban_config').upsert({sourcer:src,statuts:S.statuts[src],position:pos},{onConflict:'sourcer'});
+  if(error)throw error;
+  S.kanbanKnown.add(src);
 }
 
 async function pushPoste(p){
@@ -494,196 +447,89 @@ async function pushPoste(p){
   }else{
     const{data,error}=await sb.from('postes').insert(payload).select().single();
     if(error)throw error;
-    // Update id in local array
     const idx=S.postes.findIndex(x=>x.id===p.id);
+    p.id=data.id;p.created_at=data.created_at||null;
     if(idx>=0)S.postes[idx].id=data.id;
-    p.id=data.id;
   }
-  localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
 }
-
 async function deletePosteDB(id){
   if(isUUID(id)){
     const{error}=await sb.from('postes').delete().eq('id',id);
     if(error)throw error;
   }
   S.postes=S.postes.filter(p=>p.id!==id);
-  localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
-}
-
-async function syncCandidatProfil(c){
-  const hasPret=c.pretention&&c.pretention.trim();
-  if(!hasPret){
-    if(c.sbId){
-      await sb.from('profils').delete().eq('id',c.sbId);
-      c.sbId=null;
-    }
-    return;
-  }
-  const p=gp(c.posteId);
-  const payload={
-    nom:c.nom,trigramme:c.trigramme,
-    poste_titre:p?p.titre:(c.posteTitre||''),
-    dispo:c.dispo,
-    mobilite:JSON.stringify(c.mobilite||[]),
-    pretention:c.pretention,freelance:c.freelance,
-    remarque:c.remarque,sourcer:c.sourcer,
-    score:c.score||null,verdict:c.verdict||null,
-  };
-  if(c.sbId){
-    const{error}=await sb.from('profils').update(payload).eq('id',c.sbId);
-    if(error)throw error;
-  }else{
-    const{data,error}=await sb.from('profils').insert(payload).select().single();
-    if(error)throw error;
-    if(data)c.sbId=data.id;
-  }
 }
 
 // ═══════════════════════════════════════
-// SUPABASE STORAGE — CVs
+// CVs — stockés dans Supabase Storage, liés au profil
 // ═══════════════════════════════════════
-async function uploadCvToStorage(sbId,type,file){
+async function uploadCvFile(candId,type,file){
   const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const path=`${sbId}/${type}_${safe}`;
-  const{error:upErr}=await sb.storage.from('tafinar-cvs').upload(path,file,{upsert:true,cacheControl:'3600',contentType:file.type||'application/octet-stream'});
-  if(upErr)throw upErr;
-  const{data:{publicUrl}}=sb.storage.from('tafinar-cvs').getPublicUrl(path);
-  const col=type==='o'?{cv_original_url:publicUrl,cv_original_name:file.name}:{cv_anonyme_url:publicUrl,cv_anonyme_name:file.name};
-  await sb.from('profils').update(col).eq('id',sbId);
+  const path=`${candId}/${type}_${Date.now()}_${safe}`;
+  const{error}=await sb.storage.from(CV_BUCKET).upload(path,file,{upsert:true,cacheControl:'3600',contentType:file.type||'application/octet-stream'});
+  if(error)throw error;
+  const{data:{publicUrl}}=sb.storage.from(CV_BUCKET).getPublicUrl(path);
   return{url:publicUrl,name:file.name};
 }
-
-async function uploadCvAfterSync(c){
-  if(!c.sbId)return;
-  if(eCVFiles.o){try{const r=await uploadCvToStorage(c.sbId,'o',eCVFiles.o);c.cvStorageO=r;}catch(e){console.error('CV upload O:',e);}eCVFiles.o=null;}
-  if(eCVFiles.a){try{const r=await uploadCvToStorage(c.sbId,'a',eCVFiles.a);c.cvStorageA=r;}catch(e){console.error('CV upload A:',e);}eCVFiles.a=null;}
+function cvPathFromUrl(u){
+  const k='/'+CV_BUCKET+'/';const i=(u||'').indexOf(k);
+  return i<0?null:decodeURIComponent(u.slice(i+k.length).split('?')[0]);
+}
+async function removeCvFiles(urls){
+  const paths=urls.map(cvPathFromUrl).filter(Boolean);
+  if(paths.length)try{await sb.storage.from(CV_BUCKET).remove(paths);}catch(e){console.warn('remove cv',e);}
 }
 
-// ═══════════════════════════════════════
-// SHARED EDIT (Les Profils — any device)
-// ═══════════════════════════════════════
-function openSharedEdit(sbId){
-  // If local candidate exists on this device, use regular edit form
-  const local=S.candidates.find(x=>x.sbId===sbId);
-  if(local){openForm(local.id);return;}
-  // Otherwise show shared edit form (saves directly to Supabase)
-  const c=S.sharedProfils.find(x=>x.sbId===sbId);
-  if(!c)return;
-  const cvOUrl=c.cvOriginalUrl;const cvAUrl=c.cvAnonymeUrl;
-  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="m-title">Modifier profil <span style="font-size:11px;font-weight:400;color:#6b7280">(via ${c.sourcer})</span><button class="m-close" onclick="closeM()">×</button></div>
-    <div class="fg">
-      <div class="fr"><label class="fl">Nom et prénom</label><input class="fi" id="se-nom" value="${esc(c.nom)}"></div>
-      <div class="fr"><label class="fl">Trigramme</label><input class="fi" id="se-tri" value="${esc(c.trigramme)}"></div>
-    </div>
-    <div class="fr"><label class="fl">Poste ciblé</label><input class="fi" id="se-poste" value="${esc(c.posteTitre||'')}"></div>
-    <div class="fr" style="position:relative">
-      <label class="fl">Disponibilité</label>
-      <input class="fi" id="se-dis" value="${esc(c.dispo||'')}" autocomplete="off" oninput="filtDisSE()" onblur="setTimeout(()=>{const d=document.getElementById('se-dis-drop');if(d)d.style.display='none'},220)">
-      <div id="se-dis-drop" class="drop-list" style="display:none"></div>
-    </div>
-    <div class="fr">
-      <label class="fl">Mobilité <span style="text-transform:none;font-size:10px;font-weight:400">(Entrée pour valider)</span></label>
-      <div style="position:relative"><input class="fi" id="se-city" placeholder="Taper une ville..." oninput="filtCitySE()" onblur="setTimeout(()=>{const d=document.getElementById('se-city-drop');if(d)d.style.display='none'},220)" onkeydown="citySEKey(event)" autocomplete="off"><div id="se-city-drop" class="drop-list" style="display:none"></div></div>
-      <div id="se-mob-tags" class="tags-row">${(c.mobilite||[]).map(v=>`<div class="tg">${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span></div>`).join('')}</div>
-    </div>
-    <div class="fg">
-      <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="se-pret" value="${esc(c.pretention||'')}"></div>
-      <div class="fr"><label class="fl">Freelance</label><select class="fi" id="se-free"><option value="Non"${c.freelance==='Non'?' selected':''}>Non</option><option value="Oui"${c.freelance==='Oui'?' selected':''}>Oui</option><option value="À valider"${c.freelance==='À valider'?' selected':''}>À valider</option><option value="CDI"${c.freelance==='CDI'?' selected':''}>CDI</option></select></div>
-    </div>
-    <div class="fr"><label class="fl">Remarque</label><textarea class="fi" id="se-rem" rows="2" style="resize:vertical">${esc(c.remarque||'')}</textarea></div>
-    <div class="cv-sec">
-      <div style="font-size:12px;font-weight:600;margin-bottom:10px">CVs <span style="font-size:10px;font-weight:400;color:#6b7280">(stockés dans la base commune)</span></div>
-      <div class="cv-row">
-        <span class="cv-lbl">CV original</span>
-        ${cvOUrl?`<a href="${cvOUrl}" target="_blank" class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(c.cvOriginalName||'Voir')}</a>`:'<span style="font-size:11px;color:#9ca3af">Non chargé</span>'}
-        <label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> ${cvOUrl?'Remplacer':'Ajouter'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvSharedEdit('${sbId}','o',this)"></label>
-      </div>
-      <div class="cv-row">
-        <span class="cv-lbl">CV anonyme</span>
-        ${cvAUrl?`<a href="${cvAUrl}" target="_blank" class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(c.cvAnonymeName||'Voir')}</a>`:'<span style="font-size:11px;color:#9ca3af">Non chargé</span>'}
-        <label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> ${cvAUrl?'Remplacer':'Ajouter'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvSharedEdit('${sbId}','a',this)"></label>
-      </div>
-    </div>
-    <div class="m-actions">
-      <button class="btn" onclick="closeM()">Annuler</button>
-      <button class="btn btn-p" onclick="saveSharedEdit('${sbId}')">Enregistrer</button>
-    </div>
-  </div></div>`;
-}
-
-function filtDisSE(){const val=(document.getElementById('se-dis')?.value||'').toLowerCase();const drop=document.getElementById('se-dis-drop');if(!drop)return;const m=val?DISPOS.filter(d=>d.toLowerCase().includes(val)):DISPOS;drop.innerHTML=m.map(d=>`<div onmousedown="event.preventDefault()" onclick="document.getElementById('se-dis').value='${d}';document.getElementById('se-dis-drop').style.display='none'">${d}</div>`).join('')+`<div onmousedown="event.preventDefault()" onclick="document.getElementById('se-dis-drop').style.display='none';document.getElementById('se-dis').focus()" style="font-style:italic;color:#9ca3af">Saisie libre...</div>`;drop.style.display='block';}
-function filtCitySE(){const val=(document.getElementById('se-city')?.value||'').toLowerCase().trim();const drop=document.getElementById('se-city-drop');if(!drop||!val){if(drop)drop.style.display='none';return;}const m=VILLES.filter(v=>v.toLowerCase().startsWith(val)).slice(0,6);if(!m.length){drop.style.display='none';return;}drop.innerHTML=m.map(v=>`<div onmousedown="event.preventDefault()" onclick="addCitySE('${v}')">${v}</div>`).join('');drop.style.display='block';}
-function addCitySE(v){const cont=document.getElementById('se-mob-tags');const inp=document.getElementById('se-city');const drop=document.getElementById('se-city-drop');if(cont){const ex=[...cont.querySelectorAll('.tg')].map(el=>el.childNodes[0].textContent.trim());if(!ex.includes(v)){const tg=document.createElement('div');tg.className='tg';tg.innerHTML=`${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span>`;cont.appendChild(tg);}}if(inp)inp.value='';if(drop)drop.style.display='none';}
-function citySEKey(e){if(e.key==='Enter'){e.preventDefault();const v=(document.getElementById('se-city')?.value||'').trim();if(v)addCitySE(v);}}
-
-async function uploadCvSharedEdit(sbId,type,input){
-  if(!input.files[0])return;
-  const f=input.files[0];
-  showToast('Upload en cours...','ok');
-  try{
-    await uploadCvToStorage(sbId,type,f);
-    await fetchProfils();
-    showToast('CV uploadé','ok');
-    openSharedEdit(sbId);
-  }catch(e){console.error(e);showToast('Erreur upload CV','warn');}
-}
-
-async function saveSharedEdit(sbId){
-  const nom=(document.getElementById('se-nom')?.value||'').trim();
-  if(!nom){alert('Le nom est obligatoire.');return;}
-  const mobilite=[...document.querySelectorAll('#se-mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
-  const payload={
-    nom,trigramme:(document.getElementById('se-tri')?.value||'').trim(),
-    poste_titre:(document.getElementById('se-poste')?.value||'').trim(),
-    dispo:(document.getElementById('se-dis')?.value||'').trim(),
-    mobilite:JSON.stringify(mobilite),
-    pretention:(document.getElementById('se-pret')?.value||'').trim(),
-    freelance:document.getElementById('se-free')?.value||'Non',
-    remarque:(document.getElementById('se-rem')?.value||'').trim(),
-  };
-  try{
-    await sb.from('profils').update(payload).eq('id',sbId);
-    await fetchProfils();
-    closeM();showToast('Profil mis à jour','ok');
-  }catch(e){console.error(e);showToast('Erreur sauvegarde','warn');}
-}
 function showTab(t){
   S.tab=t;
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['s','p','po','cfg'][i]===t));
-  if(t==='p')fetchProfils().then(render).catch(()=>render());
-  else render();
+  const order=['s','p','po','cfg','trash'];
+  document.querySelectorAll('.nav .tab').forEach((el,i)=>el.classList.toggle('active',order[i]===t));
+  render();
+  if(!_loading&&Date.now()-(S._lastLoad||0)>5000)loadAll();
 }
 
 function render(){
   const m=document.getElementById('main');
+  const kb=document.getElementById('kanban');const kbScroll=kb?kb.scrollLeft:0;
   if(S.tab==='s')m.innerHTML=rSrc();
   else if(S.tab==='p')m.innerHTML=rProfils();
   else if(S.tab==='po')m.innerHTML=rPostes();
   else if(S.tab==='cfg')m.innerHTML=rParams();
   else if(S.tab==='trash'){m.innerHTML=rTrash();renderTrashTable();}
+  const kb2=document.getElementById('kanban');if(kb2&&kbScroll)kb2.scrollLeft=kbScroll;
   updateMailBtn();
   renderTopbarUser();
+  renderBanner();
   const tc=document.getElementById('trash-count');
-  if(tc){const n=(S.trash||[]).length;tc.textContent=n;tc.style.display=n>0?'inline':'none';}
+  if(tc){const n=S.trash.length;tc.textContent=n;tc.style.display=n>0?'inline':'none';}
+}
+
+// ── Ordre des cartes ──
+function cmpCard(a,b){
+  const oa=a.ordre===null?1e9:a.ordre,ob=b.ordre===null?1e9:b.ordre;
+  if(oa!==ob)return oa-ob;
+  const ca=String(a.createdAt||''),cb=String(b.createdAt||'');
+  if(ca!==cb)return ca<cb?-1:1;
+  return a.id<b.id?-1:1;
+}
+function colIdxOf(c){const sts=S.statuts[c.sourcer]||[];const i=sts.indexOf(c.statut);return i<0?0:i;} // statut inconnu → 1ère colonne
+function colCards(src,idx){
+  return S.candidates.filter(c=>c.sourcer===src&&colIdxOf(c)===idx).sort(cmpCard);
 }
 
 // ── SOURCEURS ──
 function rSrc(){
-  const ztabs=S.sourceurs.map(s=>`<button class="zone-btn${S.srcr===s?' active':''}" onclick="setSrc('${s}')">${s}</button>`).join('');
+  const ztabs=S.sourceurs.map(s=>`<button class="zone-btn${S.srcr===s?' active':''}" onclick="setSrc('${s}')">${esc(s)}</button>`).join('');
   const sts=S.statuts[S.srcr]||[];
-  const cands=S.candidates.filter(c=>c.sourcer===S.srcr);
+  const adminCol=canManageCols();
   const cols=sts.map((st,idx)=>{
-    const cards=cands.filter(c=>c.statut===st).sort((a,b)=>(a.order??9999)-(b.order??9999));
+    const cards=colCards(S.srcr,idx);
     const enc=encodeURIComponent(st);
-    const adminCol=canManageCols();
     return`<div class="col" data-colidx="${idx}" ondragover="onColOver(event,${idx})" ondrop="onColDrop(event,'${enc}',${idx})">
       <div class="col-head" style="cursor:default">
         ${adminCol?`<span class="drag-handle" draggable="true" ondragstart="colDStart(event,${idx})" ondragend="colDEnd()" title="Glisser pour déplacer">⠿</span>`:''}
         ${adminCol
-          ?`<input class="col-name" value="${esc(st)}" title="Cliquer pour renommer" onblur="renCol('${S.srcr}',${idx},this.value)" onclick="event.stopPropagation()" ondragstart="event.stopPropagation()">`
+          ?`<input class="col-name" value="${esc(st)}" title="Cliquer pour renommer" onblur="renCol('${S.srcr}',${idx},this.value)" onkeydown="if(event.key==='Enter')this.blur()" onclick="event.stopPropagation()" ondragstart="event.stopPropagation()">`
           :`<span class="col-name" style="cursor:default;flex:1">${esc(st)}</span>`}
         <span class="col-cnt">${cards.length}</span>
         ${adminCol?`<button class="col-del" onclick="delCol('${S.srcr}',${idx})" ondragstart="event.stopPropagation()">×</button>`:''}
@@ -691,19 +537,19 @@ function rSrc(){
       <div class="drop-zone">
         ${cards.length===0?'<div style="font-size:11px;color:#9ca3af;text-align:center;padding:8px 0">Vide</div>':''}
         ${cards.map(c=>{
-          const p=gp(c.posteId);const isSel=S.sel.has(c.id);
-          const scoreBadge=c.score?`<div class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100 ${c.verdict||''}</div>`:'';
-          return`<div class="card${isSel?' sel':''}" style="position:relative" draggable="true" data-id="${c.id}" onclick="canEditC('${esc(c.sourcer)}')?openForm('${c.id}'):openView('${c.id}')" ondragstart="dst(event,'${c.id}')" ondragend="den()">
+          const p=gp(c.posteId);const isSel=S.sel.has(c.id);const ed=canEditC(c.sourcer);
+          const scoreBadge=c.score?`<div class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100 ${esc(c.verdict||'')}</div>`:'';
+          const cvTag=(c.cvOUrl||c.cvAUrl)?`<span title="CV joint" style="font-size:10px;color:#166534;margin-left:4px"><i class="ti ti-paperclip" aria-hidden="true"></i></span>`:'';
+          return`<div class="card${isSel?' sel':''}${ed?'':' readonly'}" style="position:relative" ${ed?'draggable="true"':''} data-id="${c.id}" onclick="${ed?`openForm('${c.id}')`:`openView('${c.id}')`}" ondragstart="dst(event,'${c.id}')" ondragend="den()">
             <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" ondragstart="event.stopPropagation()">
-            ${c._fromSB?`<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${esc(c.sourcer)}</div>`:''}
-            <div class="card-name">${esc(c.nom)}</div>
+            <div class="card-name">${esc(c.nom)}${cvTag}</div>
             <div class="card-poste">${p?esc(p.titre):c.posteTitre?esc(c.posteTitre):'—'}</div>
             ${scoreBadge}
-            <div style="position:absolute;top:4px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px">
-              ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();delCand('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;color:#d1d5db;padding:0;line-height:1;font-weight:300" title="Supprimer">×</button>`:''}
-              ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();moveCard('${c.id}','up')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Monter">▲</button>`:''}
-              ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();moveCard('${c.id}','down')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Descendre">▼</button>`:''}
-            </div>
+            ${ed?`<div style="position:absolute;top:4px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <button onclick="event.stopPropagation();delCand('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;color:#d1d5db;padding:0;line-height:1;font-weight:300" title="Supprimer">×</button>
+              <button onclick="event.stopPropagation();moveCard('${c.id}','up')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Monter">▲</button>
+              <button onclick="event.stopPropagation();moveCard('${c.id}','down')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Descendre">▼</button>
+            </div>`:''}
           </div>`;
         }).join('')}
       </div>
@@ -712,57 +558,60 @@ function rSrc(){
   const zcolor=getZoneColor(S.srcr);
   return`<div class="zone-bar-line" style="background:${zcolor}"></div><div class="zone-bar">${ztabs}
     <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn" onclick="loadAll().then(()=>showToast('À jour','ok'))" title="Recharger depuis la base"><i class="ti ti-refresh" aria-hidden="true"></i> Actualiser</button>
       <button class="btn btn-p" onclick="openForm(null)"><i class="ti ti-plus" aria-hidden="true"></i> Ajouter profil</button>
       <label class="btn" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> Import CSV<input type="file" accept=".csv" style="display:none" onchange="impCSV(event)"></label>
     </div>
   </div>
   <div class="kanban" id="kanban">${cols}
-    ${canManageCols()?`<div class="add-col" onclick="addCol('${S.srcr}')"><i class="ti ti-plus" aria-hidden="true"></i> Créer statut</div>`:''}
+    ${adminCol?`<div class="add-col" onclick="addCol('${S.srcr}')"><i class="ti ti-plus" aria-hidden="true"></i> Créer statut</div>`:''}
   </div>`;
 }
 
-// ── LES PROFILS ──
+// ── LES PROFILS (= profils avec prétention salariale) ──
+function profilsList(){return S.candidates.filter(c=>(c.pretention||'').trim());}
 function rProfils(){
   const sn=document.getElementById('ps-n')?.value||'';
   const sp=document.getElementById('ps-p')?.value||'';
   const st2=document.getElementById('ps-t')?.value||'';
-  let list=[...S.sharedProfils];
+  let list=profilsList();
   if(sn)list=list.filter(c=>c.nom.toLowerCase().includes(sn.toLowerCase()));
-  if(sp)list=list.filter(c=>c.posteTitre.toLowerCase().includes(sp.toLowerCase()));
-  if(st2)list=list.filter(c=>c.trigramme.toLowerCase().includes(st2.toLowerCase()));
+  if(sp)list=list.filter(c=>(c.posteTitre||'').toLowerCase().includes(sp.toLowerCase()));
+  if(st2)list=list.filter(c=>(c.trigramme||'').toLowerCase().includes(st2.toLowerCase()));
   const isG=S.pView==='grid';
   const sortBy=S.profilSort||'nom';
   if(sortBy==='nom')list.sort((a,b)=>a.nom.localeCompare(b.nom));
   else if(sortBy==='poste')list.sort((a,b)=>(a.posteTitre||'').localeCompare(b.posteTitre||''));
   else if(sortBy==='score')list.sort((a,b)=>(b.score||0)-(a.score||0));
   else if(sortBy==='dispo')list.sort((a,b)=>(a.dispo||'').localeCompare(b.dispo||''));
-  const selAll=list.length>0&&list.every(c=>S.sel.has('sb_'+c.sbId));
+  const selAll=list.length>0&&list.every(c=>S.sel.has(c.id));
+  const open=c=>canEditC(c.sourcer)?`openForm('${c.id}')`:`openView('${c.id}')`;
+  const sc=c=>c.score?`<span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100${isG?' '+esc(c.verdict||''):''}</span>`:'';
   const cards=isG?`<div class="profils-grid">${list.map(c=>{
-    const isSel=S.sel.has('sb_'+c.sbId);
-    const scBadge=c.score?`<span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100 ${c.verdict||''}</span>`:'';
-    return`<div class="pc${isSel?' sel':''}" style="position:relative" onclick="openSharedEdit('${c.sbId}')">
-      <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSelSb('${c.sbId}',event)">
-      <button onclick="event.stopPropagation();delSharedProfil('${c.sbId}')" style="position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:14px;color:#9ca3af;line-height:1" title="Supprimer">×</button>
-      <div class="pc-src">${c.sourcer}</div>
-      <div class="pc-name">${esc(c.nom)}</div>
+    const isSel=S.sel.has(c.id);
+    return`<div class="pc${isSel?' sel':''}" style="position:relative" onclick="${open(c)}">
+      <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)">
+      ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();delCand('${c.id}')" style="position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:14px;color:#9ca3af;line-height:1" title="Supprimer">×</button>`:''}
+      <div class="pc-src">${esc(c.sourcer)}</div>
+      <div class="pc-name">${esc(c.nom)}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534;font-size:12px" aria-hidden="true"></i>':''}</div>
       <div class="pc-poste">${esc(c.posteTitre||'—')}</div>
       <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">
         ${c.pretention?`<span class="ptag ptag-b">${esc(c.pretention)}</span>`:''}
         ${c.freelance==='Oui'?'<span class="ptag ptag-g">Freelance</span>':''}
         ${c.dispo?`<span class="ptag ptag-n">${esc(c.dispo)}</span>`:''}
-        ${scBadge}
+        ${sc(c)}
       </div>
     </div>`;}).join('')}</div>`
-  :`<table class="lt"><thead><tr><th><input type="checkbox" ${selAll?'checked':''} onclick="toggleSelAllSb(this,${JSON.stringify(list.map(c=>c.sbId))})" style="accent-color:var(--green)"></th><th>Sourceur</th><th>Nom</th><th>Trigramme</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>Prétention</th><th>Freelance</th><th>Score</th></tr></thead><tbody>
-  ${list.map(c=>{const isSel=S.sel.has('sb_'+c.sbId);return`<tr class="${isSel?'sel':''}" onclick="openSharedEdit('${c.sbId}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSelSb('${c.sbId}',event)" style="accent-color:var(--green)"></td><td style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${c.sourcer}</td><td style="font-weight:600">${esc(c.nom)}</td><td>${c.trigramme}</td><td style="font-size:11px">${esc(c.posteTitre||'—')}</td><td>${c.dispo||'—'}</td><td>${(c.mobilite||[]).join(', ')||'—'}</td><td><span class="ptag ptag-b">${esc(c.pretention)}</span></td><td>${c.freelance}</td><td>${c.score?`<span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}">${c.score}/100</span>`:''}</td></tr>`;}).join('')}
+  :`<table class="lt"><thead><tr><th><input type="checkbox" ${selAll?'checked':''} onclick="toggleSelAll(this,${esc(JSON.stringify(list.map(c=>c.id)))})" style="accent-color:var(--green)"></th><th>Sourceur</th><th>Nom</th><th>Trigramme</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>Prétention</th><th>Freelance</th><th>Score</th></tr></thead><tbody>
+  ${list.map(c=>{const isSel=S.sel.has(c.id);return`<tr class="${isSel?'sel':''}" style="cursor:pointer" onclick="${open(c)}"><td onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" style="accent-color:var(--green)"></td><td style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${esc(c.sourcer)}</td><td style="font-weight:600">${esc(c.nom)}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534" aria-hidden="true"></i>':''}</td><td>${esc(c.trigramme)}</td><td style="font-size:11px">${esc(c.posteTitre||'—')}</td><td>${esc(c.dispo)||'—'}</td><td>${esc((c.mobilite||[]).join(', '))||'—'}</td><td><span class="ptag ptag-b">${esc(c.pretention)}</span></td><td>${esc(c.freelance)}</td><td>${sc(c)}</td></tr>`;}).join('')}
   </tbody></table>`;
   return`<div class="tb">
-    <input id="ps-n" placeholder="Nom..." value="${esc(sn)}" oninput="render()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:130px">
-    <input id="ps-p" placeholder="Poste..." value="${esc(sp)}" oninput="render()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:160px">
-    <input id="ps-t" placeholder="Trigramme..." value="${esc(st2)}" oninput="render()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:110px">
+    <input id="ps-n" placeholder="Nom..." value="${esc(sn)}" oninput="rProfilsLive()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:130px">
+    <input id="ps-p" placeholder="Poste..." value="${esc(sp)}" oninput="rProfilsLive()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:160px">
+    <input id="ps-t" placeholder="Trigramme..." value="${esc(st2)}" oninput="rProfilsLive()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:110px">
     <span style="font-size:11px;color:#6b7280">${list.length} profil(s)</span>
-    ${S.sel.size>0?`<button class="btn btn-r" style="font-size:11px" onclick="S.sel=new Set();updateMailBtn();render()">Désélectionner (${S.sel.size})</button>`:''}
-    <button class="btn" style="font-size:11px" onclick="fetchProfils().then(render)"><i class="ti ti-refresh" aria-hidden="true"></i> Actualiser</button>
+    ${S.sel.size>0?`<button class="btn btn-r" style="font-size:11px" onclick="S.sel=new Set();render()">Désélectionner (${S.sel.size})</button>`:''}
+    <button class="btn" style="font-size:11px" onclick="loadAll().then(()=>showToast('À jour','ok'))"><i class="ti ti-refresh" aria-hidden="true"></i> Actualiser</button>
     <select onchange="S.profilSort=this.value;render()" style="font-family:inherit;font-size:12px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;margin-left:auto">
       <option value="nom" ${S.profilSort==='nom'?'selected':''}>Trier : Nom</option>
       <option value="poste" ${S.profilSort==='poste'?'selected':''}>Trier : Poste</option>
@@ -775,10 +624,16 @@ function rProfils(){
     </div>
   </div>${list.length===0?`<div style="text-align:center;color:#9ca3af;font-size:13px;padding:3rem">Aucun profil avec prétention salariale</div>`:cards}`;
 }
+// Filtre en direct sans perdre le focus du champ de recherche
+function rProfilsLive(){
+  const a=document.activeElement;const id=a&&a.id;const pos=a&&a.selectionStart;
+  render();
+  if(id){const el=document.getElementById(id);if(el){el.focus();try{el.setSelectionRange(pos,pos);}catch(e){}}}
+}
 
 // ── POSTES ──
 function rPostes(){
-  const nbCands=id=>S.sharedProfils.filter(p=>p.posteTitre===S.postes.find(x=>x.id===id)?.titre).length;
+  const nbCands=id=>S.candidates.filter(c=>c.posteId===id).length;
   // Sort postes
   let postes=[...S.postes];
   if(S.posteSort==='titre')postes.sort((a,b)=>a.titre.localeCompare(b.titre));
@@ -844,27 +699,26 @@ function rPostes(){
   </div>
   ${content}`;
 }
-
 // ── PARAMÈTRES ──
 function rParams(){
   const curSrc=isAdmin()?(document.getElementById('par-src-sel')?.value||S.sourceurs[0]):getMe();
   const sts=S.statuts[curSrc]||[];
   return`<div style="max-width:560px">
     ${isAdmin()?`<div class="par-sec"><h3><i class="ti ti-users" aria-hidden="true"></i> Sourceurs</h3>
-      ${S.sourceurs.map((s,i)=>`<div class="par-item"><span style="flex:1">${s}</span>${i>0?`<button class="btn btn-r" style="font-size:11px;padding:2px 8px" onclick="delSrc('${s}')"><i class="ti ti-trash" aria-hidden="true"></i></button>`:'<span style="font-size:10px;color:#9ca3af">Principal</span>'}</div>`).join('')}
+      ${S.sourceurs.map((s,i)=>`<div class="par-item"><span style="flex:1">${esc(s)}</span>${i>0?`<button class="btn btn-r" style="font-size:11px;padding:2px 8px" onclick="delSrc('${s}')"><i class="ti ti-trash" aria-hidden="true"></i></button>`:'<span style="font-size:10px;color:#9ca3af">Principal</span>'}</div>`).join('')}
       <div style="display:flex;gap:6px;margin-top:10px"><input id="new-src" class="fi" placeholder="Nom du sourceur..." style="flex:1"><button class="btn btn-p" onclick="addSrc()">Ajouter</button></div>
     </div>`:''}
     <div class="par-sec"><h3><i class="ti ti-layout-kanban" aria-hidden="true"></i> Statuts ${isAdmin()?'par sourceur':'de ma zone'}</h3>
       ${isAdmin()?`<select id="par-src-sel" class="fi" style="width:auto;margin-bottom:12px" onchange="render()">
-        ${S.sourceurs.map(s=>`<option value="${s}"${s===curSrc?' selected':''}>${s}</option>`).join('')}
-      </select>`:`<div style="font-size:12px;color:var(--navy);font-weight:600;margin-bottom:12px">${getMe()}</div>`}
-      ${sts.map((st,i)=>`<div class="par-item">
-        <input value="${esc(st)}" style="flex:1;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;font-family:var(--fs)" onblur="if(this.value.trim()&&this.value.trim()!=='${esc(st)}'){S.candidates.forEach(c=>{if(c.sourcer==='${curSrc}'&&c.statut==='${esc(st)}')c.statut=this.value.trim()});S.statuts['${curSrc}'][${i}]=this.value.trim();saveLocal();}">
+        ${S.sourceurs.map(s=>`<option value="${esc(s)}"${s===curSrc?' selected':''}>${esc(s)}</option>`).join('')}
+      </select>`:`<div style="font-size:12px;color:var(--navy);font-weight:600;margin-bottom:12px">${esc(getMe())}</div>`}
+      ${isAdmin()?sts.map((st,i)=>`<div class="par-item">
+        <input value="${esc(st)}" style="flex:1;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;font-family:var(--fs)" onblur="renCol('${curSrc}',${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()">
         <button class="btn" style="font-size:11px;padding:3px 7px" onclick="mvSt('${curSrc}',${i},-1)"${i===0?' disabled':''}>↑</button>
         <button class="btn" style="font-size:11px;padding:3px 7px" onclick="mvSt('${curSrc}',${i},1)"${i===sts.length-1?' disabled':''}>↓</button>
-        <button class="btn btn-r" style="font-size:11px;padding:3px 7px" onclick="delSt('${curSrc}',${i})"><i class="ti ti-trash" aria-hidden="true"></i></button>
-      </div>`).join('')}
-      <div style="display:flex;gap:6px;margin-top:10px"><input id="new-st" class="fi" placeholder="Nouveau statut..." style="flex:1"><button class="btn btn-p" onclick="addSt('${curSrc}')">Ajouter</button></div>
+        <button class="btn btn-r" style="font-size:11px;padding:3px 7px" onclick="delCol('${curSrc}',${i})"><i class="ti ti-trash" aria-hidden="true"></i></button>
+      </div>`).join('')+`<div style="display:flex;gap:6px;margin-top:10px"><input id="new-st" class="fi" placeholder="Nouveau statut..." style="flex:1"><button class="btn btn-p" onclick="addSt('${curSrc}')">Ajouter</button></div>`
+      :sts.map(st=>`<div class="par-item"><span style="flex:1;font-size:12px">${esc(st)}</span></div>`).join('')+`<div style="font-size:11px;color:#9ca3af;margin-top:8px">Les statuts sont gérés par Mehdi.</div>`}
     </div>
     <div class="par-sec"><h3><i class="ti ti-upload" aria-hidden="true"></i> Importer des données</h3>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -874,9 +728,13 @@ function rParams(){
     </div>
     <div class="par-sec"><h3><i class="ti ti-download" aria-hidden="true"></i> Exporter des données</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-g" onclick="expCSV('c')"><i class="ti ti-download" aria-hidden="true"></i> Candidats locaux CSV</button>
+        <button class="btn btn-g" onclick="expCSV('c')"><i class="ti ti-download" aria-hidden="true"></i> Candidats CSV</button>
         <button class="btn btn-g" onclick="expCSV('p')"><i class="ti ti-download" aria-hidden="true"></i> Postes CSV</button>
       </div>
+    </div>
+    <div class="par-sec"><h3><i class="ti ti-database-import" aria-hidden="true"></i> Reprendre les données de cet ordinateur</h3>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:10px;line-height:1.6">Envoie dans la base commune les profils, CVs et statuts qui n'existaient que sur ce navigateur. Aucun doublon créé, rien n'est supprimé de cet ordinateur. Tu peux relancer sans risque.</div>
+      <button class="btn btn-p" onclick="openMigration()"><i class="ti ti-cloud-upload" aria-hidden="true"></i> Reprendre mes données locales</button>
     </div>
   </div>`;
 }
@@ -884,21 +742,14 @@ function rParams(){
 // ═══════════════════════════════════════
 // SÉLECTION + MAIL
 // ═══════════════════════════════════════
-function toggleSel(id,e){if(e)e.stopPropagation();if(S.sel.has(id))S.sel.delete(id);else S.sel.add(id);updateMailBtn();render();}
-function toggleSelSb(sbId,e){if(e)e.stopPropagation();const k='sb_'+sbId;if(S.sel.has(k))S.sel.delete(k);else S.sel.add(k);updateMailBtn();render();}
-function toggleSelAllSb(cb,ids){ids.forEach(id=>{const k='sb_'+id;if(cb.checked)S.sel.add(k);else S.sel.delete(k);});updateMailBtn();render();}
+function toggleSel(id,e){if(e)e.stopPropagation();if(S.sel.has(id))S.sel.delete(id);else S.sel.add(id);render();}
+function toggleSelAll(cb,ids){ids.forEach(id=>{if(cb.checked)S.sel.add(id);else S.sel.delete(id);});render();}
 
 function getSelData(){
   const result=[];
-  S.sel.forEach(key=>{
-    if(key.startsWith('sb_')){
-      const sbId=key.slice(3);
-      const p=S.sharedProfils.find(x=>x.sbId===sbId);
-      if(p)result.push({nom:p.nom,trigramme:p.trigramme,posteTitre:p.posteTitre,dispo:p.dispo,mobilite:p.mobilite,pretention:p.pretention,freelance:p.freelance,remarque:p.remarque,score:p.score,verdict:p.verdict,_sbId:sbId});
-    }else{
-      const c=S.candidates.find(x=>x.id===key);
-      if(c){const p=gp(c.posteId);result.push({nom:c.nom,trigramme:c.trigramme,posteTitre:p?p.titre:(c.posteTitre||''),dispo:c.dispo,mobilite:c.mobilite,pretention:c.pretention,freelance:c.freelance,remarque:c.remarque,score:c.score,verdict:c.verdict,_id:c.id});}
-    }
+  S.sel.forEach(id=>{
+    const c=S.candidates.find(x=>x.id===id);
+    if(c){const p=gp(c.posteId);result.push({nom:c.nom,trigramme:c.trigramme,posteTitre:p?p.titre:(c.posteTitre||''),dispo:c.dispo,mobilite:c.mobilite,pretention:c.pretention,freelance:c.freelance,remarque:c.remarque,score:c.score,verdict:c.verdict,_id:c.id,cvOUrl:c.cvOUrl,cvOName:c.cvOName,cvAUrl:c.cvAUrl,cvAName:c.cvAName});}
   });
   return result;
 }
@@ -1003,121 +854,71 @@ function ouvrirOutlook(){
   a.style.display='none';document.body.appendChild(a);a.click();
   setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}},200);
 }
-
-function dlTousCVs(){
-  const sel=getSelData();
-  const localCVs=[];
-  const supabaseCVs=[];
-
-  sel.forEach(c=>{
-    const local=S.candidates.find(x=>x.id===c._id||(c._sbId&&x.sbId===c._sbId));
-    if(local){
-      if(local.cvO&&local.cvO.data)
-        localCVs.push({nom:local.nom||local.trigramme||'?',label:'CV original',data:local.cvO.data,name:local.cvO.name||'CV_original.pdf'});
-      if(local.cvA&&local.cvA.data)
-        localCVs.push({nom:local.nom||local.trigramme||'?',label:'CV anonymisé',data:local.cvA.data,name:local.cvA.name||'CV_anonyme.pdf'});
-      if(local.cvOriginalUrl&&!(local.cvO&&local.cvO.data))
-        supabaseCVs.push({nom:local.nom||local.trigramme||'?',label:'CV original',url:local.cvOriginalUrl});
-      if(local.cvAnonymeUrl&&!(local.cvA&&local.cvA.data))
-        supabaseCVs.push({nom:local.nom||local.trigramme||'?',label:'CV anonymisé',url:local.cvAnonymeUrl});
-    } else {
-      const shared=S.sharedProfils.find(x=>x.sbId===c._sbId);
-      if(shared){
-        if(shared.cvOriginalUrl) supabaseCVs.push({nom:shared.nom||shared.trigramme||'?',label:'CV original',url:shared.cvOriginalUrl});
-        if(shared.cvAnonymeUrl) supabaseCVs.push({nom:shared.nom||shared.trigramme||'?',label:'CV anonymisé',url:shared.cvAnonymeUrl});
-      }
-    }
-  });
-
-  if(localCVs.length===0&&supabaseCVs.length===0){
-    showToast('Aucun CV joint pour ces profils','warn');
-    return;
+// ── Téléchargement des CVs (depuis la base) ──
+async function dlRemote(url,name,btn){
+  try{
+    if(btn){btn.disabled=true;btn.textContent='…';}
+    const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);
+    const b=await r.blob();
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name||'CV.pdf';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    if(btn){btn.textContent='✓ Téléchargé';btn.disabled=false;}
+  }catch(e){
+    console.warn('dlRemote',e);window.open(url,'_blank');
+    if(btn){btn.textContent='Télécharger';btn.disabled=false;}
   }
-
-  // ── Build popup ──
+}
+function cvList(){
+  const out=[];
+  getSelData().forEach(c=>{
+    if(c.cvOUrl)out.push({nom:c.nom||c.trigramme||'?',label:'CV original',url:c.cvOUrl,name:c.cvOName||'CV_original.pdf'});
+    if(c.cvAUrl)out.push({nom:c.nom||c.trigramme||'?',label:'CV anonymisé',url:c.cvAUrl,name:c.cvAName||'CV_anonyme.pdf'});
+  });
+  return out;
+}
+function dlTousCVs(){
+  const sel=getSelData();const list=cvList();
+  if(!list.length){showToast('Aucun CV joint pour ces profils','warn');return;}
+  window._dlCVs=list;
   const existing=document.getElementById('cv-dl-popup');if(existing)existing.remove();
   const popup=document.createElement('div');
   popup.id='cv-dl-popup';
   popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center';
-
-  const totalCount=localCVs.length+supabaseCVs.length;
-
-  // Local CVs section
-  // Store localCVs on window for indexed access — avoids any escaping issue
-  window._dlLocalCVs=localCVs;
-
-  const localRows=localCVs.map((cv,i)=>
-    `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb">
-      <div>
-        <div style="font-weight:600;font-size:13px;color:#111">${cv.nom}</div>
-        <div style="font-size:11px;color:#6b7280">${cv.label} — <span style="color:#9ca3af">${cv.name}</span></div>
+  const rows=list.map((cv,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb">
+      <div><div style="font-weight:600;font-size:13px;color:#111">${esc(cv.nom)}</div>
+      <div style="font-size:11px;color:#6b7280">${cv.label} — <span style="color:#9ca3af">${esc(cv.name)}</span></div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <a href="${esc(cv.url)}" target="_blank" class="btn" style="text-decoration:none;font-size:12px">Ouvrir</a>
+        <button class="btn btn-p" style="font-size:12px" onclick="dlRemote(window._dlCVs[${i}].url,window._dlCVs[${i}].name,this)">Télécharger</button>
+      </div></div>`).join('');
+  popup.innerHTML=`<div style="background:#fff;border-radius:14px;width:560px;max-width:95vw;max-height:85vh;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2);display:flex;flex-direction:column">
+      <div style="padding:18px 22px 14px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+        <div><div style="font-size:16px;font-weight:700;color:#111">CVs sélectionnés</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">${list.length} CV(s) pour ${sel.length} profil(s)</div></div>
+        <button onclick="document.getElementById('cv-dl-popup').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af">×</button>
       </div>
-      <button onclick="dlLocalCv(${i},this)"
-        style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#0d3b6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">
-        <i class="ti ti-download" aria-hidden="true"></i> Télécharger
-      </button>
-    </div>`
-  ).join('');
-
-  // Supabase CVs section
-  const sbRows=supabaseCVs.map((cv,i)=>
-    `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #fde68a${i===supabaseCVs.length-1?';border-bottom:none':''}">
-      <div>
-        <div style="font-weight:600;font-size:13px;color:#92400e">${cv.nom}</div>
-        <div style="font-size:11px;color:#b45309">${cv.label}</div>
-      </div>
-      <a href="${cv.url}" target="_blank"
-        style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#854d0e;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0">
-        <i class="ti ti-external-link" aria-hidden="true"></i> Ouvrir
-      </a>
-    </div>`
-  ).join('');
-
-  popup.innerHTML=`
-    <div style="background:#fff;border-radius:14px;padding:0;width:520px;max-width:95vw;max-height:85vh;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2);display:flex;flex-direction:column">
-      <div style="padding:20px 24px 16px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-        <div>
-          <div style="font-size:16px;font-weight:700;color:#111">CVs sélectionnés</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:2px">${totalCount} CV(s) pour ${sel.length} profil(s)</div>
-        </div>
-        <button onclick="document.getElementById('cv-dl-popup').remove()"
-          style="background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af;line-height:1;padding:4px">×</button>
-      </div>
-      <div style="overflow-y:auto;padding:16px 24px;flex:1">
-        ${localCVs.length>0?`
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0d3b6e;margin-bottom:8px;display:flex;align-items:center;gap:6px">
-            <i class="ti ti-device-floppy" aria-hidden="true"></i> Sur ton ordinateur (${localCVs.length})
-          </div>
-          ${localRows}
-          ${supabaseCVs.length>0?'<div style="height:16px"></div>':''}
-        `:''}
-        ${supabaseCVs.length>0?`
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#92400e;margin-bottom:8px;display:flex;align-items:center;gap:6px;margin-top:${localCVs.length>0?'4px':'0'}">
-            <i class="ti ti-cloud" aria-hidden="true"></i> Base commune — s'ouvre dans un onglet (${supabaseCVs.length})
-          </div>
-          <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 12px">
-            ${sbRows}
-          </div>
-        `:''}
-      </div>
-      <div style="padding:14px 24px;border-top:1px solid #e5e7eb;flex-shrink:0;display:flex;justify-content:flex-end">
-        <button onclick="document.getElementById('cv-dl-popup').remove()"
-          style="padding:8px 20px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;color:#374151">
-          Fermer
-        </button>
-      </div>
-    </div>`;
-
+      <div style="overflow-y:auto;padding:8px 22px;flex:1">${rows}</div>
+      <div style="padding:12px 22px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:8px">
+        <button class="btn btn-g" onclick="dlAllSeq(this)"><i class="ti ti-download" aria-hidden="true"></i> Tout télécharger</button>
+        <button class="btn" onclick="document.getElementById('cv-dl-popup').remove()">Fermer</button>
+      </div></div>`;
   document.body.appendChild(popup);
   popup.addEventListener('click',e=>{if(e.target===popup)popup.remove();});
+}
+async function dlAllSeq(btn){
+  const list=window._dlCVs||[];btn.disabled=true;
+  for(let i=0;i<list.length;i++){btn.textContent=`${i+1}/${list.length}…`;await dlRemote(list[i].url,list[i].name);await new Promise(r=>setTimeout(r,400));}
+  btn.textContent='✓ Terminé';btn.disabled=false;
 }
 
 // ═══════════════════════════════════════
 // FORM CANDIDAT
 // ═══════════════════════════════════════
+
 function openForm(id){
   const isEdit=!!id;const c=isEdit?S.candidates.find(x=>x.id===id):null;
-  eCV={o:c?.cvO||null,a:c?.cvA||null};
+  eCV={o:c&&c.cvOUrl?{name:c.cvOName||'CV original',url:c.cvOUrl}:null,a:c&&c.cvAUrl?{name:c.cvAName||'CV anonyme',url:c.cvAUrl}:null};
+  eCVFiles={o:null,a:null};window._currentEditId=id||null;
   const srcr=c?c.sourcer:getWho();const ep=c?gp(c.posteId):null;
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
   <div class="modal" onclick="event.stopPropagation()">
@@ -1157,7 +958,7 @@ function openForm(id){
       <input class="fi" id="f-rem" value="${esc(c?.remarque||'')}" autocomplete="off" oninput="filtRem();saveDraft()" onblur="setTimeout(()=>{const d=document.getElementById('rem-drop');if(d)d.style.display='none'},220)">
       <div id="rem-drop" class="drop-list" style="display:none"></div>
     </div>
-    <div class="fr"><label class="fl">Téléphone</label><input class="fi" id="f-tel" value="${esc(c?.telephone||'')}" placeholder="ex: 06 12 34 56 78"></div>
+    <div class="fr"><label class="fl">Téléphone</label><input class="fi" id="f-tel" value="${esc(c?.telephone||'')}" placeholder="ex: 06 12 34 56 78" oninput="saveDraft()"></div>
     ${c?.score?`<div class="fr"><label class="fl">Score analyse</label><div class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="display:inline-flex">${c.score}/100 — ${c.verdict}</div></div>`:''}
     <div class="cv-sec">
       <div style="font-size:12px;font-weight:600;margin-bottom:8px">CVs</div>
@@ -1177,6 +978,7 @@ function openForm(id){
         if(draft.dis)set('f-dis',draft.dis);
         if(draft.pret)set('f-pret',draft.pret);
         if(draft.rem)set('f-rem',draft.rem);
+        if(draft.tel)set('f-tel',draft.tel);
         if(draft.free){const el=document.getElementById('f-free');if(el)el.value=draft.free;}
         if(draft.ps){
           set('f-ps',draft.ps);
@@ -1186,7 +988,7 @@ function openForm(id){
           const tags=document.getElementById('mob-tags');
           if(tags) draft.mobilite.forEach(v=>{
             const d=document.createElement('div');d.className='tg';
-            d.innerHTML=v+'<span class="tg-x" onclick="this.parentElement.remove();saveDraft()">×</span>';
+            d.innerHTML=esc(v)+'<span class="tg-x" onclick="this.parentElement.remove();saveDraft()">×</span>';
             tags.appendChild(d);
           });
         }
@@ -1243,12 +1045,61 @@ function addCity(v){const cont=document.getElementById('mob-tags');const inp=doc
 function cityKey(e){if(e.key==='Enter'){e.preventDefault();const v=(document.getElementById('f-city')?.value||'').trim();if(v)addCity(v);}}
 function filtRem(){const val=(document.getElementById('f-rem')?.value||'').toLowerCase();const drop=document.getElementById('rem-drop');if(!drop)return;const hist=S.remHist.filter(r=>!val||r.toLowerCase().includes(r));if(!hist.length){drop.style.display='none';return;}drop.innerHTML=hist.slice(0,8).map(r=>`<div onmousedown="event.preventDefault()" onclick="selRem(this)">${esc(r)}</div>`).join('');drop.style.display='block';}
 function selRem(el){const inp=document.getElementById('f-rem');if(inp)inp.value=el.textContent;const d=document.getElementById('rem-drop');if(d)d.style.display='none';}
-function fCvUp(type,input){if(!input.files[0])return;const f=input.files[0];eCVFiles[type]=f;const r=new FileReader();r.onload=e=>{eCV[type]={name:f.name,data:e.target.result};const lbl=document.getElementById(type==='o'?'cvol':'cval');if(lbl)lbl.textContent=f.name;const act=document.getElementById(type==='o'?'cvo-act':'cva-act');if(act)act.style.display='flex';const up=lbl?.parentElement;if(up)up.classList.add('has');};r.readAsDataURL(f);}
-function fCvDl(type){const cv=eCV[type];if(!cv)return;const a=document.createElement('a');a.href=cv.data;a.download=cv.name;a.click();}
-function fCvRm(type){eCV[type]=null;const lbl=document.getElementById(type==='o'?'cvol':'cval');if(lbl)lbl.textContent='Choisir fichier';const act=document.getElementById(type==='o'?'cvo-act':'cva-act');if(act)act.style.display='none';const up=lbl?.parentElement;if(up)up.classList.remove('has');}
 function chkDupC(){const val=(document.getElementById('f-nom')?.value||'').trim();const el=document.getElementById('dup-c');if(!el||val.length<3){if(el)el.innerHTML='';return;}const dups=S.candidates.filter(c=>sim(c.nom,val)>0.7);el.innerHTML=dups.length?`<div class="warn-txt">Profil similaire : ${dups.map(d=>esc(d.nom)).join(', ')}</div>`:'';}
 
+function cvUiUpdate(type){
+  const cv=eCV[type];
+  const lbl=document.getElementById(type==='o'?'cvol':'cval');if(lbl)lbl.textContent=cv?cv.name:'Choisir fichier';
+  const act=document.getElementById(type==='o'?'cvo-act':'cva-act');if(act)act.style.display=cv?'flex':'none';
+  if(lbl?.parentElement)lbl.parentElement.classList.toggle('has',!!cv);
+}
+function fCvUp(type,input){
+  if(!input.files[0])return;const f=input.files[0];
+  if(f.size>15*1024*1024){showToast('Fichier trop lourd (15 Mo max)','warn');input.value='';return;}
+  eCVFiles[type]=f;eCV[type]={name:f.name,url:null};cvUiUpdate(type);
+}
+function fCvDl(type){
+  if(eCVFiles[type]){const a=document.createElement('a');a.href=URL.createObjectURL(eCVFiles[type]);a.download=eCVFiles[type].name;document.body.appendChild(a);a.click();a.remove();return;}
+  const cv=eCV[type];if(cv&&cv.url)dlRemote(cv.url,cv.name);
+}
+function fCvRm(type){eCV[type]=null;eCVFiles[type]=null;cvUiUpdate(type);}
+
+function captureFormState(){
+  return{
+    editId:window._currentEditId||null,
+    nom:document.getElementById('f-nom')?.value||'',
+    trigramme:document.getElementById('f-tri')?.value||'',
+    dispo:document.getElementById('f-dis')?.value||'',
+    pretention:document.getElementById('f-pret')?.value||'',
+    freelance:document.getElementById('f-free')?.value||'Non',
+    sourcer:document.getElementById('f-src')?.value||S.srcr,
+    remarque:document.getElementById('f-rem')?.value||'',
+    telephone:document.getElementById('f-tel')?.value||'',
+    mobilite:[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim()),
+    posteSearch:document.getElementById('f-ps')?.value||'',
+    posteId:document.getElementById('f-pid')?.value||'',
+    cvO:eCV.o,cvA:eCV.a,files:{o:eCVFiles.o,a:eCVFiles.a},
+  };
+}
+
+function popupChoice(html,buttons){
+  return new Promise(resolve=>{
+    const existing=document.getElementById('poste-check-popup');if(existing)existing.remove();
+    const popup=document.createElement('div');
+    popup.id='poste-check-popup';
+    popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center';
+    popup.innerHTML=`<div style="background:#fff;border-radius:12px;padding:24px;width:480px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">${html}<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px">${buttons.map((b,i)=>`<button data-i="${i}" style="${b.style}">${b.label}</button>`).join('')}</div></div>`;
+    document.body.appendChild(popup);
+    popup.querySelectorAll('button').forEach(btn=>btn.onclick=()=>{popup.remove();resolve(buttons[+btn.dataset.i].value);});
+  });
+}
+const BTN_GREY='padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;color:#374151';
+const BTN_NAVY='padding:8px 16px;background:#0d3b6e;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+const BTN_GREEN='padding:8px 16px;background:#0e7c3a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+
+let _saving=false;
 async function saveC(id){
+  if(_saving)return;
   const nom=(document.getElementById('f-nom')?.value||'').trim();
   const posteId=document.getElementById('f-pid')?.value||'';
   const posteSaisi=(document.getElementById('f-ps')?.value||'').trim();
@@ -1257,255 +1108,148 @@ async function saveC(id){
     if(el){el.style.border='1.5px solid #dc2626';el.focus();setTimeout(()=>{if(el)el.style.border='';},2000);}
     showToast('Le nom du candidat est obligatoire','warn');return;
   }
-  // Poste non sélectionné dans la liste
+  // ── Poste non sélectionné dans la liste ──
   if(!posteId){
     if(!posteSaisi){
       showToast('Veuillez indiquer un poste','warn');
       const el=document.getElementById('f-ps');if(el){el.style.border='1.5px solid #dc2626';el.focus();setTimeout(()=>{if(el)el.style.border='';},2000);}
       return;
     }
-
-    // Capture current form state before any popup
-    const captureState=()=>({
-      editId:id||null,
-      nom:document.getElementById('f-nom')?.value||'',
-      trigramme:document.getElementById('f-tri')?.value||'',
-      dispo:document.getElementById('f-dis')?.value||'',
-      pretention:document.getElementById('f-pret')?.value||'',
-      freelance:document.getElementById('f-free')?.value||'Non',
-      sourcer:document.getElementById('f-src')?.value||S.srcr,
-      remarque:document.getElementById('f-rem')?.value||'',
-      mobilite:[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim()),
-      posteSearch:posteSaisi,
-      posteId:'',
-      cvO:eCV.o,cvA:eCV.a,
-    });
-
-    // Check for similar existing poste
     const similar=S.postes.filter(p=>sim(p.titre,posteSaisi)>0.6);
-
+    let action;
     if(similar.length){
-      const action=await new Promise(resolve=>{
-        const existing=document.getElementById('poste-check-popup');if(existing)existing.remove();
-        const popup=document.createElement('div');
-        popup.id='poste-check-popup';
-        popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center';
-        popup.innerHTML=`
-          <div style="background:#fff;border-radius:12px;padding:24px;width:480px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-            <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;display:flex;align-items:center;gap:8px">
-              <span style="font-size:20px">🔍</span> Poste similaire trouvé
-            </div>
-            <div style="font-size:13px;color:#6b7280;margin-bottom:16px">
-              Tu as saisi <strong style="color:#111">"${posteSaisi}"</strong>. Un poste similaire existe déjà :
-            </div>
-            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px;margin-bottom:16px">
-              <div style="font-weight:600;color:#0369a1;font-size:13px">${esc(similar[0].titre)}</div>
-              ${similar[0].client?`<div style="font-size:11px;color:#6b7280;margin-top:2px">${esc(similar[0].client)}</div>`:''}
-            </div>
-            <div style="font-size:12px;color:#374151;margin-bottom:16px">Est-ce le même poste ?</div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-              <button id="pcp-new" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;color:#374151">
-                Non — créer <strong>"${posteSaisi.length>25?posteSaisi.slice(0,25)+'…':posteSaisi}"</strong>
-              </button>
-              <button id="pcp-use" style="padding:8px 16px;background:#0d3b6e;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-                ✓ Oui — utiliser ce poste
-              </button>
-            </div>
-          </div>`;
-        document.body.appendChild(popup);
-        document.getElementById('pcp-use').onclick=()=>{popup.remove();resolve('used');};
-        document.getElementById('pcp-new').onclick=()=>{popup.remove();resolve('create');};
-      });
-
-      if(action==='used'){
-        // Set the similar poste and re-run saveC
-        const hid=document.getElementById('f-pid');if(hid)hid.value=similar[0].id;
-        const ps=document.getElementById('f-ps');if(ps)ps.value=similar[0].titre;
-        await saveC(id);return;
-      }
-      // action === 'create' — save state, create poste, reopen form
-      pendingCandidatState=captureState();
-      const newP={id:uid(),titre:posteSaisi,client:'',secteur:'',lieux:[],urgence:'',statut:'🟢 Actif',salaire:'',experience:'',nbCandidats:'',competences:'',description:''};
-      S.postes.push(newP);
-      try{await pushPoste(newP);}catch(e){console.error('pushPoste:',e);}
-      localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
-      showToast('Poste "'+posteSaisi+'" créé','ok');
-      reopenCandidatFormWithState(newP.id,newP.titre);
-      return;
+      action=await popupChoice(`<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px">🔍 Poste similaire trouvé</div>
+        <div style="font-size:13px;color:#6b7280;margin-bottom:12px">Tu as saisi <strong style="color:#111">"${esc(posteSaisi)}"</strong>. Un poste similaire existe déjà :</div>
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px"><div style="font-weight:600;color:#0369a1;font-size:13px">${esc(similar[0].titre)}</div>${similar[0].client?`<div style="font-size:11px;color:#6b7280;margin-top:2px">${esc(similar[0].client)}</div>`:''}</div>
+        <div style="font-size:12px;color:#374151;margin-top:12px">Est-ce le même poste ?</div>`,
+        [{label:'Annuler',style:BTN_GREY,value:'cancel'},{label:'Non — créer "'+esc(posteSaisi.length>25?posteSaisi.slice(0,25)+'…':posteSaisi)+'"',style:BTN_GREY,value:'create'},{label:'✓ Oui — utiliser ce poste',style:BTN_NAVY,value:'used'}]);
+    }else{
+      action=await popupChoice(`<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px">📋 Nouveau poste</div>
+        <div style="font-size:13px;color:#6b7280">Le poste <strong style="color:#111">"${esc(posteSaisi)}"</strong> n'existe pas encore dans la liste.<br>Voulez-vous le créer automatiquement ?</div>`,
+        [{label:'Annuler',style:BTN_GREY,value:'cancel'},{label:'✓ Créer le poste',style:BTN_GREEN,value:'create'}]);
     }
-
-    // No similar — ask to create directly
-    const confirmed=await new Promise(resolve=>{
-      const existing=document.getElementById('poste-check-popup');if(existing)existing.remove();
-      const popup=document.createElement('div');
-      popup.id='poste-check-popup';
-      popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center';
-      popup.innerHTML=`
-        <div style="background:#fff;border-radius:12px;padding:24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-          <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">📋</span> Nouveau poste
-          </div>
-          <div style="font-size:13px;color:#6b7280;margin-bottom:16px">
-            Le poste <strong style="color:#111">"${posteSaisi}"</strong> n'existe pas encore dans la liste.<br>
-            Voulez-vous le créer automatiquement ?
-          </div>
-          <div style="display:flex;gap:8px;justify-content:flex-end">
-            <button id="pcp-cancel" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;color:#374151">Annuler</button>
-            <button id="pcp-create" style="padding:8px 16px;background:#0e7c3a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-              ✓ Créer le poste
-            </button>
-          </div>
-        </div>`;
-      document.body.appendChild(popup);
-      document.getElementById('pcp-create').onclick=()=>{popup.remove();resolve(true);};
-      document.getElementById('pcp-cancel').onclick=()=>{popup.remove();resolve(false);};
-    });
-    if(!confirmed)return;
-    // Save state, create poste, reopen form
-    pendingCandidatState=captureState();
+    if(action==='cancel'||!action)return;
+    if(action==='used'){
+      document.getElementById('f-pid').value=similar[0].id;
+      document.getElementById('f-ps').value=similar[0].titre;
+      return saveC(id);
+    }
+    // création du poste puis réouverture du formulaire avec tout ce qui était saisi
+    const state=captureFormState();
     const newP={id:uid(),titre:posteSaisi,client:'',secteur:'',lieux:[],urgence:'',statut:'🟢 Actif',salaire:'',experience:'',nbCandidats:'',competences:'',description:''};
-    S.postes.push(newP);
-    try{await pushPoste(newP);}catch(e){console.error('pushPoste:',e);}
-    localStorage.setItem('tn_postes_cache',JSON.stringify(S.postes));
-    showToast('Poste "'+posteSaisi+'" créé','ok');
+    try{await pushPoste(newP);}
+    catch(e){console.error('pushPoste',e);showToast('Création du poste impossible — rien n\'a été perdu, réessaie','warn');return;}
+    S.postes.unshift(newP);
+    pendingCandidatState=state;
+    showToast('Poste "'+posteSaisi+'" créé — clique sur Enregistrer pour finir','ok');
     reopenCandidatFormWithState(newP.id,newP.titre);
     return;
   }
+
+  // ── Enregistrement du profil ──
   const rem=(document.getElementById('f-rem')?.value||'').trim();
-  if(rem&&!S.remHist.includes(rem))S.remHist.unshift(rem);
-  if(S.remHist.length>20)S.remHist=S.remHist.slice(0,20);
   const mobilite=[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
   const sourcer=isAdmin()?(document.getElementById('f-src')?.value||getMe()):getMe();
-  const data={nom,trigramme:(document.getElementById('f-tri')?.value||'').trim(),posteId,dispo:(document.getElementById('f-dis')?.value||'').trim(),mobilite,pretention:(document.getElementById('f-pret')?.value||'').trim(),freelance:document.getElementById('f-free')?.value||'Non',sourcer,remarque:rem,telephone:(document.getElementById('f-tel')?.value||'').trim(),cvO:eCV.o,cvA:eCV.a,analyse:pendingAnalyse};
-  pendingAnalyse=null;
-  let c;
-  if(id){c=S.candidates.find(x=>x.id===id);if(c)Object.assign(c,data);}
-  else{const sts=S.statuts[sourcer]||[...DEFAULT_STATUTS];c={id:uid(),statut:sts[0],sbId:null,score:null,verdict:null,...data};S.candidates.push(c);}
-  // Clear _fromSB flag — candidate is now owned/edited locally
-  if(c._fromSB) delete c._fromSB;
-  saveLocal();
-  clearDraft();
-  closeM();render();
-  // Sync candidat to shared candidats table
-  syncCandidatToSB(c).catch(e=>console.warn('syncCandidatToSB:',e));
-  // Sync to Supabase if has pretention
-  if(data.pretention&&data.pretention.trim()){
-    try{
-      await syncCandidatProfil(c);
-      await uploadCvAfterSync(c);
-      saveLocal();
-      await fetchProfils();
-      showToast('Profil synchronisé','ok');
-    }catch(e){console.error(e);showToast('Sync Supabase échoué — données sauvegardées localement','warn');}
+  const p=gp(posteId);
+  const fields={
+    nom,trigramme:(document.getElementById('f-tri')?.value||'').trim(),
+    posteId,posteTitre:p?p.titre:posteSaisi,
+    dispo:(document.getElementById('f-dis')?.value||'').trim(),mobilite,
+    pretention:(document.getElementById('f-pret')?.value||'').trim(),
+    freelance:document.getElementById('f-free')?.value||'Non',
+    sourcer,remarque:rem,
+    telephone:(document.getElementById('f-tel')?.value||'').trim(),
+  };
+  const old=id?S.candidates.find(x=>x.id===id):null;
+  const cid=old?old.id:uid();
+  _saving=true;
+  const saveBtn=document.querySelector('.m-actions .btn-p');if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Enregistrement…';}
+  try{
+    // 1) CVs : envoi dans la base AVANT d'enregistrer le profil (si ça échoue, rien n'est perdu, le formulaire reste ouvert)
+    const cv={o:eCV.o?{url:eCV.o.url,name:eCV.o.name}:null,a:eCV.a?{url:eCV.a.url,name:eCV.a.name}:null};
+    for(const t of ['o','a']){
+      if(eCVFiles[t]){showToast('Envoi du CV…','ok');cv[t]=await uploadCvFile(cid,t,eCVFiles[t]);}
+    }
+    const cvFields={cvOUrl:cv.o?cv.o.url:null,cvOName:cv.o?cv.o.name:null,cvAUrl:cv.a?cv.a.url:null,cvAName:cv.a?cv.a.name:null};
+    const pend=window._pendingScore||null;
+    let saved;
+    if(old){
+      const upd={
+        nom:fields.nom,trigramme:fields.trigramme,poste_titre:fields.posteTitre,dispo:fields.dispo,
+        mobilite:JSON.stringify(mobilite),pretention:fields.pretention,freelance:fields.freelance,
+        remarque:fields.remarque,sourcer,telephone:fields.telephone,
+        cv_original_url:cvFields.cvOUrl,cv_original_name:cvFields.cvOName,
+        cv_anonyme_url:cvFields.cvAUrl,cv_anonyme_name:cvFields.cvAName,
+      };
+      if(pendingAnalyse)upd.analyse_cv=pendingAnalyse;
+      if(pend&&pend.score){upd.score=pend.score;upd.verdict=pend.verdict||null;}
+      let newStatut=old.statut,newOrdre=old.ordre;
+      if(sourcer!==old.sourcer){newStatut=(S.statuts[sourcer]||DEFAULT_STATUTS)[0];newOrdre=null;upd.statut=newStatut;upd.ordre=null;}
+      await dbUpd(cid,upd);
+      const oldUrls=[old.cvOUrl,old.cvAUrl].filter(u=>u&&u!==cvFields.cvOUrl&&u!==cvFields.cvAUrl);
+      Object.assign(old,fields,cvFields,{statut:newStatut,ordre:newOrdre});
+      if(pendingAnalyse)old.analyse=pendingAnalyse;
+      if(pend&&pend.score){old.score=pend.score;old.verdict=pend.verdict||null;}
+      if(oldUrls.length)removeCvFiles(oldUrls);
+      saved=old;
+    }else{
+      const sts=S.statuts[sourcer]||[...DEFAULT_STATUTS];
+      saved={id:cid,statut:sts[0],ordre:null,score:pend&&pend.score?pend.score:null,verdict:pend&&pend.score?(pend.verdict||null):null,analyse:pendingAnalyse||null,createdAt:new Date().toISOString(),deletedAt:null,...fields,...cvFields};
+      const row=candToRow(saved);
+      const{error}=await sb.from('candidats').insert(row);
+      if(error)throw error;
+      S.candidates.push(saved);
+    }
+    resolvePostes();
+    if(rem&&!S.remHist.includes(rem))S.remHist.unshift(rem);
+    if(S.remHist.length>20)S.remHist=S.remHist.slice(0,20);
+    saveLocal();clearDraft();
+    pendingAnalyse=null;window._pendingScore=null;eCVFiles={o:null,a:null};
+    _saving=false;
+    closeM();
+    showToast(old?'Profil mis à jour':'Profil enregistré','ok');
+  }catch(e){
+    _saving=false;
+    console.error('saveC',e);
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='Enregistrer';}
+    showToast('Enregistrement impossible ('+(e&&e.message?e.message:'erreur')+') — ton formulaire est conservé, réessaie','warn');
   }
 }
 
-// ── VIEW MODAL ──
+// ── VIEW MODAL (lecture seule : profil d'un autre sourceur) ──
 function openView(id){
   const c=S.candidates.find(x=>x.id===id);if(!c)return;
   const p=gp(c.posteId);
+  const cvRow=(label,url,name)=>`<div class="cv-row"><span class="cv-lbl">${label}</span>${url?`<a href="${esc(url)}" target="_blank" class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(name||'Voir')}</a><button class="btn" style="font-size:11px;padding:2px 8px" onclick="dlRemote('${esc(url)}','${esc(name||'CV.pdf').replace(/'/g,'')}',this)"><i class="ti ti-download" aria-hidden="true"></i></button>`:'<span style="font-size:11px;color:#9ca3af">Aucun CV</span>'}</div>`;
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()"><div class="modal" onclick="event.stopPropagation()">
-    <div class="m-title"><span>${esc(c.nom)} <span style="font-size:11px;font-weight:400;color:#6b7280">${c.trigramme}</span></span><button class="m-close" onclick="closeM()">×</button></div>
+    <div class="m-title"><span>${esc(c.nom)} <span style="font-size:11px;font-weight:400;color:#6b7280">${esc(c.trigramme)}</span></span><button class="m-close" onclick="closeM()">×</button></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:10px">
-      <div><span style="color:#6b7280">Sourceur :</span> <strong>${c.sourcer}</strong></div>
-      <div><span style="color:#6b7280">Poste :</span> ${p?esc(p.titre):'—'}</div>
-      <div><span style="color:#6b7280">Dispo :</span> ${c.dispo||'—'}</div>
-      <div><span style="color:#6b7280">Prétention :</span> ${c.pretention||'—'}</div>
-      <div><span style="color:#6b7280">Mobilité :</span> ${(c.mobilite||[]).join(', ')||'—'}</div>
-      <div><span style="color:#6b7280">Freelance :</span> ${c.freelance}</div>
+      <div><span style="color:#6b7280">Sourceur :</span> <strong>${esc(c.sourcer)}</strong></div>
+      <div><span style="color:#6b7280">Poste :</span> ${p?esc(p.titre):esc(c.posteTitre||'—')}</div>
+      <div><span style="color:#6b7280">Dispo :</span> ${esc(c.dispo)||'—'}</div>
+      <div><span style="color:#6b7280">Prétention :</span> ${esc(c.pretention)||'—'}</div>
+      <div><span style="color:#6b7280">Mobilité :</span> ${esc((c.mobilite||[]).join(', '))||'—'}</div>
+      <div><span style="color:#6b7280">Freelance :</span> ${esc(c.freelance)}</div>
       ${c.telephone?`<div><span style="color:#6b7280">Téléphone :</span> <strong>${esc(c.telephone)}</strong></div>`:''}
     </div>
-    ${c.score?`<div style="margin-bottom:10px"><span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="font-size:12px">${c.score}/100 — ${c.verdict}</span></div>`:''}
+    ${c.score?`<div style="margin-bottom:10px"><span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="font-size:12px">${c.score}/100 — ${esc(c.verdict||'')}</span></div>`:''}
     ${c.remarque?`<div style="font-size:12px;margin-bottom:10px;background:#f9fafb;padding:8px 10px;border-radius:8px"><span style="color:#6b7280">Remarque :</span> ${esc(c.remarque)}</div>`:''}
     <div class="cv-sec"><div style="font-size:12px;font-weight:600;margin-bottom:8px">CVs</div>
-      <div class="cv-row"><span class="cv-lbl">CV original</span><label class="cv-up${c.cvO?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i> ${c.cvO?esc(c.cvO.name):'Choisir'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="vCvUp('${id}','o',this)"></label>${c.cvO?`<button class="btn" style="font-size:11px;padding:2px 6px" onclick="vCvDl('${id}','o')"><i class="ti ti-download" aria-hidden="true"></i></button><button class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="vCvRm('${id}','o')"><i class="ti ti-trash" aria-hidden="true"></i></button>`:''}</div>
-      <div class="cv-row"><span class="cv-lbl">CV anonyme</span><label class="cv-up${c.cvA?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i> ${c.cvA?esc(c.cvA.name):'Choisir'}<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="vCvUp('${id}','a',this)"></label>${c.cvA?`<button class="btn" style="font-size:11px;padding:2px 6px" onclick="vCvDl('${id}','a')"><i class="ti ti-download" aria-hidden="true"></i></button><button class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="vCvRm('${id}','a')"><i class="ti ti-trash" aria-hidden="true"></i></button>`:''}</div>
+      ${cvRow('CV original',c.cvOUrl,c.cvOName)}${cvRow('CV anonyme',c.cvAUrl,c.cvAName)}
     </div>
     <hr class="divider">
     <div style="font-size:12px;font-weight:600;margin-bottom:4px">Bloc mail</div>
     <div class="bloc-mail" id="bm-prev">${esc(genBlocMail(c))}</div>
     <div style="margin-top:6px"><button class="btn btn-g" onclick="cpyMail('${id}')"><i class="ti ti-copy" aria-hidden="true"></i> Copier</button></div>
     ${c.analyse?`<hr class="divider">${renderAnalyse(c.analyse)}`:''}
-    <div class="m-actions"><button class="btn" onclick="closeM()">Fermer</button><button class="btn btn-p" onclick="closeM();openForm('${id}')"><i class="ti ti-edit" aria-hidden="true"></i> Modifier</button></div>
+    <div class="m-actions"><button class="btn" onclick="closeM()">Fermer</button>${canEditC(c.sourcer)?`<button class="btn btn-p" onclick="closeM();openForm('${id}')"><i class="ti ti-edit" aria-hidden="true"></i> Modifier</button>`:''}</div>
   </div></div>`;
-}
-
-function openProfilView(sbId){
-  const c=S.sharedProfils.find(x=>x.sbId===sbId);if(!c)return;
-  // Find local candidate with CVs (if available on this device)
-  const local=S.candidates.find(x=>x.sbId===sbId);
-  const cvO=local?.cvO||null;const cvA=local?.cvA||null;
-  const cvNote=local?'':`<div style="font-size:11px;color:#9ca3af;margin-top:4px"><i class="ti ti-info-circle" aria-hidden="true"></i> CVs disponibles uniquement sur l'appareil du sourceur</div>`;
-  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()"><div class="modal" onclick="event.stopPropagation()">
-    <div class="m-title"><span>${esc(c.nom)} <span style="font-size:11px;font-weight:400;color:#6b7280">${c.trigramme}</span></span><button class="m-close" onclick="closeM()">×</button></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:12px">
-      <div><span style="color:#6b7280">Sourceur :</span> <strong>${c.sourcer}</strong></div>
-      <div><span style="color:#6b7280">Poste :</span> ${esc(c.posteTitre||'—')}</div>
-      <div><span style="color:#6b7280">Dispo :</span> ${c.dispo||'—'}</div>
-      <div><span style="color:#6b7280">Prétention :</span> <strong>${c.pretention||'—'}</strong></div>
-      <div><span style="color:#6b7280">Mobilité :</span> ${(c.mobilite||[]).join(', ')||'—'}</div>
-      <div><span style="color:#6b7280">Freelance :</span> ${c.freelance}</div>
-      ${c.telephone?`<div><span style="color:#6b7280">Téléphone :</span> <strong>${esc(c.telephone)}</strong></div>`:''}
-    </div>
-    ${c.score?`<div style="margin-bottom:10px"><span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="font-size:12px;padding:3px 10px">${c.score}/100 — ${c.verdict}</span></div>`:''}
-    ${c.remarque?`<div style="font-size:12px;margin-bottom:12px;background:#f9fafb;padding:10px 12px;border-radius:8px;border:1px solid #e5e7eb"><span style="color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:600">Remarque</span><br>${esc(c.remarque)}</div>`:''}
-    <div class="cv-sec">
-      <div style="font-size:12px;font-weight:600;margin-bottom:10px">CVs</div>
-      <div class="cv-row">
-        <span class="cv-lbl">CV original</span>
-        ${cvO
-          ?`<label class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(cvO.name)}</label>
-            <button class="btn" style="font-size:11px;padding:2px 8px" onclick="dlCvShared('${sbId}','o')"><i class="ti ti-download" aria-hidden="true"></i></button>`
-          :`<span style="font-size:11px;color:#9ca3af">${local?'Aucun CV chargé':'Non disponible ici'}</span>
-           ${local?`<label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> Ajouter<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvShared('${sbId}','o',this)"></label>`:''}`
-        }
-      </div>
-      <div class="cv-row">
-        <span class="cv-lbl">CV anonyme</span>
-        ${cvA
-          ?`<label class="cv-up has"><i class="ti ti-file" aria-hidden="true"></i> ${esc(cvA.name)}</label>
-            <button class="btn" style="font-size:11px;padding:2px 8px" onclick="dlCvShared('${sbId}','a')"><i class="ti ti-download" aria-hidden="true"></i></button>`
-          :`<span style="font-size:11px;color:#9ca3af">${local?'Aucun CV chargé':'Non disponible ici'}</span>
-           ${local?`<label class="cv-up" style="cursor:pointer"><i class="ti ti-upload" aria-hidden="true"></i> Ajouter<input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="uploadCvShared('${sbId}','a',this)"></label>`:''}`
-        }
-      </div>
-      ${cvNote}
-    </div>
-    <div class="m-actions">
-      <button class="btn" onclick="closeM()">Fermer</button>
-      ${local?`<button class="btn btn-p" onclick="closeM();openForm('${local.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Modifier</button>`:''}
-    </div>
-  </div></div>`;
-}
-
-function dlCvShared(sbId,type){
-  const local=S.candidates.find(x=>x.sbId===sbId);if(!local)return;
-  const cv=type==='o'?local.cvO:local.cvA;if(!cv)return;
-  const a=document.createElement('a');a.href=cv.data;a.download=cv.name;a.click();
-}
-
-function uploadCvShared(sbId,type,input){
-  const local=S.candidates.find(x=>x.sbId===sbId);if(!local||!input.files[0])return;
-  const f=input.files[0];const r=new FileReader();
-  r.onload=e=>{
-    if(type==='o')local.cvO={name:f.name,data:e.target.result};
-    else local.cvA={name:f.name,data:e.target.result};
-    saveLocal();openProfilView(sbId);
-  };r.readAsDataURL(f);
 }
 
 function genBlocMail(c){const p=gp(c.posteId);return`**${c.nom}**\nProfil : ${c.trigramme||'—'}\nDisponible : ${c.dispo||'—'}\nPrétention salariale : ${c.pretention||'—'}\nMobilité : ${(c.mobilite||[]).join(', ')||'—'}\nFreelance : ${c.freelance}${c.remarque?'\nRemarque : '+c.remarque:''}\nPoste ciblé : ${p?p.titre:'—'}`;}
 function cpyMail(id){const c=S.candidates.find(x=>x.id===id);if(!c)return;navigator.clipboard.writeText(genBlocMail(c)).then(()=>{const el=document.getElementById('bm-prev');if(el){el.style.background='#dcfce7';setTimeout(()=>{if(el)el.style.background='';},700);}}).catch(()=>{});}
-function vCvUp(id,type,input){const c=S.candidates.find(x=>x.id===id);if(!c||!input.files[0])return;const f=input.files[0];const r=new FileReader();r.onload=e=>{if(type==='o')c.cvO={name:f.name,data:e.target.result};else c.cvA={name:f.name,data:e.target.result};saveLocal();openView(id);};r.readAsDataURL(f);
-if(c.sbId){uploadCvToStorage(c.sbId,type,f).then(()=>{fetchProfils();}).catch(e=>console.error('CV storage:',e));}
-}
-function vCvDl(id,type){const c=S.candidates.find(x=>x.id===id);const cv=type==='o'?c?.cvO:c?.cvA;if(!cv)return;const a=document.createElement('a');a.href=cv.data;a.download=cv.name;a.click();}
-function vCvRm(id,type){const c=S.candidates.find(x=>x.id===id);if(!c)return;if(type==='o')c.cvO=null;else c.cvA=null;saveLocal();openView(id);}
-
-// ═══════════════════════════════════════
-// FORM POSTE
-// ═══════════════════════════════════════
-function openPosteForm(id){
+function openPosteForm(id,fromCand){
+  if(!fromCand)pendingCandidatState=null;
   const isEdit=!!id&&isUUID(id);const p=isEdit?S.postes.find(x=>x.id===id):null;
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()"><div class="modal" onclick="event.stopPropagation()">
     <div class="m-title">${isEdit?'Modifier':'Ajouter'} un poste<button class="m-close" onclick="closeM()">×</button></div>
@@ -1516,7 +1260,7 @@ function openPosteForm(id){
     <div class="fg"><div class="fr"><label class="fl">Salaire max</label><input class="fi" id="p-sal" value="${esc(p?.salaire||'')}"></div><div class="fr"><label class="fl">Expérience (ans)</label><input class="fi" id="p-exp" value="${esc(p?.experience||'')}"></div></div>
     <div class="fg"><div class="fr"><label class="fl">Nb candidats souhaités</label><input class="fi" id="p-nb" value="${esc(p?.nbCandidats||'')}"></div><div class="fr"><label class="fl">Compétences clés</label><input class="fi" id="p-comp" value="${esc(p?.competences||'')}"></div></div>
     <div class="fr"><label class="fl">Description du poste</label><textarea class="fi" id="p-desc" rows="3" style="resize:vertical">${esc(p?.description||'')}</textarea></div>
-    <div class="m-actions"><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-p" onclick="saveP('${p?.id||''}')">Enregistrer</button></div>
+    <div class="m-actions"><button class="btn" onclick="cancelPosteForm()">Annuler</button><button class="btn btn-p" onclick="saveP('${p?.id||''}')">Enregistrer</button></div>
   </div></div>`;
 }
 
@@ -1528,50 +1272,11 @@ function chkDupP(){
   clearTimeout(_chkDupTimer);
   _chkDupTimer=setTimeout(_chkDupPRun,400);
 }
-function _chkDupPRun(){const val=(document.getElementById('p-tit')?.value||'').trim();const el=document.getElementById('dup-p');const conf=document.getElementById('dup-p-conf');if(!el||val.length<3){if(el)el.innerHTML='';if(conf)conf.style.display='none';return;}const dups=S.postes.filter(p=>sim(p.titre,val)>0.6);if(dups.length){el.innerHTML=`<div class="warn-txt">Similaire : <strong>${esc(dups[0].titre)}</strong> <button class="btn btn-p" style="font-size:10px;padding:1px 8px;margin-left:4px" onclick="openPosteForm('${dups[0].id}')">Utiliser celui-ci</button></div>`;if(conf)conf.style.display='flex';}else{el.innerHTML='';if(conf)conf.style.display='none';}}
+function _chkDupPRun(){const val=(document.getElementById('p-tit')?.value||'').trim();const el=document.getElementById('dup-p');const conf=document.getElementById('dup-p-conf');if(!el||val.length<3){if(el)el.innerHTML='';if(conf)conf.style.display='none';return;}const dups=S.postes.filter(p=>sim(p.titre,val)>0.6);if(dups.length){el.innerHTML=`<div class="warn-txt">Similaire : <strong>${esc(dups[0].titre)}</strong> <button class="btn btn-p" style="font-size:10px;padding:1px 8px;margin-left:4px" onclick="usePosteExisting('${dups[0].id}')">Utiliser celui-ci</button></div>`;if(conf)conf.style.display='flex';}else{el.innerHTML='';if(conf)conf.style.display='none';}}
 
-async function saveP(id){
-  const titre=(document.getElementById('p-tit')?.value||'').trim();
-  if(!titre){alert('Le titre est obligatoire.');return;}
-  const conf=document.getElementById('p-dup-ok');const warn=document.getElementById('dup-p')?.innerHTML||'';
-  if(warn&&conf&&!conf.checked){alert("Veuillez confirmer que ce poste n'existe pas déjà.");return;}
-  const lieux=[...document.querySelectorAll('#p-lieu-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
-  const data={titre,client:(document.getElementById('p-cli')?.value||'').trim(),secteur:(document.getElementById('p-sec')?.value||'').trim(),lieux,urgence:document.getElementById('p-urg')?.value||'',statut:document.getElementById('p-sta')?.value||'🟢 Actif',salaire:(document.getElementById('p-sal')?.value||'').trim(),experience:(document.getElementById('p-exp')?.value||'').trim(),nbCandidats:(document.getElementById('p-nb')?.value||'').trim(),competences:(document.getElementById('p-comp')?.value||'').trim(),description:(document.getElementById('p-desc')?.value||'').trim()};
-  let targetPoste;
-  if(isUUID(id)){Object.assign(S.postes.find(x=>x.id===id),data);targetPoste=S.postes.find(x=>x.id===id);}
-  else{targetPoste={id:uid(),...data};S.postes.unshift(targetPoste);}
-  const hasPending=!!pendingCandidatState;
-  closeM();render();
-  try{
-    await pushPoste(targetPoste);
-    showToast('Poste sauvegardé','ok');
-    // Re-open candidate form if we came from it
-    if(hasPending){
-      await fetchPostes(); // refresh poste list first
-      reopenCandidatFormWithState(targetPoste.id, targetPoste.titre);
-    }
-  }catch(e){
-    console.error(e);showToast('Erreur sauvegarde Supabase — poste en cache local','warn');
-    if(hasPending)reopenCandidatFormWithState(targetPoste.id, targetPoste.titre);
-  }
-}
-
-async function doDeletePoste(id){
-  const used=S.sharedProfils.some(p=>p.posteTitre===S.postes.find(x=>x.id===id)?.titre);
-  if(used&&!confirm('Des profils sont liés à ce poste. Supprimer quand même ?'))return;
-  try{await deletePosteDB(id);showToast('Poste supprimé','ok');}
-  catch(e){console.error(e);S.postes=S.postes.filter(p=>p.id!==id);showToast('Supprimé localement','warn');}
-  render();
-}
-
-// ═══════════════════════════════════════
-// KANBAN DRAG
-// ═══════════════════════════════════════
 function showPosteCandidats(posteId){
   const p=S.postes.find(x=>x.id===posteId);if(!p)return;
-  const cands=S.candidates.filter(c=>c.posteId===posteId||c.posteTitre===p.titre);
-  const sbCands=S.sharedProfils.filter(c=>c.posteTitre===p.titre);
-  const all=[...cands,...sbCands.filter(s=>!cands.find(c=>c.nom===s.nom))];
+  const all=S.candidates.filter(c=>c.posteId===posteId||normNom(c.posteTitre)===normNom(p.titre));
   const popup=document.createElement('div');
   popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center';
   const box=document.createElement('div');
@@ -1602,19 +1307,17 @@ function showPosteCandidats(posteId){
       btnMail.style.cssText='padding:3px 7px;background:#e6f0ff;color:#0d3b6e;border:none;border-radius:5px;font-size:12px;cursor:pointer';
       btnMail.onclick=(e)=>{
         e.stopPropagation();
-        if(c.id){S.sel.has(c.id)?S.sel.delete(c.id):S.sel.add(c.id);}
-        else if(c.sbId){const k='sb_'+c.sbId;S.sel.has(k)?S.sel.delete(k):S.sel.add(k);}
+        S.sel.has(c.id)?S.sel.delete(c.id):S.sel.add(c.id);
         updateMailBtn();
-        btnMail.style.background=S.sel.has(c.id)||S.sel.has('sb_'+c.sbId)?'#0d3b6e':'#e6f0ff';
-        btnMail.style.color=S.sel.has(c.id)||S.sel.has('sb_'+c.sbId)?'#fff':'#0d3b6e';
+        btnMail.style.background=S.sel.has(c.id)?'#0d3b6e':'#e6f0ff';
+        btnMail.style.color=S.sel.has(c.id)?'#fff':'#0d3b6e';
       };
       // Set initial state
-      const isInSel=c.id?S.sel.has(c.id):S.sel.has('sb_'+c.sbId);
+      const isInSel=S.sel.has(c.id);
       if(isInSel){btnMail.style.background='#0d3b6e';btnMail.style.color='#fff';}
       actions.appendChild(btnMail);
       row.appendChild(actions);
-      if(c.id)row.querySelector('div').onclick=()=>{popup.remove();openForm(c.id);};
-      else if(c.sbId)row.querySelector('div').onclick=()=>{popup.remove();openSharedEdit(c.sbId);};
+      row.querySelector('div').onclick=()=>{popup.remove();canEditC(c.sourcer)?openForm(c.id):openView(c.id);};
       body.appendChild(row);
     });
   }
@@ -1624,36 +1327,82 @@ function showPosteCandidats(posteId){
   popup.addEventListener('click',e=>{if(e.target===popup)popup.remove();});
 }
 
-function delSharedProfil(sbId){
-  const p=S.sharedProfils.find(x=>x.sbId===sbId);
-  if(!p)return;
-  if(!confirm('Supprimer "'+p.nom+'" des profils partagés ?'))return;
-  // Delete from Supabase profils table
-  sb.from('profils').delete().eq('id',sbId).then(()=>{}).catch(()=>{});
-  S.sharedProfils=S.sharedProfils.filter(x=>x.sbId!==sbId);
-  S.sel.delete('sb_'+sbId);
-  render();
-  showToast(p.nom+' supprimé des profils','ok');
+
+function cancelPosteForm(){
+  if(pendingCandidatState){reopenCandidatFormWithState(null,null);return;}
+  closeM();
+}
+function usePosteExisting(id){
+  const p=gp(id);if(!p)return;
+  if(pendingCandidatState){reopenCandidatFormWithState(p.id,p.titre);return;}
+  openPosteForm(id);
 }
 
-function moveCard(id,dir){
-  const c=S.candidates.find(x=>x.id===id);
-  if(!c)return;
-  // Get sorted column
-  const col=S.candidates
-    .filter(x=>x.sourcer===c.sourcer&&x.statut===c.statut)
-    .sort((a,b)=>(a.order??9999)-(b.order??9999));
-  // Assign order to all cards that don't have one yet
-  // Initialize order for ALL candidates in this col (not just undefined ones)
-  col.forEach((x,i)=>{x.order=i;});
+async function saveP(id){
+  const titre=(document.getElementById('p-tit')?.value||'').trim();
+  if(!titre){alert('Le titre est obligatoire.');return;}
+  const conf=document.getElementById('p-dup-ok');const warn=document.getElementById('dup-p')?.innerHTML||'';
+  if(warn&&conf&&!conf.checked){alert("Veuillez confirmer que ce poste n'existe pas déjà.");return;}
+  const lieux=[...document.querySelectorAll('#p-lieu-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
+  const data={titre,client:(document.getElementById('p-cli')?.value||'').trim(),secteur:(document.getElementById('p-sec')?.value||'').trim(),lieux,urgence:document.getElementById('p-urg')?.value||'',statut:document.getElementById('p-sta')?.value||'🟢 Actif',salaire:(document.getElementById('p-sal')?.value||'').trim(),experience:(document.getElementById('p-exp')?.value||'').trim(),nbCandidats:(document.getElementById('p-nb')?.value||'').trim(),competences:(document.getElementById('p-comp')?.value||'').trim(),description:(document.getElementById('p-desc')?.value||'').trim()};
+  const old=isUUID(id)?S.postes.find(x=>x.id===id):null;
+  const target=old?{...old,...data}:{id:uid(),...data};
+  try{
+    await pushPoste(target);
+    let renamed=false;
+    if(old){
+      const oldTitre=old.titre;
+      Object.assign(old,data);
+      if(oldTitre!==titre){
+        // les profils liés suivent le nouveau titre
+        const{error}=await sb.from('candidats').update({poste_titre:titre}).eq('poste_titre',oldTitre);
+        if(error)throw error;
+        S.candidates.concat(S.trash).forEach(c=>{if(c.posteTitre===oldTitre)c.posteTitre=titre;});
+        renamed=true;
+      }
+    }else{S.postes.unshift(target);}
+    resolvePostes();
+    const hasPending=!!pendingCandidatState;
+    showToast('Poste sauvegardé'+(renamed?' — profils liés mis à jour':''),'ok');
+    if(hasPending){reopenCandidatFormWithState(target.id,target.titre);}
+    else closeM();
+  }catch(e){
+    console.error(e);showToast('Poste NON enregistré ('+(e&&e.message?e.message:'erreur')+') — réessaie, le formulaire est conservé','warn');
+  }
+}
+
+async function doDeletePoste(id){
+  const p=S.postes.find(x=>x.id===id);if(!p)return;
+  const n=S.candidates.filter(c=>c.posteId===id).length;
+  if(n>0&&!confirm(n+' profil(s) sont liés à ce poste. Supprimer quand même ? (les profils sont conservés)'))return;
+  if(n===0&&!confirm('Supprimer le poste "'+p.titre+'" ?'))return;
+  try{await deletePosteDB(id);showToast('Poste supprimé','ok');}
+  catch(e){console.error(e);showToast('Suppression impossible — le poste est conservé','warn');}
+  render();
+}
+
+// ═══════════════════════════════════════
+// KANBAN
+// ═══════════════════════════════════════
+function normalizeCol(list){ // attribue 0..n-1 ; renvoie les cartes dont l'ordre a changé
+  const changed=[];
+  list.forEach((x,i)=>{if(x.ordre!==i){x.ordre=i;changed.push(x);}});
+  return changed;
+}
+async function persistOrder(list){
+  await Promise.all(list.map(x=>dbUpd(x.id,{ordre:x.ordre})));
+}
+async function moveCard(id,dir){
+  const c=S.candidates.find(x=>x.id===id);if(!c||!canEditC(c.sourcer))return;
+  const col=colCards(c.sourcer,colIdxOf(c));
   const i=col.findIndex(x=>x.id===id);
   const j=dir==='up'?i-1:i+1;
   if(j<0||j>=col.length)return;
-  // Swap order values
-  const tmp=col[i].order;
-  col[i].order=col[j].order;
-  col[j].order=tmp;
-  saveLocal();render();
+  const changed=normalizeCol(col);
+  const tmp=col[i].ordre;col[i].ordre=col[j].ordre;col[j].ordre=tmp;
+  [col[i],col[j]].forEach(x=>{if(!changed.includes(x))changed.push(x);});
+  render();
+  try{await persistOrder(changed);}catch(e){fail(e,'Déplacement non enregistré');}
 }
 
 function dst(e,id){S.dragId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>document.querySelector(`[data-id="${id}"]`)?.classList.add('dragging'),0);}
@@ -1666,123 +1415,177 @@ function onColOver(e,idx){
     document.querySelectorAll('.col').forEach((el,i)=>el.classList.toggle('col-drag-over',i===idx));
   }
 }
-function onColDrop(e,colEnc,toIdx){
+async function onColDrop(e,colEnc,toIdx){
   e.preventDefault();
   document.querySelectorAll('.col').forEach(el=>el.classList.remove('col-drag-over','col-dragging'));
   if(S.colDragIdx!==null&&S.colDragIdx!==toIdx){
-    // Column reorder
+    // réorganisation des colonnes
+    if(!canManageCols()){S.colDragIdx=null;return;}
     const arr=S.statuts[S.srcr];
     const[moved]=arr.splice(S.colDragIdx,1);
     arr.splice(toIdx,0,moved);
-    S.colDragIdx=null;saveLocal();render();
+    S.colDragIdx=null;render();
+    try{await saveKanban(S.srcr);}catch(err){fail(err,'Ordre des colonnes non enregistré');}
   }else if(S.dragId){
-    // Card move
-    const col=decodeURIComponent(colEnc);
+    const colName=decodeURIComponent(colEnc);
     const c=S.candidates.find(x=>x.id===S.dragId);
-    if(c&&c.sourcer===S.srcr){c.statut=col;saveLocal();}
-    S.dragId=null;render();
+    S.dragId=null;
+    if(!c||!canEditC(c.sourcer)||c.sourcer!==S.srcr)return;
+    if(colIdxOf(c)===toIdx&&c.statut===colName)return;
+    // en fin de colonne
+    const dest=colCards(c.sourcer,toIdx).filter(x=>x.id!==c.id);
+    const changed=normalizeCol(dest);
+    c.statut=colName;c.ordre=dest.length;
+    render();
+    try{
+      await dbUpd(c.id,{statut:c.statut,ordre:c.ordre});
+      if(changed.length)await persistOrder(changed);
+    }catch(err){fail(err,'Déplacement non enregistré');}
   }
 }
 
-// Saves candidate form state then opens poste form
+// Mémorise le formulaire candidat puis ouvre le formulaire poste
 function openPosteFromCandidatForm(){
-  pendingCandidatState={
-    editId: window._currentEditId||null,
-    nom:document.getElementById('f-nom')?.value||'',
-    trigramme:document.getElementById('f-tri')?.value||'',
-    dispo:document.getElementById('f-dis')?.value||'',
-    pretention:document.getElementById('f-pret')?.value||'',
-    freelance:document.getElementById('f-free')?.value||'Non',
-    sourcer:document.getElementById('f-src')?.value||S.srcr,
-    remarque:document.getElementById('f-rem')?.value||'',
-    mobilite:[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim()),
-    posteSearch:document.getElementById('f-ps')?.value||'',
-    posteId:document.getElementById('f-pid')?.value||'',
-    cvO:eCV.o, cvA:eCV.a,
-  };
+  pendingCandidatState=captureFormState();
   const searchText=pendingCandidatState.posteSearch||'';
   closeM();
-  openPosteForm(null);
-  // Pre-fill the title with what the user typed
+  openPosteForm(null,true);
   setTimeout(()=>{
     const t=document.getElementById('p-tit');
     if(t&&searchText){t.value=searchText;chkDupP();}
   },80);
 }
 
-// Re-opens candidate form with saved state after poste creation
-function reopenCandidatFormWithState(newPosteId, newPosteTitre){
+// Rouvre le formulaire candidat avec tout ce qui avait été saisi
+function reopenCandidatFormWithState(newPosteId,newPosteTitre){
   const state=pendingCandidatState;pendingCandidatState=null;
+  if(!state){closeM();return;}
   openForm(state.editId||null);
   setTimeout(()=>{
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
     set('f-nom',state.nom);set('f-tri',state.trigramme);set('f-dis',state.dispo);
-    set('f-pret',state.pretention);set('f-rem',state.remarque);
+    set('f-pret',state.pretention);set('f-rem',state.remarque);set('f-tel',state.telephone||'');
     const ff=document.getElementById('f-free');if(ff)ff.value=state.freelance;
     const fs=document.getElementById('f-src');if(fs)fs.value=state.sourcer;
-    // Pre-select new poste
+    if(state.posteSearch){set('f-ps',state.posteSearch);set('f-pid',state.posteId||'');}
     if(newPosteId){set('f-ps',newPosteTitre);set('f-pid',newPosteId);}
-    // Restore mobility tags
     const mob=document.getElementById('mob-tags');
     if(mob){mob.innerHTML='';(state.mobilite||[]).forEach(v=>{const tg=document.createElement('div');tg.className='tg';tg.innerHTML=`${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span>`;mob.appendChild(tg);});}
-    // Restore CVs
-    eCV={o:state.cvO,a:state.cvA};
-    const updateCvUI=(type,cv)=>{const lbl=document.getElementById(type==='o'?'cvol':'cval');if(lbl)lbl.textContent=cv?cv.name:'Choisir fichier';const act=document.getElementById(type==='o'?'cvo-act':'cva-act');if(act)act.style.display=cv?'flex':'none';if(lbl?.parentElement)lbl.parentElement.classList.toggle('has',!!cv);};
-    updateCvUI('o',eCV.o);updateCvUI('a',eCV.a);
+    eCV={o:state.cvO,a:state.cvA};eCVFiles={o:state.files?state.files.o:null,a:state.files?state.files.a:null};
+    cvUiUpdate('o');cvUiUpdate('a');
   },80);
 }
 
 // ═══════════════════════════════════════
-// SOURCEURS + STATUTS
+// SOURCEURS + STATUTS (enregistrés dans la base : identiques sur tous les PC)
 // ═══════════════════════════════════════
 function setSrc(s){S.srcr=s;render();}
-function addCol(s){const n=prompt('Nom du nouveau statut :');if(n?.trim()){if(!S.statuts[s])S.statuts[s]=[];S.statuts[s].push(n.trim());saveLocal();render();}}
-function renCol(s,idx,val){const old=S.statuts[s][idx];if(val?.trim()&&val.trim()!==old){S.candidates.forEach(c=>{if(c.sourcer===s&&c.statut===old)c.statut=val.trim();});S.statuts[s][idx]=val.trim();saveLocal();}}
-function delCol(s,idx){if(S.statuts[s].length<=1){alert('Il faut au moins un statut.');return;}const st=S.statuts[s][idx];const n=S.candidates.filter(c=>c.sourcer===s&&c.statut===st).length;if(n>0&&!confirm(`${n} profil(s) dans cette colonne. Supprimer ?`))return;S.statuts[s].splice(idx,1);saveLocal();render();}
-function delCand(id){
-  const c=S.candidates.find(x=>x.id===id);if(!c)return;
+async function addStatutTo(s,name){
+  name=(name||'').trim();if(!name)return;
+  if(!S.statuts[s])S.statuts[s]=[];
+  if(S.statuts[s].includes(name)){showToast('Ce statut existe déjà','warn');return;}
+  S.statuts[s].push(name);render();
+  try{await saveKanban(s);}catch(e){fail(e,'Statut non enregistré');}
+}
+function addCol(s){const n=prompt('Nom du nouveau statut :');if(n)addStatutTo(s,n);}
+function addSt(s){const inp=document.getElementById('new-st');const v=inp?.value||'';if(inp)inp.value='';addStatutTo(s,v);}
+async function renCol(s,idx,val){
+  const old=S.statuts[s][idx];val=(val||'').trim();
+  if(!val){render();return;}
+  if(val===old)return;
+  if(S.statuts[s].includes(val)){showToast('Ce statut existe déjà','warn');render();return;}
+  S.statuts[s][idx]=val;
+  S.candidates.concat(S.trash).forEach(c=>{if(c.sourcer===s&&c.statut===old)c.statut=val;});
+  render();
+  try{
+    const{error}=await sb.from('candidats').update({statut:val}).eq('sourcer',s).eq('statut',old);
+    if(error)throw error;
+    await saveKanban(s);
+  }catch(e){fail(e,'Renommage non enregistré');}
+}
+async function delCol(s,idx){
+  const sts=S.statuts[s];
+  if(sts.length<=1){alert('Il faut au moins un statut.');return;}
+  const st=sts[idx];
+  const dest=sts[idx===0?1:0];
+  const n=S.candidates.filter(c=>c.sourcer===s&&c.statut===st).length;
+  if(!confirm(n>0?`${n} profil(s) dans « ${st} » seront déplacés dans « ${dest} ». Supprimer la colonne ?`:`Supprimer la colonne « ${st} » ?`))return;
+  sts.splice(idx,1);
+  S.candidates.concat(S.trash).forEach(c=>{if(c.sourcer===s&&c.statut===st){c.statut=dest;c.ordre=null;}});
+  render();
+  try{
+    const{error}=await sb.from('candidats').update({statut:dest,ordre:null}).eq('sourcer',s).eq('statut',st);
+    if(error)throw error;
+    await saveKanban(s);
+  }catch(e){fail(e,'Suppression de colonne non enregistrée');}
+}
+async function mvSt(s,idx,dir){
+  const arr=S.statuts[s];const ni=idx+dir;if(ni<0||ni>=arr.length)return;
+  [arr[idx],arr[ni]]=[arr[ni],arr[idx]];render();
+  try{await saveKanban(s);}catch(e){fail(e,'Ordre non enregistré');}
+}
+async function addSrc(){
+  const val=(document.getElementById('new-src')?.value||'').trim();
+  if(!val||S.sourceurs.includes(val)||/['"<>\\]/.test(val)){alert('Nom invalide ou déjà existant (pas de guillemets ni apostrophes).');return;}
+  S.sourceurs.push(val);S.statuts[val]=[...DEFAULT_STATUTS];render();
+  try{await saveKanban(val);}catch(e){fail(e,'Sourceur non enregistré');}
+}
+async function delSrc(s){
+  const n=S.candidates.concat(S.trash).filter(c=>c.sourcer===s).length;
+  if(n>0){alert(`${s} a encore ${n} profil(s) (corbeille comprise). Déplace-les ou supprime-les définitivement avant de retirer ce sourceur.`);return;}
+  if(!confirm('Retirer le sourceur '+s+' ?'))return;
+  try{
+    const{error}=await sb.from('kanban_config').delete().eq('sourcer',s);
+    if(error)throw error;
+    S.sourceurs=S.sourceurs.filter(x=>x!==s);delete S.statuts[s];S.kanbanKnown.delete(s);
+    if(S.srcr===s)S.srcr=S.sourceurs[0];
+    render();
+  }catch(e){fail(e,'Suppression impossible');}
+}
+
+// ── Suppression douce (corbeille partagée) ──
+async function delCand(id){
+  const c=S.candidates.find(x=>x.id===id);if(!c||!canEditC(c.sourcer))return;
   if(!confirm('Déplacer "'+c.nom+'" vers la corbeille ?'))return;
-  S.trash=S.trash||[];
-  S.trash.unshift({...c,_trashedAt:new Date().toISOString()});
-  S.candidates=S.candidates.filter(x=>x.id!==id);
-  S.sel.delete(id);
-  saveLocal();render();
-  showToast(c.nom+' déplacé en corbeille','ok');
+  const now=new Date().toISOString();
+  c.deletedAt=now;
+  S.candidates=S.candidates.filter(x=>x.id!==id);S.trash.unshift(c);S.sel.delete(id);
+  render();
+  try{await dbUpd(id,{deleted_at:now});showToast(c.nom+' déplacé en corbeille','ok');}
+  catch(e){fail(e,'Suppression non enregistrée');}
 }
-function restoreCand(id){
-  const c=(S.trash||[]).find(x=>x.id===id);if(!c)return;
-  const{_trashedAt,...restored}=c;
-  // Put in first statut of their sourceur
-  const sts=S.statuts[restored.sourcer]||[...DEFAULT_STATUTS];
-  restored.statut=sts[0];
-  S.candidates.push(restored);
-  S.trash=S.trash.filter(x=>x.id!==id);
-  saveLocal();
-  if(S.tab==='trash'){const m=document.getElementById('main');if(m){m.innerHTML=rTrash();renderTrashTable();}}else render();
-  showToast(restored.nom+' restauré','ok');
+async function restoreCand(id){
+  const c=S.trash.find(x=>x.id===id);if(!c||!canEditC(c.sourcer))return;
+  c.deletedAt=null;
+  S.trash=S.trash.filter(x=>x.id!==id);S.candidates.push(c);
+  render();
+  try{await dbUpd(id,{deleted_at:null});showToast(c.nom+' restauré','ok');}
+  catch(e){fail(e,'Restauration non enregistrée');}
 }
-function hardDelCand(id){
-  const c=(S.trash||[]).find(x=>x.id===id);if(!c)return;
-  if(!confirm('Supprimer définitivement "'+c.nom+'" ? Cette action est irréversible.'))return;
-  if(c.sbId)sb.from('profils').delete().eq('id',c.sbId).then(()=>{}).catch(()=>{});
-  deleteCandidatFromSB(id).catch(()=>{});
-  S.trash=S.trash.filter(x=>x.id!==id);
-  saveLocal();
-  if(S.tab==='trash'){const m=document.getElementById('main');if(m){m.innerHTML=rTrash();renderTrashTable();}}else render();
-  showToast(c.nom+' supprimé définitivement','warn');
+async function hardDelCand(id){
+  const c=S.trash.find(x=>x.id===id);if(!c||!canEditC(c.sourcer))return;
+  if(!confirm('Supprimer définitivement "'+c.nom+'" et ses CVs ? Cette action est irréversible.'))return;
+  try{
+    const{error}=await sb.from('candidats').delete().eq('local_id',id);
+    if(error)throw error;
+    removeCvFiles([c.cvOUrl,c.cvAUrl].filter(Boolean));
+    S.trash=S.trash.filter(x=>x.id!==id);render();
+    showToast(c.nom+' supprimé définitivement','warn');
+  }catch(e){fail(e,'Suppression définitive impossible');}
 }
+
 // Trash search state
 let _trashQ='';
 function filterTrash(val){_trashQ=(val||'').toLowerCase();renderTrashTable();}
 function renderTrashTable(){
-  const trash=S.trash||[];
+  const trash=S.trash;
   const list=_trashQ?trash.filter(c=>c.nom.toLowerCase().includes(_trashQ)||((c.posteTitre||'').toLowerCase().includes(_trashQ))):trash;
   const tbody=document.getElementById('trash-tbody');
   if(!tbody)return;
   if(!list.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:#9ca3af">Aucun résultat</td></tr>';return;}
   tbody.innerHTML='';
   list.forEach(c=>{
-    const date=c._trashedAt?new Date(c._trashedAt).toLocaleDateString('fr-FR'):'—';
+    const date=c.deletedAt?new Date(c.deletedAt).toLocaleDateString('fr-FR'):'—';
     const tr=document.createElement('tr');
     tr.innerHTML='<td style="padding:8px 10px;font-weight:600">'+esc(c.nom)+'</td>'
       +'<td style="padding:8px 10px;color:#6b7280;font-size:12px">'+esc(c.posteTitre||'—')+'</td>'
@@ -1793,17 +1596,19 @@ function renderTrashTable(){
     btnR.textContent='↩ Restaurer';
     btnR.style.cssText='padding:4px 10px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-right:6px';
     btnR.onclick=()=>restoreCand(c.id);
+    btnR.disabled=!canEditC(c.sourcer);btnR.style.opacity=btnR.disabled?'.4':'1';
     const btnD=document.createElement('button');
     btnD.textContent='✕ Supprimer';
     btnD.style.cssText='padding:4px 10px;background:#fff;color:#dc2626;border:1.5px solid #fca5a5;border-radius:6px;font-size:12px;cursor:pointer';
     btnD.onclick=()=>hardDelCand(c.id);
+    btnD.disabled=!canEditC(c.sourcer);btnD.style.opacity=btnD.disabled?'.4':'1';
     tr.lastElementChild.appendChild(btnR);
     tr.lastElementChild.appendChild(btnD);
     tbody.appendChild(tr);
   });
 }
 function rTrash(){
-  const trash=S.trash||[];
+  const trash=S.trash;
   return '<div style="padding:16px">'
     +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
     +'<h2 style="font-size:16px;font-weight:700;color:#111">🗑 Corbeille</h2>'
@@ -1822,15 +1627,7 @@ function rTrash(){
       :'<div style="text-align:center;padding:48px;color:#9ca3af">La corbeille est vide</div>')
     +'</div>';
 }
-function addSrc(){const val=(document.getElementById('new-src')?.value||'').trim();if(!val||S.sourceurs.includes(val)){alert('Nom invalide ou déjà existant.');return;}S.sourceurs.push(val);S.statuts[val]=[...DEFAULT_STATUTS];saveLocal();render();}
-function delSrc(s){const n=S.candidates.filter(c=>c.sourcer===s).length;if(n>0&&!confirm(`${n} profil(s) de ${s} seront perdus. Continuer ?`))return;S.sourceurs=S.sourceurs.filter(x=>x!==s);delete S.statuts[s];if(S.srcr===s)S.srcr=S.sourceurs[0];saveLocal();render();}
-function mvSt(s,idx,dir){const arr=S.statuts[s];const ni=idx+dir;if(ni<0||ni>=arr.length)return;[arr[idx],arr[ni]]=[arr[ni],arr[idx]];saveLocal();render();}
-function addSt(s){const val=(document.getElementById('new-st')?.value||'').trim();if(!val)return;if(!S.statuts[s])S.statuts[s]=[];S.statuts[s].push(val);saveLocal();render();}
-function delSt(s,idx){if(S.statuts[s].length<=1){alert('Il faut au moins un statut.');return;}const st=S.statuts[s][idx];const n=S.candidates.filter(c=>c.sourcer===s&&c.statut===st).length;if(n>0&&!confirm(`${n} profil(s) ont ce statut. Supprimer ?`))return;S.statuts[s].splice(idx,1);saveLocal();render();}
 
-// ═══════════════════════════════════════
-// IMPORT / EXPORT
-// ═══════════════════════════════════════
 // ── Normalize helpers ──
 function mapFreelance(val){
   if(!val||val==='nan'||val.trim()==='')return'Non';
@@ -1880,10 +1677,9 @@ function parseRow(row,sourcer){
     freelance:mapFreelance(row['Freelance']||''),
     remarque:(row['Remarque profil']||'').trim(),
     sourcer:src,statut,
-    sbId:null,score:null,verdict:null,cvO:null,cvA:null,
+    score:null,verdict:null,ordre:null,deletedAt:null,
   };
 }
-
 // Global pending import state
 let _importPending = null;
 
@@ -1988,83 +1784,86 @@ function toggleAllImport(cb){
   document.querySelectorAll('#import-tbody input[type=checkbox]').forEach(el=>el.checked=cb.checked);
 }
 
-function confirmImport(){
+
+async function confirmImport(){
   if(!_importPending){closeM();return;}
   const{nouveaux,doublons}=_importPending;
   const dupMode=document.getElementById('dup-mode')?.value||'skip';
-  let added=0;
-
-  // Read edited values from each row — inputs are in order: nom, tri, poste, dispo, pret, sourcer
   const readRow=(tr)=>{
     const inputs=[...tr.querySelectorAll('input:not([type="checkbox"])')];
     return{
-      nom:(inputs[0]?.value||'').trim(),
-      trigramme:(inputs[1]?.value||'').trim(),
-      posteTitre:(inputs[2]?.value||'').trim(),
-      dispo:(inputs[3]?.value||'').trim(),
-      pretention:(inputs[4]?.value||'').trim(),
-      sourcer:(inputs[5]?.value||'').trim(),
+      nom:(inputs[0]?.value||'').trim(),trigramme:(inputs[1]?.value||'').trim(),
+      posteTitre:(inputs[2]?.value||'').trim(),dispo:(inputs[3]?.value||'').trim(),
+      pretention:(inputs[4]?.value||'').trim(),sourcer:(inputs[5]?.value||'').trim(),
     };
   };
-
-  const rows=[...document.querySelectorAll('#import-tbody tr')];
-  let newIdx=0;let dupIdx=0;
-
-  rows.forEach(tr=>{
-    const cb=tr.querySelector('input[data-type="new"],input[data-type="dup"]');
-    if(!cb)return;
+  const fix=c=>{
+    const found=S.postes.find(p=>sim(p.titre,c.posteTitre)>0.55);
+    c.posteId=found?found.id:'';
+    if(found)c.posteTitre=found.titre;
+    if(!S.sourceurs.includes(c.sourcer)||!canEditC(c.sourcer))c.sourcer=getMe()||S.sourceurs[0];
+    const sts=S.statuts[c.sourcer]||DEFAULT_STATUTS;
+    if(!sts.includes(c.statut))c.statut=sts[0];
+    c.ordre=null;c.deletedAt=null;
+    return c;
+  };
+  const toInsert=[],toReplace=[];
+  let newIdx=0,dupIdx=0;
+  [...document.querySelectorAll('#import-tbody tr')].forEach(tr=>{
+    const cb=tr.querySelector('input[data-type="new"],input[data-type="dup"]');if(!cb)return;
     const edited=readRow(tr);
     if(cb.dataset.type==='new'){
-      if(cb.checked&&nouveaux[newIdx]){
-        const c={...nouveaux[newIdx],...edited};
-        // Re-resolve posteId from edited posteTitre
-        const found=S.postes.find(p=>sim(p.titre,edited.posteTitre)>0.55);
-        c.posteId=found?found.id:'';
-        S.candidates.push(c);added++;
-      }
+      if(cb.checked&&nouveaux[newIdx])toInsert.push(fix({...nouveaux[newIdx],...edited,id:uid()}));
       newIdx++;
-    } else {
-      if(cb.checked&&doublons[dupIdx]){
-        const parsed={...doublons[dupIdx].parsed,...edited};
-        const found=S.postes.find(p=>sim(p.titre,edited.posteTitre)>0.55);
-        parsed.posteId=found?found.id:'';
-        if(dupMode==='skip'){/* skip */}
-        else if(dupMode==='add'){S.candidates.push(parsed);added++;}
-        else if(dupMode==='replace'){
-          const ri=S.candidates.findIndex(c=>sim(c.nom,doublons[dupIdx].parsed.nom)>0.88);
-          if(ri>=0){const old=S.candidates[ri];S.candidates[ri]={...parsed,id:old.id,sbId:old.sbId,cvO:old.cvO,cvA:old.cvA};}
-          else S.candidates.push(parsed);
-          added++;
-        }
+    }else{
+      const d=doublons[dupIdx];
+      if(cb.checked&&d){
+        const parsed=fix({...d.parsed,...edited,id:uid()});
+        if(dupMode==='add')toInsert.push(parsed);
+        else if(dupMode==='replace')toReplace.push({old:d.existing,parsed});
       }
       dupIdx++;
     }
   });
-
-  _importPending=null;
-  saveLocal();
-  // Sync all newly added candidates to Supabase
-  S.candidates.filter(c=>!c._fromSB).forEach(c=>syncCandidatToSB(c).catch(()=>{}));
-  closeM();render();
-  showToast(added+' profil(s) importé(s)','ok');
+  const btn=document.querySelector('.m-actions .btn-p');if(btn){btn.disabled=true;btn.textContent='Import en cours…';}
+  try{
+    for(let i=0;i<toInsert.length;i+=100){
+      const chunk=toInsert.slice(i,i+100).map(candToRow);
+      const{error}=await sb.from('candidats').insert(chunk);
+      if(error)throw error;
+    }
+    for(const r of toReplace){
+      const p=r.parsed;
+      await dbUpd(r.old.id,{nom:p.nom,trigramme:p.trigramme,poste_titre:p.posteTitre,dispo:p.dispo,mobilite:JSON.stringify(p.mobilite||[]),pretention:p.pretention,freelance:p.freelance,remarque:p.remarque,sourcer:p.sourcer,statut:p.statut,ordre:null});
+    }
+    _importPending=null;
+    await loadAll();
+    closeM();
+    showToast((toInsert.length+toReplace.length)+' profil(s) importé(s)','ok');
+  }catch(e){
+    console.error('import',e);
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-check" aria-hidden="true"></i> Confirmer l\'import';}
+    showToast('Import interrompu ('+(e&&e.message?e.message:'erreur')+') — rien n\'est perdu, relance l\'import (les doublons seront signalés)','warn');
+    loadAll();
+  }
 }
+
 function impCSVPostes(e){
   const file=e.target.files[0];if(!file)return;
   const r=new FileReader();
   r.onload=async ev=>{
-    const lines=ev.target.result.split('\n');if(lines.length<2)return;
-    const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-    const rows=[];for(let i=1;i<lines.length;i++){if(!lines[i].trim())continue;const vals=lines[i].split(',').map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,j)=>obj[h]=vals[j]||'');rows.push(obj);}
-    let added=0;
-    for(const row of rows){
-      const titre=row['Nom complet']||row['titre']||'';if(!titre)return;
+    const rows=parseCSV(ev.target.result);if(rows.length<2){showToast('Fichier CSV vide ou invalide','warn');return;}
+    const headers=rows[0].map(h=>h.trim());
+    let added=0,errors=0;
+    for(const vals of rows.slice(1)){
+      const row={};headers.forEach((h,j)=>row[h]=(vals[j]||'').trim());
+      const titre=row['Nom complet']||row['titre']||'';if(!titre)continue;
       if(S.postes.some(p=>sim(p.titre,titre)>0.8))continue;
       const np={id:uid(),titre,client:row['🏢 Client']||'',lieux:[row['📍 Lieu']||''].filter(Boolean),secteur:row["🏭 Secteur d'activité"]||'',urgence:row['⚠️ Urgence']||'',statut:'🟢 Actif',salaire:'',experience:'',nbCandidats:'',competences:'',description:''};
-      S.postes.unshift(np);
-      try{await pushPoste(np);}catch(e){console.error(e);}
-      added++;
+      try{await pushPoste(np);S.postes.unshift(np);added++;}catch(err){console.error(err);errors++;}
     }
-    render();showToast(`${added} poste(s) importé(s)`,'ok');
+    e.target.value='';
+    render();showToast(`${added} poste(s) importé(s)`+(errors?` — ${errors} erreur(s)`:''),errors?'warn':'ok');
   };r.readAsText(file,'UTF-8');
 }
 
@@ -2126,50 +1925,6 @@ function handleURLParams(){
 }
 
 // ═══════════════════════════════════════
-// WHO AM I (sourceur selector)
-// ═══════════════════════════════════════
-// ── SESSION & PERMISSIONS ──
-function getSession(){return JSON.parse(localStorage.getItem('tn_session')||'null');}
-function getMe(){return getSession()?.name||'';}
-function isAdmin(){return getSession()?.name==='Mehdi';}
-function canEditC(sourcer){return isAdmin()||sourcer===getMe();}
-function canManageCols(){return isAdmin();}
-function getZoneColor(name){const m={'Amine':'#22c55e','Said':'#38bdf8','Mehdi':'#0f766e'};return m[name]||'#0d3b6e';}
-
-function renderTopbarUser(){
-  const el=document.getElementById('topbar-user');if(!el)return;
-  const me=getMe();if(!me)return;
-  const adm=isAdmin();
-  el.innerHTML=`<span style="color:#6b7280">Connecté :</span>
-    <strong style="color:${adm?'var(--navy)':'#111'}">${me}${adm?'':''}</strong>
-    <button onclick="logout()" style="padding:3px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:11px;cursor:pointer;background:transparent;font-family:var(--fs);color:#6b7280">Déconnecter</button>`;
-}
-
-function login(name){
-  localStorage.setItem('tn_session',JSON.stringify({name,ts:Date.now()}));
-  document.getElementById('mroot').innerHTML='';
-  S.srcr=name;
-  render();renderTopbarUser();
-  // Load Supabase data after login
-  showLoader(true);
-  Promise.all([fetchPostes(),fetchProfils()]).then(()=>{render();showToast('Données chargées','ok');}).catch(e=>{console.error(e);showToast('Mode hors ligne','warn');}).finally(()=>showLoader(false));
-}
-function logout(){localStorage.removeItem('tn_session');location.reload();}
-
-function showLogin(){
-  const btns=S.sourceurs.map(s=>`<button onclick="login('${s}')" style="display:block;width:100%;padding:16px;margin-bottom:12px;border:2px solid ${s==='Mehdi'?'var(--navy)':'#e5e7eb'};border-radius:12px;background:${s==='Mehdi'?'var(--navy)':'#fff'};color:${s==='Mehdi'?'#fff':'#111'};font-size:16px;font-weight:600;cursor:pointer;font-family:var(--fs)">${s}${s==='Mehdi'?'':''}</button>`).join('');
-  document.getElementById('mroot').innerHTML=`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;z-index:500">
-    <div style="background:#fff;border-radius:16px;padding:40px;width:380px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.12)">
-      <div style="font-size:26px;font-weight:700;color:var(--navy);margin-bottom:6px">Notion TAFINAR</div>
-      <div style="font-size:14px;color:#6b7280;margin-bottom:32px">Qui êtes-vous ?</div>
-      ${btns}
-    </div>
-  </div>`;
-}
-
-function getWho(){return getMe()||S.sourceurs[0];}
-
-// ═══════════════════════════════════════
 // PENDING IMPORT (from Recrutement TAFINAR)
 // ═══════════════════════════════════════
 function checkPendingPoste(){
@@ -2179,7 +1934,7 @@ function checkPendingPoste(){
   try{
     const d=JSON.parse(raw);
     setTimeout(()=>{
-      if(document.querySelector('#mroot .modal'))return;
+      if(document.querySelector('#mroot .modal')){showToast('Un formulaire est déjà ouvert — termine-le puis renvoie le poste','warn');return;}
       openPosteForm(null);
       setTimeout(()=>{
         const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
@@ -2199,8 +1954,9 @@ function checkPendingImport(){
   try{
     const d=JSON.parse(raw);
     pendingAnalyse=d.analyse||null;
+    window._pendingScore=d.score?{score:parseInt(d.score)||null,verdict:d.verdict||''}:null;
     setTimeout(()=>{
-      if(document.querySelector('#mroot .modal')){return;}
+      if(document.querySelector('#mroot .modal')){showToast('Un formulaire est déjà ouvert — termine-le puis renvoie le profil','warn');return;}
       openForm(null);
       setTimeout(()=>{
         const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
@@ -2222,13 +1978,210 @@ function checkPendingImport(){
           const modal=document.querySelector('.modal');
           if(modal)modal.insertBefore(scoreInfo,modal.querySelector('.fg'));
         }
-        // Load CV from pending if available
-        const pendCV=localStorage.getItem('tn_pending_cv');
-        if(pendCV){try{const cv=JSON.parse(pendCV);eCV.o=cv;const lbl=document.getElementById('cvol');if(lbl)lbl.textContent=cv.name;const act=document.getElementById('cvo-act');if(act)act.style.display='flex';const up=lbl?.parentElement;if(up)up.classList.add('has');}catch(e){} localStorage.removeItem('tn_pending_cv');}
         if(d.nom)showToast(`Profil "${d.nom}" pré-rempli depuis l'historique`,'ok');
       },100);
     },400);
   }catch(e){console.error('pending import:',e);}
+}
+
+// ═══════════════════════════════════════
+// SESSION & PERMISSIONS (qui je suis : mémorisé sur ce navigateur uniquement)
+// ═══════════════════════════════════════
+function getSession(){try{return JSON.parse(localStorage.getItem('tn_session')||'null');}catch(e){return null;}}
+function getMe(){return getSession()?.name||'';}
+function isAdmin(){return getSession()?.name==='Mehdi';}
+function canEditC(sourcer){return isAdmin()||sourcer===getMe();}
+function canManageCols(){return isAdmin();}
+function getZoneColor(name){const m={'Amine':'#22c55e','Said':'#38bdf8','Mehdi':'#0f766e'};return m[name]||'#0d3b6e';}
+
+function renderTopbarUser(){
+  const el=document.getElementById('topbar-user');if(!el)return;
+  const me=getMe();if(!me)return;
+  const adm=isAdmin();
+  el.innerHTML=`<span style="color:#6b7280">Connecté :</span>
+    <strong style="color:${adm?'var(--navy)':'#111'}">${esc(me)}</strong>
+    <button onclick="logout()" style="padding:3px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:11px;cursor:pointer;background:transparent;font-family:var(--fs);color:#6b7280">Déconnecter</button>`;
+}
+function login(name){
+  localStorage.setItem('tn_session',JSON.stringify({name,ts:Date.now()}));
+  document.getElementById('mroot').innerHTML='';
+  init();
+}
+function logout(){localStorage.removeItem('tn_session');location.reload();}
+function showLogin(){
+  const btns=S.sourceurs.map(s=>`<button onclick="login('${s}')" style="display:block;width:100%;padding:16px;margin-bottom:12px;border:2px solid ${s==='Mehdi'?'var(--navy)':'#e5e7eb'};border-radius:12px;background:${s==='Mehdi'?'var(--navy)':'#fff'};color:${s==='Mehdi'?'#fff':'#111'};font-size:16px;font-weight:600;cursor:pointer;font-family:var(--fs)">${esc(s)}</button>`).join('');
+  document.getElementById('mroot').innerHTML=`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;z-index:500">
+    <div style="background:#fff;border-radius:16px;padding:40px;width:380px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.12)">
+      <div style="font-size:26px;font-weight:700;color:var(--navy);margin-bottom:6px">Notion TAFINAR</div>
+      <div style="font-size:14px;color:#6b7280;margin-bottom:32px">Qui êtes-vous ?</div>
+      ${btns}
+    </div>
+  </div>`;
+}
+function getWho(){return getMe()||S.sourceurs[0];}
+
+// ═══════════════════════════════════════
+// BANDEAU + REPRISE DES DONNÉES LOCALES
+// ═══════════════════════════════════════
+function scanLocal(){
+  const out={cands:[],trash:[],statuts:null};
+  try{
+    const seen=new Set();
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('tn_cands_')){
+        const arr=tryJSON(localStorage.getItem(k),[]);
+        if(Array.isArray(arr))arr.forEach(c=>{if(c&&c.id&&c.nom&&!c._fromSB&&!seen.has(c.id)){seen.add(c.id);out.cands.push(c);}});
+      }
+    }
+    const tr=tryJSON(localStorage.getItem('tn_trash'),[]);
+    if(Array.isArray(tr))tr.forEach(c=>{if(c&&c.id&&c.nom&&!c._fromSB&&!seen.has(c.id)){seen.add(c.id);out.trash.push(c);}});
+    out.statuts=tryJSON(localStorage.getItem('tn_statuts'),null);
+  }catch(e){console.warn('scanLocal',e);}
+  return out;
+}
+function renderBanner(){
+  const el=document.getElementById('banner');if(!el)return;
+  const L=window._local;
+  let flag=false;try{flag=!!localStorage.getItem('tn_migrated_v59');}catch(e){}
+  if(getMe()&&L&&!flag&&(L.cands.length||L.trash.length)){
+    el.innerHTML=`<div class="info-banner" style="margin:12px 16px 0;background:#fef9c3;border-color:#fde68a;color:#854d0e"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span style="flex:1">Cet ordinateur contient ${L.cands.length+L.trash.length} profil(s) qui ne sont pas (ou pas entièrement) dans la base commune.</span><button class="btn btn-p" onclick="openMigration()">Les reprendre maintenant</button></div>`;
+  }else el.innerHTML='';
+}
+async function dataUrlToFile(d,name){
+  const r=await fetch(d);const b=await r.blob();
+  return new File([b],name||'cv.pdf',{type:b.type||'application/pdf'});
+}
+async function localCv(c,type,idForPath,res){
+  const cv=type==='o'?c.cvO:c.cvA;const st=type==='o'?c.cvStorageO:c.cvStorageA;
+  if(cv&&cv.data){const f=await dataUrlToFile(cv.data,cv.name);const r=await uploadCvFile(idForPath,type,f);res.cvs++;return r;}
+  if(st&&st.url)return{url:st.url,name:st.name||'CV'};
+  return null;
+}
+async function migrateOne(c,isTrash,byId,byName,res){
+  const sourcer=c.sourcer;
+  if(!S.sourceurs.includes(sourcer)){res.skipped++;return;}
+  const ex=byId.get(c.id)||byName.get(normNom(c.nom)+'|'+sourcer);
+  const pt=gp(c.posteId)?.titre||c.posteTitre||'';
+  if(!ex){
+    const sts=S.statuts[sourcer]||DEFAULT_STATUTS;
+    const nc={id:c.id,nom:c.nom,trigramme:c.trigramme||'',posteId:'',posteTitre:pt,dispo:c.dispo||'',mobilite:Array.isArray(c.mobilite)?c.mobilite:[],pretention:c.pretention||'',freelance:c.freelance||'Non',remarque:c.remarque||'',sourcer,statut:c.statut||sts[0],ordre:(typeof c.order==='number')?c.order:null,score:c.score||null,verdict:c.verdict||null,telephone:c.telephone||'',analyse:c.analyse||null,createdAt:'',deletedAt:isTrash?(c._trashedAt||new Date().toISOString()):null};
+    const o=await localCv(c,'o',c.id,res),a=await localCv(c,'a',c.id,res);
+    if(o){nc.cvOUrl=o.url;nc.cvOName=o.name;}
+    if(a){nc.cvAUrl=a.url;nc.cvAName=a.name;}
+    const{error}=await sb.from('candidats').insert(candToRow(nc));
+    if(error)throw error;
+    byId.set(nc.id,nc);byName.set(normNom(nc.nom)+'|'+sourcer,nc);
+    res.added++;return;
+  }
+  const upd={};
+  if(!ex.cvOUrl){const o=await localCv(c,'o',ex.id,res);if(o){upd.cv_original_url=o.url;upd.cv_original_name=o.name;}}
+  if(!ex.cvAUrl){const a=await localCv(c,'a',ex.id,res);if(a){upd.cv_anonyme_url=a.url;upd.cv_anonyme_name=a.name;}}
+  if(!ex.analyse&&c.analyse)upd.analyse_cv=c.analyse;
+  if(!ex.telephone&&c.telephone)upd.telephone=c.telephone;
+  if(!ex.pretention&&c.pretention)upd.pretention=c.pretention;
+  if(!ex.dispo&&c.dispo)upd.dispo=c.dispo;
+  if(!ex.remarque&&c.remarque)upd.remarque=c.remarque;
+  if(!ex.trigramme&&c.trigramme)upd.trigramme=c.trigramme;
+  if(!ex.score&&c.score){upd.score=c.score;upd.verdict=c.verdict||null;}
+  if(isTrash&&ex.id===c.id&&!ex.deletedAt){upd.deleted_at=c._trashedAt||new Date().toISOString();res.trashed++;}
+  if(Object.keys(upd).length){await dbUpd(ex.id,upd);res.patched++;}
+}
+async function migrateLocal(logFn){
+  const L=scanLocal();
+  const all=S.candidates.concat(S.trash);
+  const byId=new Map(all.map(c=>[c.id,c]));
+  const byName=new Map();all.forEach(c=>{const k=normNom(c.nom)+'|'+c.sourcer;if(!byName.has(k))byName.set(k,c);});
+  const res={added:0,patched:0,cvs:0,trashed:0,errors:0,skipped:0,statuts:0};
+  const items=[...L.cands.map(c=>({c,t:false})),...L.trash.map(c=>({c,t:true}))];
+  let i=0;
+  for(const{c,t}of items){
+    i++;logFn(`${i}/${items.length} — ${c.nom}`);
+    try{await migrateOne(c,t,byId,byName,res);}
+    catch(e){console.error('migrate',c.nom,e);res.errors++;}
+  }
+  // statuts personnalisés de ce PC (seulement si la base n'en a pas encore pour ce sourceur)
+  try{
+    const ls=L.statuts;
+    if(ls&&typeof ls==='object'){
+      for(const s of S.sourceurs){
+        const arr=ls[s];
+        if(Array.isArray(arr)&&arr.length&&!S.kanbanKnown.has(s)&&JSON.stringify(arr)!==JSON.stringify(DEFAULT_STATUTS)){
+          S.statuts[s]=arr.filter(x=>typeof x==='string'&&x.trim());await saveKanban(s);res.statuts++;
+        }
+      }
+    }
+  }catch(e){console.error('migrate statuts',e);res.errors++;}
+  return res;
+}
+function openMigration(){
+  window._local=scanLocal();const L=window._local;
+  const n=L.cands.length+L.trash.length;
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this&&!window._migRunning)closeM()"><div class="modal" onclick="event.stopPropagation()">
+    <div class="m-title">Reprendre les données de cet ordinateur<button class="m-close" onclick="if(!window._migRunning)closeM()">×</button></div>
+    <div id="mig-body" style="font-size:13px;line-height:1.7;color:#374151">
+      ${n===0?'Rien à reprendre : aucun profil n\'est enregistré uniquement sur ce navigateur.':`Trouvé sur cet ordinateur : <strong>${L.cands.length}</strong> profil(s) et <strong>${L.trash.length}</strong> en corbeille.<br>
+      Ils vont être envoyés dans la base commune <strong>avec leurs CVs</strong>. Les profils déjà présents ne sont pas dupliqués : seuls les champs vides (CV, prétention, téléphone…) sont complétés. Rien n'est supprimé de cet ordinateur.`}
+    </div>
+    <div class="m-actions"><button class="btn" id="mig-close" onclick="closeM()">Fermer</button>${n>0?'<button class="btn btn-p" id="mig-go" onclick="runMigration()">Lancer la reprise</button>':''}</div>
+  </div></div>`;
+}
+async function runMigration(){
+  if(window._migRunning)return;window._migRunning=true;
+  const body=document.getElementById('mig-body'),go=document.getElementById('mig-go'),cl=document.getElementById('mig-close');
+  if(go)go.disabled=true;if(cl)cl.disabled=true;
+  body.innerHTML='<div class="spinner" style="display:inline-block;vertical-align:middle;margin-right:8px"></div><span id="mig-log">Préparation…</span>';
+  let res;
+  try{
+    await loadAll();
+    res=await migrateLocal(t=>{const el=document.getElementById('mig-log');if(el)el.textContent=t;});
+    await loadAll();
+  }catch(e){console.error(e);res={errors:1,added:0,patched:0,cvs:0,trashed:0,skipped:0,statuts:0};}
+  window._migRunning=false;
+  if(!res.errors){try{localStorage.setItem('tn_migrated_v59',String(Date.now()));}catch(e){}}
+  body.innerHTML=`<div style="font-size:14px;font-weight:600;color:${res.errors?'#854d0e':'#166534'};margin-bottom:8px">${res.errors?'Terminé avec '+res.errors+' erreur(s)':'✓ Reprise terminée'}</div>
+    Profils ajoutés : <strong>${res.added}</strong><br>Profils complétés : <strong>${res.patched}</strong><br>CVs envoyés : <strong>${res.cvs}</strong><br>
+    Supprimés (corbeille) : <strong>${res.trashed}</strong><br>${res.statuts?`Statuts repris : <strong>${res.statuts}</strong><br>`:''}${res.skipped?`Ignorés (sourceur inconnu) : ${res.skipped}<br>`:''}
+    ${res.errors?'<div style="margin-top:8px;color:#854d0e">Relance la reprise : ce qui est déjà passé ne sera pas dupliqué.</div>':''}`;
+  if(cl){cl.disabled=false;}if(go){go.textContent='Relancer';go.disabled=false;}
+  renderBanner();
+}
+
+// ═══════════════════════════════════════
+// VÉRIFICATION DE LA BASE (script SQL v59 exécuté ?)
+// ═══════════════════════════════════════
+async function checkSchema(){
+  const a=await sb.from('candidats').select('ordre,deleted_at,cv_original_url,cv_anonyme_url,analyse_cv').limit(1);
+  const b=await sb.from('kanban_config').select('sourcer').limit(1);
+  if(!a.error&&!b.error)return true;
+  const err=a.error||b.error;console.error('checkSchema',err);
+  const offline=!err.code&&/fetch|network|failed/i.test(err.message||'');
+  document.getElementById('mroot').innerHTML=`<div style="position:fixed;inset:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;z-index:400"><div style="background:#fff;border-radius:16px;padding:32px;width:520px;max-width:94vw;box-shadow:0 8px 32px rgba(0,0,0,.12)">
+    <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:10px">${offline?'Connexion à la base impossible':'Mise à jour de la base nécessaire (1 seule fois)'}</div>
+    <div style="font-size:13px;color:#374151;line-height:1.7">${offline?'Vérifie ta connexion internet puis réessaie.':'Ouvre <strong>Supabase → SQL Editor</strong>, colle le contenu du fichier <strong>tafinar_v59_migration.sql</strong> et clique <strong>Run</strong>. Rien n\'est supprimé. Reviens ensuite ici.'}
+    <div style="font-size:11px;color:#9ca3af;margin-top:8px">${esc(err.message||'')}</div></div>
+    <div style="margin-top:16px"><button class="btn btn-p" onclick="location.reload()">Réessayer</button></div></div></div>`;
+  return false;
+}
+
+// ═══════════════════════════════════════
+// ACTUALISATION AUTOMATIQUE (autres PC)
+// ═══════════════════════════════════════
+let _refreshOn=false;
+function setupRefresh(){
+  if(_refreshOn)return;_refreshOn=true;
+  const maybe=()=>{
+    if(document.hidden||_loading||_saving||window._migRunning)return;
+    if(document.querySelector('#mroot .overlay,#cv-dl-popup,#poste-check-popup'))return;
+    if(S.dragId||S.colDragIdx!==null)return;
+    const t=document.activeElement&&document.activeElement.tagName;
+    if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')return;
+    if(Date.now()-(S._lastLoad||0)<20000)return;
+    loadAll();
+  };
+  window.addEventListener('focus',maybe);
+  document.addEventListener('visibilitychange',maybe);
+  setInterval(maybe,60000);
 }
 
 // ═══════════════════════════════════════
@@ -2237,27 +2190,28 @@ function checkPendingImport(){
 async function init(){
   loadLocal();
   const session=getSession();
-  if(!session){showLogin();return;}
+  if(!session){try{await fetchKanban();}catch(e){}showLogin();return;}
   S.srcr=session.name;
   renderTopbarUser();
   render();
   showLoader(true);
   try{
-    await Promise.all([fetchPostes(),fetchProfils()]);
+    if(!(await checkSchema()))return;
+    window._local=scanLocal();
+    await Promise.all([fetchPostes(),fetchKanban()]);
     await fetchCandidats();
-    // Push all local candidates to Supabase if table is empty (first time setup)
-    await syncAllCandidatsToSB();
+    S._lastLoad=Date.now();
     render();
-    showToast('Données synchronisées','ok');
   }catch(e){
     console.error('Supabase init error:',e);
-    showToast('Mode hors ligne — données locales uniquement','warn');
+    showToast('Connexion à la base impossible — recharge la page quand le réseau est revenu','warn');
   }finally{
     showLoader(false);
   }
   handleURLParams();
   checkPendingImport();
   checkPendingPoste();
+  setupRefresh();
 }
 
 // ═══════════════════════════════════════
@@ -2294,7 +2248,6 @@ function loadDraft(){
   }catch(e){return false;}
 }
 
-
 // ═══════════════════════════════════════
 // PREFILL FROM RECRUTEMENT (postMessage)
 // ═══════════════════════════════════════
@@ -2304,7 +2257,7 @@ window.addEventListener('message', function(e){
     const d=e.data.payload;if(!d)return;
     const tryOpenPoste=function(attempt){
       if(S.postes.length>0||attempt>10){
-        if(document.querySelector('#mroot .modal'))return;
+        if(document.querySelector('#mroot .modal')){showToast('Un formulaire est déjà ouvert — termine-le puis renvoie le poste','warn');return;}
         openPosteForm(null);
         setTimeout(function(){
           const set=function(id,v){const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
@@ -2325,11 +2278,12 @@ window.addEventListener('message', function(e){
   const d=e.data.payload;
   if(!d)return;
   pendingAnalyse=d.analyse||null;
+  window._pendingScore=d.score?{score:parseInt(d.score)||null,verdict:d.verdict||''}:null;
   // Wait for Supabase data to be ready, then open form
   const tryOpen=function(attempt){
     if(S.postes.length||attempt>10){
       // Don't override a form already open
-      if(document.querySelector('#mroot .modal')){return;}
+      if(document.querySelector('#mroot .modal')){showToast('Un formulaire est déjà ouvert — termine-le puis renvoie le profil','warn');return;}
       openForm(null);
       setTimeout(function(){
         const set=function(id,v){const el=document.getElementById(id);if(el&&v)el.value=v;};
@@ -2364,22 +2318,6 @@ window.addEventListener('message', function(e){
   };
   tryOpen(0);
 });
-
-
-function dlLocalCv(i, btn){
-  const cv=window._dlLocalCVs&&window._dlLocalCVs[i];
-  if(!cv)return;
-  const a=document.createElement('a');
-  a.href=cv.data;
-  a.download=cv.name||'CV.pdf';
-  a.click();
-  btn.innerHTML='<i class="ti ti-check" aria-hidden="true"></i> Téléchargé';
-  btn.style.background='#166534';
-  setTimeout(()=>{
-    btn.innerHTML='<i class="ti ti-download" aria-hidden="true"></i> Télécharger';
-    btn.style.background='#0d3b6e';
-  },2000);
-}
 
 
 init();
