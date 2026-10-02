@@ -331,7 +331,7 @@ function rowToCand(r){
     nom:r.nom||'',trigramme:r.trigramme||'',
     posteId:'',posteTitre:r.poste_titre||'',
     dispo:r.dispo||'',mobilite:mob,
-    pretention:r.pretention||'',freelance:r.freelance||'Non',
+    pretention:r.pretention||'',tjm:r.tjm||'',freelance:r.freelance||'Non',
     remarque:r.remarque||'',sourcer:r.sourcer||'',
     statut:r.statut||'',ordre:(r.ordre===null||r.ordre===undefined)?null:Number(r.ordre),
     score:r.score||null,verdict:r.verdict||null,
@@ -348,7 +348,7 @@ function candToRow(c){
     local_id:c.id,nom:c.nom,trigramme:c.trigramme||'',
     poste_titre:c.posteTitre||(gp(c.posteId)?.titre||''),
     dispo:c.dispo||'',mobilite:JSON.stringify(c.mobilite||[]),
-    pretention:c.pretention||'',freelance:c.freelance||'Non',
+    pretention:c.pretention||'',tjm:c.tjm||'',freelance:c.freelance||'Non',
     remarque:c.remarque||'',sourcer:c.sourcer||'',statut:c.statut||'',
     ordre:(c.ordre===undefined?null:c.ordre),
     score:c.score||null,verdict:c.verdict||null,
@@ -597,13 +597,14 @@ function rProfils(){
       <div class="pc-poste">${esc(c.posteTitre||'—')}</div>
       <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">
         ${c.pretention?`<span class="ptag ptag-b">${esc(c.pretention)}</span>`:''}
+        ${c.tjm?`<span class="ptag ptag-g">TJM ${esc(c.tjm)}</span>`:''}
         ${c.freelance==='Oui'?'<span class="ptag ptag-g">Freelance</span>':''}
         ${c.dispo?`<span class="ptag ptag-n">${esc(c.dispo)}</span>`:''}
         ${sc(c)}
       </div>
     </div>`;}).join('')}</div>`
-  :`<table class="lt"><thead><tr><th><input type="checkbox" ${selAll?'checked':''} onclick="toggleSelAll(this,${esc(JSON.stringify(list.map(c=>c.id)))})" style="accent-color:var(--green)"></th><th>Sourceur</th><th>Nom</th><th>Trigramme</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>Prétention</th><th>Freelance</th><th>Score</th></tr></thead><tbody>
-  ${list.map(c=>{const isSel=S.sel.has(c.id);return`<tr class="${isSel?'sel':''}" style="cursor:pointer" onclick="${open(c)}"><td onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" style="accent-color:var(--green)"></td><td style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${esc(c.sourcer)}</td><td style="font-weight:600">${esc(c.nom)}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534" aria-hidden="true"></i>':''}</td><td>${esc(c.trigramme)}</td><td style="font-size:11px">${esc(c.posteTitre||'—')}</td><td>${esc(c.dispo)||'—'}</td><td>${esc((c.mobilite||[]).join(', '))||'—'}</td><td><span class="ptag ptag-b">${esc(c.pretention)}</span></td><td>${esc(c.freelance)}</td><td>${sc(c)}</td></tr>`;}).join('')}
+  :`<table class="lt"><thead><tr><th><input type="checkbox" ${selAll?'checked':''} onclick="toggleSelAll(this,${esc(JSON.stringify(list.map(c=>c.id)))})" style="accent-color:var(--green)"></th><th>Sourceur</th><th>Nom</th><th>Trigramme</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>Prétention</th><th>TJM</th><th>Freelance</th><th>Score</th></tr></thead><tbody>
+  ${list.map(c=>{const isSel=S.sel.has(c.id);return`<tr class="${isSel?'sel':''}" style="cursor:pointer" onclick="${open(c)}"><td onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" style="accent-color:var(--green)"></td><td style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${esc(c.sourcer)}</td><td style="font-weight:600">${esc(c.nom)}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534" aria-hidden="true"></i>':''}</td><td>${esc(c.trigramme)}</td><td style="font-size:11px">${esc(c.posteTitre||'—')}</td><td>${esc(c.dispo)||'—'}</td><td>${esc((c.mobilite||[]).join(', '))||'—'}</td><td><span class="ptag ptag-b">${esc(c.pretention)}</span></td><td>${esc(c.tjm)}</td><td>${esc(c.freelance)}</td><td>${sc(c)}</td></tr>`;}).join('')}
   </tbody></table>`;
   return`<div class="tb">
     <input id="ps-n" placeholder="Nom..." value="${esc(sn)}" oninput="rProfilsLive()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:130px">
@@ -749,7 +750,7 @@ function getSelData(){
   const result=[];
   S.sel.forEach(id=>{
     const c=S.candidates.find(x=>x.id===id);
-    if(c){const p=gp(c.posteId);result.push({nom:c.nom,trigramme:c.trigramme,posteTitre:p?p.titre:(c.posteTitre||''),dispo:c.dispo,mobilite:c.mobilite,pretention:c.pretention,freelance:c.freelance,remarque:c.remarque,score:c.score,verdict:c.verdict,_id:c.id,cvOUrl:c.cvOUrl,cvOName:c.cvOName,cvAUrl:c.cvAUrl,cvAName:c.cvAName});}
+    if(c){const p=gp(c.posteId);result.push({nom:c.nom,trigramme:c.trigramme,posteTitre:p?p.titre:(c.posteTitre||''),dispo:c.dispo,mobilite:c.mobilite,pretention:c.pretention,tjm:c.tjm,freelance:c.freelance,remarque:c.remarque,score:c.score,verdict:c.verdict,_id:c.id,cvOUrl:c.cvOUrl,cvOName:c.cvOName,cvAUrl:c.cvAUrl,cvAName:c.cvAName});}
   });
   return result;
 }
@@ -769,6 +770,7 @@ const MAIL_COLS=[
   {id:'dispo',label:'Disponibilité',visible:true},
   {id:'mobilite',label:'Mobilité',visible:true},
   {id:'pretention',label:'Prétention',visible:true},
+  {id:'tjm',label:'TJM (€ HT)',visible:true},
   {id:'freelance',label:'Freelance',visible:true},
   {id:'remarques',label:'Remarques',visible:true},
 ];
@@ -788,7 +790,7 @@ function openMailModal(){
   mailLignes=[];
   ordre.forEach(p=>byPoste[p].forEach(c=>mailLignes.push({
     id:c._id,quad:c.trigramme||quadDe(c.nom),nom:c.nom,poste:p,dispo:c.dispo||'',
-    mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',freelance:c.freelance||'',remarques:c.remarque||''
+    mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',tjm:c.tjm||'',freelance:c.freelance||'',remarques:c.remarque||''
   })));
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
   <div class="modal" style="width:960px;max-width:96vw" onclick="event.stopPropagation()">
@@ -818,27 +820,30 @@ function mailToggles(){
 }
 function mailBuildHTML(editable){
   const cols=MAIL_COLS.filter(c=>c.visible);
-  const M='#0d3b6e',G='#f0f4f8';
-  const th='padding:9px 12px;text-align:left;border:1px solid '+M+';color:#ffffff;font-family:Arial,sans-serif;font-size:12px;font-weight:700;white-space:nowrap;background:'+M+';';
+  const M='#0d3b6e',G='#f0f4f8',W='#ffffff',T='#1a1a1a';
+  const FF='font-family:Arial,sans-serif;';
   const groupes={};const ordre=[];
   mailLignes.forEach((l,i)=>{if(!groupes[l.poste]){groupes[l.poste]=[];ordre.push(l.poste);}groupes[l.poste].push(i);});
+  // Outlook (moteur Word) perd souvent les couleurs CSS : on double chaque couleur avec bgcolor + <font color>
+  const cell=(html,bg,color,bold,extra,attrs)=>{
+    let inner=html;
+    if(!editable){inner='<font color="'+color+'" face="Arial">'+(bold?'<b>'+html+'</b>':html)+'</font>';}
+    return '<td bgcolor="'+bg+'"'+(attrs||'')+' style="background-color:'+bg+';color:'+color+';'+FF+'font-size:12px;'+(bold?'font-weight:700;':'')+(extra||'')+'">'+inner+'</td>';
+  };
   const ce=editable?' contenteditable="true"':'';
   let tables='';
   ordre.forEach(poste=>{
     let tb='';
     groupes[poste].forEach((i,k)=>{
-      const l=mailLignes[i];
-      tb+='<tr style="background:'+(k%2?G:'#ffffff')+';">'+cols.map(c=>'<td'+ce+' data-row="'+i+'" data-col="'+c.id+'" style="padding:8px 12px;border:1px solid #d1d5db;font-family:Arial,sans-serif;font-size:12px;vertical-align:top;'+(c.bold?'font-weight:700;color:'+M+';':'')+'">'+esc(l[c.id])+'</td>').join('')+'</tr>';
+      const l=mailLignes[i];const bg=k%2?G:W;
+      tb+='<tr bgcolor="'+bg+'">'+cols.map(c=>cell(esc(l[c.id]),bg,c.bold?M:T,c.bold,'padding:8px 12px;border:1px solid #d1d5db;vertical-align:top;',ce+' data-row="'+i+'" data-col="'+c.id+'"')).join('')+'</tr>';
     });
-    tables+='<div style="margin-bottom:24px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px;"><thead>'
-      +'<tr><td colspan="'+cols.length+'" style="background:'+M+';padding:8px 14px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">'+esc(poste)+'</td></tr>'
-      +'<tr>'+cols.map(c=>'<th style="'+th+'">'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>'+tb+'</tbody></table></div>';
+    tables+='<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="'+W+'" style="border-collapse:collapse;'+FF+'font-size:12px;margin-bottom:24px;"><thead>'
+      +'<tr bgcolor="'+M+'">'+cell(esc(poste),M,W,true,'padding:8px 14px;font-size:13px;',' colspan="'+cols.length+'"')+'</tr>'
+      +'<tr bgcolor="'+M+'">'+cols.map(c=>cell(esc(c.label),M,W,true,'padding:9px 12px;text-align:left;border:1px solid '+M+';white-space:nowrap;')).join('')+'</tr></thead><tbody>'+tb+'</tbody></table><p style="margin:0;line-height:12px">&nbsp;</p>';
   });
-  return '<div style="font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;max-width:750px;">'
-    +'<p'+ce+' data-txt="intro" style="margin:0 0 14px;">'+esc(mailTxt.intro)+'</p>'
-    +'<p'+ce+' data-txt="intro2" style="margin:0 0 20px;">'+esc(mailTxt.intro2)+'</p>'
-    +tables
-    +'<p'+ce+' data-txt="outro" style="margin:20px 0 0;">'+esc(mailTxt.outro)+'</p></div>';
+  const para=(k,mt,mb)=>'<p'+ce+' data-txt="'+k+'" style="margin:'+mt+'px 0 '+mb+'px;'+FF+'font-size:13px;color:'+T+';">'+(editable?'':'<font color="'+T+'" face="Arial">')+esc(mailTxt[k])+(editable?'':'</font>')+'</p>';
+  return '<div style="'+FF+'font-size:13px;color:'+T+';max-width:750px;">'+para('intro',0,14)+para('intro2',0,20)+tables+para('outro',8,0)+'</div>';
 }
 function mailRender(){
   const el=document.getElementById('mail-prev');if(!el)return;
@@ -966,6 +971,7 @@ function openForm(id){
       <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="f-pret" value="${esc(c?.pretention||'')}" placeholder="ex: 45k" oninput="saveDraft()"></div>
       <div class="fr"><label class="fl">Freelance</label><select class="fi" id="f-free" onchange="saveDraft()"><option value="Non"${(c?.freelance||'Non')==='Non'?' selected':''}>Non</option><option value="Oui"${c?.freelance==='Oui'?' selected':''}>Oui</option><option value="CDI"${c?.freelance==='CDI'?' selected':''}>CDI</option><option value="À valider"${c?.freelance==='À valider'?' selected':''}>À valider</option></select></div>
     </div>
+    <div class="fr"><label class="fl">TJM (€ HT / jour)</label><input class="fi" id="f-tjm" value="${esc(c?.tjm||'')}" placeholder="ex: 450" oninput="saveDraft()"></div>
     <div class="fr">${isAdmin()?`<label class='fl'>Sourceur</label><select class='fi' id='f-src'>${S.sourceurs.map(s=>`<option value='${s}'${srcr===s?' selected':''}>${s}</option>`).join('')}</select>`:`<input type='hidden' id='f-src' value='${srcr}'>`}</div>
     <div class="fr" style="position:relative">
       <label class="fl">Remarque</label>
@@ -993,6 +999,7 @@ function openForm(id){
         if(draft.pret)set('f-pret',draft.pret);
         if(draft.rem)set('f-rem',draft.rem);
         if(draft.tel)set('f-tel',draft.tel);
+        if(draft.tjm)set('f-tjm',draft.tjm);
         if(draft.free){const el=document.getElementById('f-free');if(el)el.value=draft.free;}
         if(draft.ps){
           set('f-ps',draft.ps);
@@ -1089,6 +1096,7 @@ function captureFormState(){
     sourcer:document.getElementById('f-src')?.value||S.srcr,
     remarque:document.getElementById('f-rem')?.value||'',
     telephone:document.getElementById('f-tel')?.value||'',
+    tjm:document.getElementById('f-tjm')?.value||'',
     mobilite:[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim()),
     posteSearch:document.getElementById('f-ps')?.value||'',
     posteId:document.getElementById('f-pid')?.value||'',
@@ -1173,6 +1181,7 @@ async function saveC(id){
     freelance:document.getElementById('f-free')?.value||'Non',
     sourcer,remarque:rem,
     telephone:(document.getElementById('f-tel')?.value||'').trim(),
+    tjm:(document.getElementById('f-tjm')?.value||'').trim(),
   };
   const old=id?S.candidates.find(x=>x.id===id):null;
   const cid=old?old.id:uid();
@@ -1191,7 +1200,7 @@ async function saveC(id){
       const upd={
         nom:fields.nom,trigramme:fields.trigramme,poste_titre:fields.posteTitre,dispo:fields.dispo,
         mobilite:JSON.stringify(mobilite),pretention:fields.pretention,freelance:fields.freelance,
-        remarque:fields.remarque,sourcer,telephone:fields.telephone,
+        remarque:fields.remarque,sourcer,telephone:fields.telephone,tjm:fields.tjm,
         cv_original_url:cvFields.cvOUrl,cv_original_name:cvFields.cvOName,
         cv_anonyme_url:cvFields.cvAUrl,cv_anonyme_name:cvFields.cvAName,
       };
@@ -1242,6 +1251,7 @@ function openView(id){
       <div><span style="color:#6b7280">Poste :</span> ${p?esc(p.titre):esc(c.posteTitre||'—')}</div>
       <div><span style="color:#6b7280">Dispo :</span> ${esc(c.dispo)||'—'}</div>
       <div><span style="color:#6b7280">Prétention :</span> ${esc(c.pretention)||'—'}</div>
+      <div><span style="color:#6b7280">TJM (€ HT) :</span> ${esc(c.tjm)||'—'}</div>
       <div><span style="color:#6b7280">Mobilité :</span> ${esc((c.mobilite||[]).join(', '))||'—'}</div>
       <div><span style="color:#6b7280">Freelance :</span> ${esc(c.freelance)}</div>
       ${c.telephone?`<div><span style="color:#6b7280">Téléphone :</span> <strong>${esc(c.telephone)}</strong></div>`:''}
@@ -1260,7 +1270,7 @@ function openView(id){
   </div></div>`;
 }
 
-function genBlocMail(c){const p=gp(c.posteId);return`**${c.nom}**\nProfil : ${c.trigramme||'—'}\nDisponible : ${c.dispo||'—'}\nPrétention salariale : ${c.pretention||'—'}\nMobilité : ${(c.mobilite||[]).join(', ')||'—'}\nFreelance : ${c.freelance}${c.remarque?'\nRemarque : '+c.remarque:''}\nPoste ciblé : ${p?p.titre:'—'}`;}
+function genBlocMail(c){const p=gp(c.posteId);return`**${c.nom}**\nProfil : ${c.trigramme||'—'}\nDisponible : ${c.dispo||'—'}\nPrétention salariale : ${c.pretention||'—'}${c.tjm?'\nTJM (€ HT) : '+c.tjm:''}\nMobilité : ${(c.mobilite||[]).join(', ')||'—'}\nFreelance : ${c.freelance}${c.remarque?'\nRemarque : '+c.remarque:''}\nPoste ciblé : ${p?p.titre:'—'}`;}
 function cpyMail(id){const c=S.candidates.find(x=>x.id===id);if(!c)return;navigator.clipboard.writeText(genBlocMail(c)).then(()=>{const el=document.getElementById('bm-prev');if(el){el.style.background='#dcfce7';setTimeout(()=>{if(el)el.style.background='';},700);}}).catch(()=>{});}
 function openPosteForm(id,fromCand){
   if(!fromCand)pendingCandidatState=null;
@@ -1478,7 +1488,7 @@ function reopenCandidatFormWithState(newPosteId,newPosteTitre){
   setTimeout(()=>{
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
     set('f-nom',state.nom);set('f-tri',state.trigramme);set('f-dis',state.dispo);
-    set('f-pret',state.pretention);set('f-rem',state.remarque);set('f-tel',state.telephone||'');
+    set('f-pret',state.pretention);set('f-rem',state.remarque);set('f-tel',state.telephone||'');set('f-tjm',state.tjm||'');
     const ff=document.getElementById('f-free');if(ff)ff.value=state.freelance;
     const fs=document.getElementById('f-src');if(fs)fs.value=state.sourcer;
     if(state.posteSearch){set('f-ps',state.posteSearch);set('f-pid',state.posteId||'');}
@@ -2165,7 +2175,7 @@ async function runMigration(){
 // VÉRIFICATION DE LA BASE (script SQL v59 exécuté ?)
 // ═══════════════════════════════════════
 async function checkSchema(){
-  const a=await sb.from('candidats').select('ordre,deleted_at,cv_original_url,cv_anonyme_url,analyse_cv').limit(1);
+  const a=await sb.from('candidats').select('ordre,deleted_at,cv_original_url,cv_anonyme_url,analyse_cv,tjm').limit(1);
   const b=await sb.from('kanban_config').select('sourcer').limit(1);
   if(!a.error&&!b.error)return true;
   const err=a.error||b.error;console.error('checkSchema',err);
@@ -2245,6 +2255,7 @@ function saveDraft(){
       free:document.getElementById('f-free')?.value||'Non',
       rem:document.getElementById('f-rem')?.value||'',
       tel:document.getElementById('f-tel')?.value||'',
+      tjm:document.getElementById('f-tjm')?.value||'',
       ts:Date.now()
     };
     localStorage.setItem('tn_form_draft',JSON.stringify(draft));
