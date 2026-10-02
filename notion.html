@@ -761,99 +761,113 @@ function getMailData(){
   return{sel,byPoste,ordre};
 }
 
-function genMailHTML(dest){
-  const{byPoste,ordre}=getMailData();
-  if(!ordre.length)return'<p style="color:#9ca3af">(Aucun profil sélectionné)</p>';
-  let html=`<p>Bonjour Monsieur ${esc(dest||'ABABOU')}</p><p>&nbsp;</p>`;
-  html+=`<p>Ci-joints les <strong>CI</strong> concernant les postes suivant :</p>`;
-  html+=`<ul>`;ordre.forEach(p=>{html+=`<li>${esc(p)}</li>`;});html+=`</ul><p>&nbsp;</p>`;
-  ordre.forEach(p=>{
-    html+=`<p><strong><em>${esc(p)}</em></strong></p><p>&nbsp;</p>`;
-    byPoste[p].forEach(c=>{
-      html+=`<p><strong>${esc(c.nom)}</strong></p>`;
-      html+=`<p>Profil : ${esc(c.trigramme||'—')}</p>`;
-      html+=`<p>Disponible : ${esc(c.dispo||'—')}</p>`;
-      html+=`<p>Prétention salariale : ${esc(c.pretention||'—')}</p>`;
-      html+=`<p>Mobilité : ${esc((c.mobilite||[]).join(', ')||'—')}</p>`;
-      html+=`<p>Remarque : ${esc(c.remarque||'—')}</p>`;
-      html+=`<p>Freelance : ${esc(c.freelance)}</p><p>&nbsp;</p>`;
-    });
-  });
-  return html;
-}
+// ── MAIL RÉCAP : un tableau par poste, colonnes au choix, cellules modifiables ──
+const MAIL_COLS=[
+  {id:'quad',label:'Profil',visible:true,bold:true},
+  {id:'nom',label:'Nom / Prénom',visible:false,bold:true},
+  {id:'poste',label:'Poste',visible:true},
+  {id:'dispo',label:'Disponibilité',visible:true},
+  {id:'mobilite',label:'Mobilité',visible:true},
+  {id:'pretention',label:'Prétention',visible:true},
+  {id:'freelance',label:'Freelance',visible:true},
+  {id:'remarques',label:'Remarques',visible:true},
+];
+let mailLignes=[];
+let mailTxt={intro:'Bonjour,',intro2:'Veuillez trouver ci-dessous une sélection de profils :',outro:'Nous restons disponibles pour tout renseignement complémentaire.'};
 
-function genMailText(dest){
-  const{byPoste,ordre}=getMailData();
-  if(!ordre.length)return'(Aucun profil sélectionné)';
-  let t=`Bonjour Monsieur ${dest||'ABABOU'}\n\nCi-joints les CI concernant les postes suivant :\n\n`;
-  ordre.forEach(p=>{t+=`* ${p}\n`;});
-  t+='\n\n';
-  ordre.forEach(p=>{
-    t+=`${p}\n\n`;
-    byPoste[p].forEach(c=>{
-      t+=`${c.nom}\nProfil : ${c.trigramme||'—'}\nDisponible : ${c.dispo||'—'}\nPrétention salariale : ${c.pretention||'—'}\nMobilité : ${(c.mobilite||[]).join(', ')||'—'}\nRemarque : ${c.remarque||'—'}\nFreelance : ${c.freelance}\n\n`;
-    });
-  });
-  return t.trim();
+function quadDe(nom){
+  nom=(nom||'').trim();if(!nom)return'';
+  const w=nom.split(/\s+/).filter(Boolean);
+  if(w.length>=2){const a=w[0],b=w[w.length-1];return((a[0]||'')+(a[a.length-1]||'')+(b[0]||'')+(b[b.length-1]||'')).toUpperCase();}
+  const x=w[0];return((x[0]||'')+(x[1]||'')+(x[x.length-2]||'')+(x[x.length-1]||'')).toUpperCase();
 }
 
 function openMailModal(){
   if(!S.sel.size)return;
+  const{sel,ordre,byPoste}=getMailData();
+  mailLignes=[];
+  ordre.forEach(p=>byPoste[p].forEach(c=>mailLignes.push({
+    id:c._id,quad:c.trigramme||quadDe(c.nom),nom:c.nom,poste:p,dispo:c.dispo||'',
+    mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',freelance:c.freelance||'',remarques:c.remarque||''
+  })));
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
-  <div class="modal" style="width:620px">
-    <div class="m-title"><span><i class="ti ti-mail" aria-hidden="true"></i> Mail récap — ${S.sel.size} profil(s)</span><button class="m-close" onclick="closeM()">×</button></div>
-    <div class="fg" style="margin-bottom:10px">
-      <div class="fr"><label class="fl">Destinataire</label><input class="fi" id="mail-dest" value="ABABOU" oninput="refreshMail()"></div>
-      <div class="fr"><label class="fl">Objet</label><input class="fi" id="mail-subject" value="Candidatures — Profils TAFINAR"></div>
-    </div>
-    <div class="fr">
-      <label class="fl">Aperçu formaté</label>
-      <div id="mail-prev" style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;max-height:380px;overflow-y:auto;font-size:13px;line-height:1.7;color:#111">${genMailHTML('ABABOU')}</div>
-    </div>
+  <div class="modal" style="width:960px;max-width:96vw" onclick="event.stopPropagation()">
+    <div class="m-title"><span><i class="ti ti-mail" aria-hidden="true"></i> Mail récap — ${mailLignes.length} profil(s)</span><button class="m-close" onclick="closeM()">×</button></div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Colonnes affichées</div>
+    <div id="mail-cols" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:10px">Clique sur un texte ou une cellule pour le modifier avant de copier (le profil n'est pas modifié). Le nom est masqué par défaut : documents client = quadrigramme.</div>
+    <div id="mail-prev" style="background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:16px;max-height:55vh;overflow:auto"></div>
     <div class="m-actions">
-      <button class="btn btn-r" onclick="S.sel=new Set();updateMailBtn();closeM()">Vider sélection</button>
+      <button class="btn btn-r" onclick="S.sel=new Set();closeM()">Vider sélection</button>
       <button class="btn" onclick="closeM()">Fermer</button>
-      <button class="btn btn-g" onclick="copyMailFormatted()"><i class="ti ti-copy" aria-hidden="true"></i> Copier → Outlook</button>
       <button class="btn btn-p" onclick="dlTousCVs()"><i class="ti ti-download" aria-hidden="true"></i> Télécharger les CVs</button>
+      <button class="btn btn-g" id="mail-copy-btn" onclick="copyMailFormatted()"><i class="ti ti-copy" aria-hidden="true"></i> Copier → Outlook</button>
     </div>
   </div></div>`;
+  mailToggles();mailRender();
+}
+function mailToggles(){
+  const z=document.getElementById('mail-cols');z.innerHTML='';
+  MAIL_COLS.forEach(c=>{
+    const b=document.createElement('button');
+    const paint=()=>{b.className='btn'+(c.visible?' btn-p':'');};
+    b.textContent=c.label;paint();
+    b.onclick=()=>{c.visible=!c.visible;paint();mailRender();};
+    z.appendChild(b);
+  });
+}
+function mailBuildHTML(editable){
+  const cols=MAIL_COLS.filter(c=>c.visible);
+  const M='#0d3b6e',G='#f0f4f8';
+  const th='padding:9px 12px;text-align:left;border:1px solid '+M+';color:#ffffff;font-family:Arial,sans-serif;font-size:12px;font-weight:700;white-space:nowrap;background:'+M+';';
+  const groupes={};const ordre=[];
+  mailLignes.forEach((l,i)=>{if(!groupes[l.poste]){groupes[l.poste]=[];ordre.push(l.poste);}groupes[l.poste].push(i);});
+  const ce=editable?' contenteditable="true"':'';
+  let tables='';
+  ordre.forEach(poste=>{
+    let tb='';
+    groupes[poste].forEach((i,k)=>{
+      const l=mailLignes[i];
+      tb+='<tr style="background:'+(k%2?G:'#ffffff')+';">'+cols.map(c=>'<td'+ce+' data-row="'+i+'" data-col="'+c.id+'" style="padding:8px 12px;border:1px solid #d1d5db;font-family:Arial,sans-serif;font-size:12px;vertical-align:top;'+(c.bold?'font-weight:700;color:'+M+';':'')+'">'+esc(l[c.id])+'</td>').join('')+'</tr>';
+    });
+    tables+='<div style="margin-bottom:24px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px;"><thead>'
+      +'<tr><td colspan="'+cols.length+'" style="background:'+M+';padding:8px 14px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">'+esc(poste)+'</td></tr>'
+      +'<tr>'+cols.map(c=>'<th style="'+th+'">'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>'+tb+'</tbody></table></div>';
+  });
+  return '<div style="font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;max-width:750px;">'
+    +'<p'+ce+' data-txt="intro" style="margin:0 0 14px;">'+esc(mailTxt.intro)+'</p>'
+    +'<p'+ce+' data-txt="intro2" style="margin:0 0 20px;">'+esc(mailTxt.intro2)+'</p>'
+    +tables
+    +'<p'+ce+' data-txt="outro" style="margin:20px 0 0;">'+esc(mailTxt.outro)+'</p></div>';
+}
+function mailRender(){
+  const el=document.getElementById('mail-prev');if(!el)return;
+  el.innerHTML=mailBuildHTML(true);
+  el.querySelectorAll('td[data-col]').forEach(td=>td.addEventListener('input',function(){
+    const l=mailLignes[parseInt(this.dataset.row)];if(l)l[this.dataset.col]=this.innerText.trim();
+  }));
+  el.querySelectorAll('p[data-txt]').forEach(p=>p.addEventListener('input',function(){mailTxt[this.dataset.txt]=this.innerText.trim();}));
+}
+async function copyMailFormatted(){
+  const btn=document.getElementById('mail-copy-btn');
+  const html=mailBuildHTML(false);
+  let ok=false;
+  try{
+    if(navigator.clipboard&&window.ClipboardItem){
+      const t=document.createElement('div');t.innerHTML=html;
+      await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([t.innerText],{type:'text/plain'})})]);
+      ok=true;
+    }
+  }catch(e){ok=false;}
+  if(!ok){
+    const tmp=document.createElement('div');tmp.style.cssText='position:fixed;top:-9999px;left:-9999px';tmp.innerHTML=html;document.body.appendChild(tmp);
+    const r=document.createRange();r.selectNodeContents(tmp);const s=window.getSelection();s.removeAllRanges();s.addRange(r);
+    try{ok=document.execCommand('copy');}catch(e){ok=false;}
+    s.removeAllRanges();tmp.remove();
+  }
+  showToast(ok?'Copié — colle dans Outlook':'Copie impossible : sélectionne le tableau et Ctrl+C',ok?'ok':'warn');
 }
 
-function refreshMail(){
-  const d=document.getElementById('mail-dest')?.value||'ABABOU';
-  const el=document.getElementById('mail-prev');
-  if(el)el.innerHTML=genMailHTML(d);
-}
-
-function copyMailText(){
-  const d=document.getElementById('mail-dest')?.value||'ABABOU';
-  navigator.clipboard.writeText(genMailText(d)).then(()=>showToast('Texte copié !','ok')).catch(()=>{});
-}
-
-function copyMailFormatted(){
-  const d=document.getElementById('mail-dest')?.value||'ABABOU';
-  const html=genMailHTML(d);
-  // Copy as HTML — pastes with formatting into Outlook
-  const temp=document.createElement('div');
-  temp.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
-  temp.innerHTML=html;temp.contentEditable='true';
-  document.body.appendChild(temp);
-  const range=document.createRange();range.selectNodeContents(temp);
-  const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
-  try{document.execCommand('copy');showToast('Mis en presse-papiers — colle dans Outlook','ok');}
-  catch(e){copyMailText();}
-  sel.removeAllRanges();document.body.removeChild(temp);
-}
-
-function ouvrirOutlook(){
-  const dest=document.getElementById('mail-dest')?.value||'ABABOU';
-  const subject=document.getElementById('mail-subject')?.value||'Candidatures — Profils TAFINAR';
-  const body=genMailText(dest);
-  const a=document.createElement('a');
-  a.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  a.style.display='none';document.body.appendChild(a);a.click();
-  setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}},200);
-}
 // ── Téléchargement des CVs (depuis la base) ──
 async function dlRemote(url,name,btn){
   try{
