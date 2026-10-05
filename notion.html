@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v59</title>
+<title>Notion TAFINAR v60</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -147,7 +147,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v59</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v60</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -156,6 +156,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
     <button class="tab active" onclick="showTab('s')">Sourceurs</button>
     <button class="tab" onclick="showTab('p')">Les Profils</button>
     <button class="tab" onclick="showTab('po')">Postes</button>
+    <button class="tab" onclick="showTab('su')">Suivi</button>
     <button class="tab" onclick="showTab('cfg')">Paramètres</button>
     <button class="tab" onclick="showTab('trash')" id="tab-trash-btn">🗑 Corbeille <span id="trash-count" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;display:none">0</span></button>
   </div>
@@ -407,6 +408,7 @@ async function loadAll(silent){
   try{
     await Promise.all([fetchPostes(),fetchKanban()]);
     await fetchCandidats();
+    await fetchSuivi();
     S._lastLoad=Date.now();
     render();
   }catch(e){
@@ -482,7 +484,7 @@ async function removeCvFiles(urls){
 
 function showTab(t){
   S.tab=t;
-  const order=['s','p','po','cfg','trash'];
+  const order=['s','p','po','su','cfg','trash'];
   document.querySelectorAll('.nav .tab').forEach((el,i)=>el.classList.toggle('active',order[i]===t));
   render();
   if(!_loading&&Date.now()-(S._lastLoad||0)>5000)loadAll();
@@ -494,6 +496,7 @@ function render(){
   if(S.tab==='s')m.innerHTML=rSrc();
   else if(S.tab==='p')m.innerHTML=rProfils();
   else if(S.tab==='po')m.innerHTML=rPostes();
+  else if(S.tab==='su')m.innerHTML=rSuivi();
   else if(S.tab==='cfg')m.innerHTML=rParams();
   else if(S.tab==='trash'){m.innerHTML=rTrash();renderTrashTable();}
   const kb2=document.getElementById('kanban');if(kb2&&kbScroll)kb2.scrollLeft=kbScroll;
@@ -798,6 +801,7 @@ function openMailModal(){
     <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Colonnes affichées</div>
     <div id="mail-cols" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
     <div style="font-size:11px;color:#6b7280;margin-bottom:10px">Clique sur un texte ou une cellule pour le modifier avant de copier (le profil n'est pas modifié). Le nom est masqué par défaut : documents client = quadrigramme.</div>
+    <div id="mail-dups"></div>
     <div id="mail-prev" style="background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:16px;max-height:55vh;overflow:auto"></div>
     <div class="m-actions">
       <button class="btn btn-r" onclick="S.sel=new Set();closeM()">Vider sélection</button>
@@ -806,7 +810,7 @@ function openMailModal(){
       <button class="btn btn-g" id="mail-copy-btn" onclick="copyMailFormatted()"><i class="ti ti-copy" aria-hidden="true"></i> Copier → Outlook</button>
     </div>
   </div></div>`;
-  mailToggles();mailRender();
+  mailToggles();mailRender();suMailDups();
 }
 function mailToggles(){
   const z=document.getElementById('mail-cols');z.innerHTML='';
@@ -871,6 +875,7 @@ async function copyMailFormatted(){
     s.removeAllRanges();tmp.remove();
   }
   showToast(ok?'Copié — colle dans Outlook':'Copie impossible : sélectionne le tableau et Ctrl+C',ok?'ok':'warn');
+  if(ok)suAfterCopy();
 }
 
 // ── Téléchargement des CVs (depuis la base) ──
@@ -1899,6 +1904,13 @@ function expCSV(type){
 }
 
 function closeM(){document.getElementById('mroot').innerHTML='';render();}
+// Un glisser-déposer qui commence dans un formulaire et finit sur le fond ne doit PAS fermer la fenêtre
+let _downT=null;
+document.addEventListener('mousedown',e=>{_downT=e.target;},true);
+document.addEventListener('click',e=>{
+  const t=e.target;
+  if(t&&_downT&&t!==_downT&&t.nodeType===1&&getComputedStyle(t).position==='fixed')e.stopPropagation();
+},true);
 
 // ═══════════════════════════════════════
 // URL PARAMS (depuis Recrutement TAFINAR)
@@ -2006,6 +2018,585 @@ function checkPendingImport(){
       },100);
     },400);
   }catch(e){console.error('pending import:',e);}
+}
+
+// ═══════════════════════════════════════════════════════════
+// SUIVI DES PROFILS ENVOYÉS (commun à toute l'équipe) — table Supabase "suivi"
+// ═══════════════════════════════════════════════════════════
+const SU_STATUTS=[
+  {id:'envoye',label:'📤 Envoyé',rank:0,color:'#1e40af',bg:'#dbeafe'},
+  {id:'retour',label:'💬 Retour client',rank:1,color:'#92400e',bg:'#fef3c7'},
+  {id:'planifie',label:'📅 Entretien planifié',rank:2,color:'#5b21b6',bg:'#ede9fe'},
+  {id:'passe',label:'✅ Entretien passé',rank:3,color:'#0f766e',bg:'#ccfbf1'},
+  {id:'valide',label:'🏆 Validé',rank:4,color:'#166534',bg:'#dcfce7',closed:true},
+  {id:'refuse',label:'❌ Refusé',rank:-1,color:'#991b1b',bg:'#fee2e2',closed:true},
+  {id:'abandon',label:'🚫 Abandon',rank:-1,color:'#6b7280',bg:'#f3f4f6',closed:true},
+];
+const RELANCE_JOURS=10;
+S.suivi=[];S.suiviOk=true;S.suView='liste';
+S.suF={q:'',client:'',statut:'actifs',src:''};
+
+function suSt(id){return SU_STATUTS.find(s=>s.id===id)||SU_STATUTS[0];}
+function pad2(n){return String(n).padStart(2,'0');}
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function daysSince(iso){if(!iso)return 0;const[y,m,d]=iso.slice(0,10).split('-').map(Number);return Math.floor((new Date(new Date().getFullYear(),new Date().getMonth(),new Date().getDate())-new Date(y,m-1,d))/86400000);}
+const JOURS_FR=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+function dateFR(iso){ // 2026-09-16 -> Mercredi 16/09/26
+  if(!iso)return'';const[y,m,d]=iso.slice(0,10).split('-').map(Number);
+  return JOURS_FR[new Date(y,m-1,d).getDay()]+' '+pad2(d)+'/'+pad2(m)+'/'+String(y).slice(2);
+}
+function dateCourte(iso){if(!iso)return'—';const[y,m,d]=iso.slice(0,10).split('-').map(Number);return pad2(d)+'/'+pad2(m)+'/'+String(y).slice(2);}
+function suRelance(r){return r.statut==='envoye'&&daysSince(r.dateEnvoi)>=RELANCE_JOURS;}
+function suRetard(r){return r.statut==='planifie'&&r.eDate&&r.eDate<todayISO();}
+
+function rowToSuivi(r){
+  return{id:r.local_id,candId:r.cand_id||'',quad:r.profil_quad||'',nom:r.profil_nom||'',client:r.client||'',
+    posteTitre:r.poste_titre||'',sourcer:r.sourcer||'',statut:r.statut||'envoye',dateEnvoi:(r.date_envoi||'').slice(0,10),
+    eDate:(r.entretien_date||'').slice(0,10),eHeure:r.entretien_heure||'',interlocuteur:r.interlocuteur||'',
+    teams:r.teams_link||'',civilite:r.civilite||'Monsieur',notes:r.notes||'',histo:Array.isArray(r.historique)?r.historique:tryJSON(r.historique,[]),
+    createdAt:r.created_at||''};
+}
+function suiviToRow(s){
+  return{local_id:s.id,cand_id:s.candId,profil_quad:s.quad,profil_nom:s.nom,client:s.client,poste_titre:s.posteTitre,sourcer:s.sourcer,
+    statut:s.statut,date_envoi:s.dateEnvoi||null,entretien_date:s.eDate||null,entretien_heure:s.eHeure||null,interlocuteur:s.interlocuteur||null,
+    teams_link:s.teams||null,civilite:s.civilite||'Monsieur',notes:s.notes||null,historique:s.histo||[],updated_at:new Date().toISOString()};
+}
+async function fetchSuivi(){
+  try{
+    const data=await fetchAllRows('suivi','created_at');
+    S.suivi=data.filter(r=>r.local_id).map(rowToSuivi);S.suiviOk=true;
+  }catch(e){console.warn('fetchSuivi',e);S.suiviOk=false;S.suivi=[];}
+}
+async function dbUpdSuivi(id,fields){
+  const{error}=await sb.from('suivi').update({...fields,updated_at:new Date().toISOString()}).eq('local_id',id);
+  if(error)throw error;
+}
+function suivisClients(){
+  const set=new Set();S.suivi.forEach(s=>s.client&&set.add(s.client));S.postes.forEach(p=>p.client&&set.add(p.client));
+  return[...set].sort((a,b)=>a.localeCompare(b));
+}
+function clientsDatalist(){return'<datalist id="dl-clients">'+suivisClients().map(c=>`<option value="${esc(c)}">`).join('')+'</datalist>';}
+function posteOfTitre(t){
+  if(!t)return null;
+  return S.postes.find(p=>normNom(p.titre)===normNom(t))||S.postes.find(p=>sim(p.titre,t)>0.7)||null;
+}
+function suPush(s,statut,note){(s.histo=s.histo||[]).push({t:new Date().toISOString(),s:statut,n:note||'',by:getMe()});}
+function suMaxRank(s){let m=suSt(s.statut).rank;(s.histo||[]).forEach(h=>{const r=suSt(h.s).rank;if(r>m)m=r;});return m;}
+
+// Doublons : mêmes profil + poste déjà envoyés
+function suDoublons(candId,posteTitre,client){
+  return S.suivi.filter(s=>s.candId===candId&&normNom(s.posteTitre)===normNom(posteTitre)&&(!client||normNom(s.client)===normNom(client)));
+}
+
+async function suCreate(items){ // items: [{cand,posteTitre,client}]
+  const rows=[];
+  items.forEach(it=>{
+    const c=it.cand;
+    const s={id:uid(),candId:c.id,quad:c.trigramme||quadDe(c.nom),nom:c.nom,client:(it.client||'').trim(),posteTitre:it.posteTitre||'',
+      sourcer:getMe()||c.sourcer,statut:'envoye',dateEnvoi:todayISO(),eDate:'',eHeure:'',interlocuteur:'',teams:'',civilite:'Monsieur',notes:'',histo:[],createdAt:new Date().toISOString()};
+    suPush(s,'envoye','Envoyé'+(s.client?' à '+s.client:''));
+    rows.push(s);
+  });
+  const{error}=await sb.from('suivi').insert(rows.map(suiviToRow));
+  if(error)throw error;
+  S.suivi=rows.concat(S.suivi);
+  return rows;
+}
+
+// ── Affichage de l'onglet Suivi ──
+const SU_COL={client:'client',posteTitre:'poste_titre',statut:'statut',dateEnvoi:'date_envoi',eDate:'entretien_date',eHeure:'entretien_heure',interlocuteur:'interlocuteur',teams:'teams_link',civilite:'civilite',notes:'notes'};
+function suGet(id){return S.suivi.find(s=>s.id===id);}
+function suCand(s){return S.candidates.find(c=>c.id===s.candId)||null;}
+function suBadge(s){
+  const st=suSt(s.statut);
+  let h=`<span style="background:${st.bg};color:${st.color};border-radius:10px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap">${st.label}</span>`;
+  return h;
+}
+function suAlertBadges(s){
+  let h='';
+  if(suRelance(s))h+=`<span title="Sans retour depuis ${daysSince(s.dateEnvoi)} jours" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px;white-space:nowrap">⏰ relancer</span>`;
+  if(suRetard(s))h+=`<span title="La date d'entretien est passée" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px;white-space:nowrap">⚠ à mettre à jour</span>`;
+  return h;
+}
+function suFiltered(){
+  const f=S.suF;const q=normNom(f.q);
+  return S.suivi.filter(s=>{
+    const st=suSt(s.statut);
+    if(f.statut==='actifs'&&st.closed)return false;
+    if(f.statut&&f.statut!=='actifs'&&f.statut!=='tous'&&s.statut!==f.statut)return false;
+    if(f.client&&s.client!==f.client)return false;
+    if(f.src&&s.sourcer!==f.src)return false;
+    if(q&&!normNom([s.quad,s.nom,s.client,s.posteTitre,s.interlocuteur,s.sourcer].join(' ')).includes(q))return false;
+    return true;
+  }).sort((a,b)=>String(b.dateEnvoi).localeCompare(String(a.dateEnvoi))||String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+function rSuivi(){
+  if(!S.suiviOk){
+    return`<div style="padding:24px;max-width:640px"><div class="info-banner" style="background:#fef9c3;border-color:#fde68a;color:#854d0e"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span>La table du suivi n'existe pas encore dans la base. Ouvre <strong>Supabase → SQL Editor</strong>, colle le contenu de <strong>tafinar_v60_suivi.sql</strong>, clique <strong>Run</strong>, puis recharge cette page.</span></div></div>`;
+  }
+  const rel=S.suivi.filter(suRelance).length,ret=S.suivi.filter(suRetard).length;
+  const today=todayISO();
+  const upc=S.suivi.filter(s=>s.statut==='planifie'&&s.eDate>=today).length;
+  const tab=(id,l)=>`<button class="btn${S.suView===id?' btn-p':''}" onclick="S.suView='${id}';render()">${l}</button>`;
+  let h=`<div style="padding:16px">${clientsDatalist()}
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <div style="font-size:16px;font-weight:700;margin-right:8px">Suivi des profils envoyés</div>
+    ${tab('liste','Liste')}${tab('upcoming','📅 Entretiens à venir'+(upc?' ('+upc+')':''))}${tab('stats','📊 Stats')}
+    <span style="flex:1"></span>
+    <button class="btn btn-g" onclick="openNewSuivi()">+ Ajouter un suivi</button>
+  </div>`;
+  if((rel||ret)&&S.suView==='liste'){
+    h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">`
+      +(rel?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer" onclick="suShowAlert('relance')">⏰ <strong>${rel}</strong> profil(s) sans retour depuis ${RELANCE_JOURS} jours ou plus — à relancer</div>`:'')
+      +(ret?`<div style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer" onclick="suShowAlert('retard')">⚠ <strong>${ret}</strong> entretien(s) passé(s) à mettre à jour</div>`:'')+`</div>`;
+  }
+  if(S.suView==='liste'){
+    const f=S.suF;
+    const clients=[...new Set(S.suivi.map(s=>s.client).filter(Boolean))].sort();
+    const srcs=[...new Set(S.suivi.map(s=>s.sourcer).filter(Boolean))].sort();
+    h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <input class="fi" style="width:220px" placeholder="Rechercher (profil, client, poste…)" value="${esc(f.q)}" oninput="S.suF.q=this.value;suBody()">
+      <select class="fi" style="width:170px" onchange="S.suF.statut=this.value;suBody()">
+        <option value="actifs"${f.statut==='actifs'?' selected':''}>En cours</option><option value="tous"${f.statut==='tous'?' selected':''}>Tous</option>
+        ${SU_STATUTS.map(s=>`<option value="${s.id}"${f.statut===s.id?' selected':''}>${s.label}</option>`).join('')}</select>
+      <select class="fi" style="width:160px" onchange="S.suF.client=this.value;suBody()"><option value="">Tous les clients</option>${clients.map(c=>`<option value="${esc(c)}"${f.client===c?' selected':''}>${esc(c)}</option>`).join('')}</select>
+      <select class="fi" style="width:150px" onchange="S.suF.src=this.value;suBody()"><option value="">Tous les sourceurs</option>${srcs.map(c=>`<option value="${esc(c)}"${f.src===c?' selected':''}>${esc(c)}</option>`).join('')}</select>
+    </div><div id="su-body">${suListHTML()}</div>`;
+  }else if(S.suView==='upcoming')h+=suUpcomingHTML();
+  else h+=suStatsHTML();
+  return h+'</div>';
+}
+function suBody(){const el=document.getElementById('su-body');if(el)el.innerHTML=suListHTML();}
+function suShowAlert(k){
+  S.suF={q:'',client:'',statut:k==='retard'?'planifie':'envoye',src:''};S.suView='liste';render();
+  if(k==='relance'){S.suF.q='';}
+}
+function suListHTML(){
+  const rows=suFiltered();
+  if(!rows.length)return`<div style="padding:30px;text-align:center;color:#9ca3af;font-size:13px">${S.suivi.length?'Aucun résultat avec ces filtres.':'Aucun suivi pour l\'instant. Ils se créent automatiquement quand tu cliques « Copier → Outlook » dans le mail récap, ou avec « + Ajouter un suivi ».'}</div>`;
+  const th='padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb;white-space:nowrap';
+  const td='padding:8px 10px;font-size:12px;border-bottom:1px solid #f3f4f6;vertical-align:middle';
+  let h=`<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e7eb;border-radius:8px"><thead><tr>
+    <th style="${th}">Profil</th><th style="${th}">Client</th><th style="${th}">Poste</th><th style="${th}">Envoyé</th><th style="${th}">Avancement</th><th style="${th}">Entretien</th><th style="${th}">Avec</th><th style="${th}">Par</th></tr></thead><tbody>`;
+  rows.forEach(s=>{
+    const opts=SU_STATUTS.map(x=>`<option value="${x.id}"${x.id===s.statut?' selected':''}>${x.label}</option>`).join('');
+    const st=suSt(s.statut);
+    h+=`<tr style="cursor:pointer" onclick="openSuivi('${s.id}')">
+      <td style="${td};font-weight:700;color:#0d3b6e">${esc(s.quad||'—')}<div style="font-weight:400;color:#6b7280;font-size:11px">${esc(s.nom)}</div></td>
+      <td style="${td}">${esc(s.client||'—')}</td>
+      <td style="${td};max-width:300px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.posteTitre)}">${esc(s.posteTitre||'—')}</div></td>
+      <td style="${td};white-space:nowrap">${dateCourte(s.dateEnvoi)}<div style="font-size:10px;color:#9ca3af">il y a ${daysSince(s.dateEnvoi)} j</div></td>
+      <td style="${td};white-space:nowrap" onclick="event.stopPropagation()"><select onchange="suSetStatut('${s.id}',this.value)" style="border:none;border-radius:10px;padding:3px 6px;font-size:11px;font-weight:600;background:${st.bg};color:${st.color};cursor:pointer">${opts}</select>${suAlertBadges(s)}</td>
+      <td style="${td};white-space:nowrap">${s.eDate?dateCourte(s.eDate)+' '+esc(s.eHeure):'—'}</td>
+      <td style="${td}">${esc(s.interlocuteur||'—')}</td>
+      <td style="${td};color:#6b7280">${esc(s.sourcer||'')}</td></tr>`;
+  });
+  return h+`</tbody></table></div><div style="font-size:11px;color:#9ca3af;margin-top:6px">${rows.length} ligne(s) — clique sur une ligne pour le détail et les mails</div>`;
+}
+function suUpcomingHTML(){
+  const today=todayISO();
+  const up=S.suivi.filter(s=>s.statut==='planifie'&&s.eDate&&s.eDate>=today).sort((a,b)=>(a.eDate+(a.eHeure||'')).localeCompare(b.eDate+(b.eHeure||'')));
+  const late=S.suivi.filter(suRetard).sort((a,b)=>a.eDate.localeCompare(b.eDate));
+  const noDate=S.suivi.filter(s=>s.statut==='planifie'&&!s.eDate);
+  const dayLabel=d=>{const n=daysSince(d)*-1;return n===0?"Aujourd'hui — "+dateFR(d):n===1?'Demain — '+dateFR(d):dateFR(d);};
+  const card=s=>`<div onclick="openSuivi('${s.id}')" style="cursor:pointer;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div style="font-weight:700;min-width:60px">${esc(s.eHeure||'—')}</div><div style="font-weight:700;color:#0d3b6e;min-width:50px">${esc(s.quad)}</div>
+    <div style="flex:1;min-width:200px"><div style="font-size:12px;font-weight:600">${esc(s.client||'—')}</div><div style="font-size:11px;color:#6b7280">${esc(s.posteTitre)}</div></div>
+    <div style="font-size:11px;color:#6b7280">${s.interlocuteur?'avec '+esc(s.interlocuteur):''}</div>${s.teams?'<a href="'+esc(s.teams)+'" target="_blank" onclick="event.stopPropagation()" style="font-size:11px">Teams</a>':'<span style="font-size:11px;color:#c2410c">pas de lien Teams</span>'}</div>`;
+  let h='';
+  if(late.length)h+=`<div style="font-weight:700;color:#b91c1c;margin:8px 0">⚠ Entretiens passés à mettre à jour</div>`+late.map(s=>`<div style="font-size:11px;color:#b91c1c;margin-bottom:2px">${dateFR(s.eDate)}</div>`+card(s)).join('');
+  if(!up.length&&!late.length&&!noDate.length)return'<div style="padding:30px;text-align:center;color:#9ca3af;font-size:13px">Aucun entretien planifié.</div>';
+  let last='';
+  up.forEach(s=>{if(s.eDate!==last){last=s.eDate;h+=`<div style="font-weight:700;margin:14px 0 6px">${dayLabel(s.eDate)}</div>`;}h+=card(s);});
+  if(noDate.length)h+=`<div style="font-weight:700;margin:14px 0 6px;color:#92400e">Planifiés sans date</div>`+noDate.map(card).join('');
+  return h;
+}
+function suStatsHTML(){
+  const all=S.suivi;
+  if(!all.length)return'<div style="padding:30px;text-align:center;color:#9ca3af;font-size:13px">Pas encore de données.</div>';
+  const agg=key=>{const m={};all.forEach(s=>{const k=s[key]||'—';const o=m[k]||(m[k]={n:0,ent:0,val:0,ref:0,cours:0});o.n++;const r=suMaxRank(s);if(r>=2)o.ent++;if(s.statut==='valide')o.val++;if(s.statut==='refuse')o.ref++;if(!suSt(s.statut).closed)o.cours++;});return Object.entries(m).sort((a,b)=>b[1].n-a[1].n);};
+  const pct=(a,b)=>b?Math.round(a*100/b)+' %':'—';
+  const th='padding:6px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb',td='padding:6px 10px;font-size:12px;border-bottom:1px solid #f3f4f6';
+  const tbl=(title,key)=>`<div style="margin-bottom:20px"><div style="font-weight:700;margin-bottom:6px">${title}</div><table style="border-collapse:collapse;background:#fff;border:1px solid #e5e7eb"><thead><tr><th style="${th}"></th><th style="${th}">Envoyés</th><th style="${th}">En cours</th><th style="${th}">Entretiens</th><th style="${th}">Taux d'entretien</th><th style="${th}">Validés</th><th style="${th}">Refusés</th></tr></thead><tbody>${agg(key).map(([k,o])=>`<tr><td style="${td};font-weight:600">${esc(k)}</td><td style="${td}">${o.n}</td><td style="${td}">${o.cours}</td><td style="${td}">${o.ent}</td><td style="${td}">${pct(o.ent,o.n)}</td><td style="${td}">${o.val}</td><td style="${td}">${o.ref}</td></tr>`).join('')}</tbody></table></div>`;
+  const tot={n:all.length,ent:all.filter(s=>suMaxRank(s)>=2).length,val:all.filter(s=>s.statut==='valide').length};
+  return`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">`
+    +[['Profils envoyés',tot.n],['Ont eu un entretien',tot.ent+' ('+pct(tot.ent,tot.n)+')'],['Validés',tot.val+' ('+pct(tot.val,tot.n)+')'],['À relancer',all.filter(suRelance).length]].map(([l,v])=>`<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 18px"><div style="font-size:11px;color:#6b7280">${l}</div><div style="font-size:20px;font-weight:700;color:#0d3b6e">${v}</div></div>`).join('')
+    +`</div>`+tbl('Par client','client')+tbl('Par sourceur','sourcer');
+}
+
+// ── Modifications ──
+async function suSetStatut(id,val,silent){
+  const s=suGet(id);if(!s||s.statut===val)return;
+  const before=s.statut;
+  s.statut=val;suPush(s,val,suSt(val).label.replace(/^\S+\s/,''));
+  try{await dbUpdSuivi(id,{statut:s.statut,historique:s.histo});}
+  catch(e){console.error(e);showToast('Enregistrement impossible — rechargement','warn');await fetchSuivi();}
+  if(document.getElementById('su-detail'))suDetailRefreshHisto(id);
+  if(!silent)render2();
+  if(val==='planifie'&&!s.eDate&&!document.getElementById('su-detail')){showToast('Renseigne la date de l\'entretien','ok');openSuivi(id);}
+}
+function render2(){if(S.tab==='su'&&!document.getElementById('su-detail')){const y=window.scrollY;render();window.scrollTo(0,y);}else if(S.tab==='su')suBody();}
+async function suField(id,key,val){
+  const s=suGet(id);if(!s)return;
+  val=(val||'').trim();
+  if(s[key]===val)return;
+  s[key]=val;
+  const fields={[SU_COL[key]]:(val===''&&['dateEnvoi','eDate','eHeure','teams','interlocuteur','notes'].includes(key))?null:val};
+  // une date + heure d'entretien fait passer automatiquement en « planifié »
+  if((key==='eDate'||key==='eHeure')&&s.eDate&&s.eHeure&&suSt(s.statut).rank<2&&!suSt(s.statut).closed){
+    s.statut='planifie';suPush(s,'planifie','Entretien planifié le '+dateCourte(s.eDate)+' '+s.eHeure);
+    fields.statut='planifie';fields.historique=s.histo;
+    const sel=document.getElementById('su-f-statut');if(sel)sel.value='planifie';
+    suDetailRefreshHisto(id);
+  }
+  try{await dbUpdSuivi(id,fields);}
+  catch(e){console.error(e);showToast('Enregistrement impossible — rechargement','warn');await fetchSuivi();}
+  if(S.tab==='su')suBody();
+}
+async function suDelete(id){
+  const s=suGet(id);if(!s)return;
+  if(!confirm('Supprimer ce suivi ('+s.quad+' — '+(s.client||'?')+') ? Le profil lui-même n\'est pas touché.'))return;
+  const{error}=await sb.from('suivi').delete().eq('local_id',id);
+  if(error){showToast('Suppression impossible','warn');return;}
+  S.suivi=S.suivi.filter(x=>x.id!==id);closeM();showToast('Suivi supprimé');
+}
+
+function suDetailRefreshHisto(id){
+  const el=document.getElementById('su-histo');const s=suGet(id);if(!el||!s)return;
+  el.innerHTML=(s.histo||[]).slice().reverse().map(h=>`<div style="font-size:11px;color:#374151;padding:3px 0;border-bottom:1px solid #f3f4f6"><span style="color:#9ca3af">${new Date(h.t).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</span> — ${esc(h.n||suSt(h.s).label)}${h.by?' <span style="color:#9ca3af">('+esc(h.by)+')</span>':''}</div>`).join('')||'<div style="font-size:11px;color:#9ca3af">—</div>';
+}
+function openSuivi(id){
+  const s=suGet(id);if(!s)return;
+  const c=suCand(s);
+  const p=posteOfTitre(s.posteTitre);
+  const inp=(label,key,type,extra)=>`<div class="fr"><label class="fl">${label}</label><input class="fi" type="${type||'text'}" value="${esc(s[key])}" ${extra||''} onchange="suField('${id}','${key}',this.value)"></div>`;
+  const info=c?`<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:12px">
+    <div style="font-weight:700;margin-bottom:2px">${esc(c.nom)} <span style="color:#0d3b6e">${esc(c.trigramme||s.quad)}</span></div>
+    <div><span style="color:#6b7280">Dispo :</span> ${esc(c.dispo||'—')} · <span style="color:#6b7280">Mobilité :</span> ${esc((c.mobilite||[]).join(', ')||'—')}</div>
+    <div><span style="color:#6b7280">Prétention :</span> ${esc(c.pretention||'—')} · <span style="color:#6b7280">TJM :</span> ${esc(c.tjm||'—')} · <span style="color:#6b7280">Freelance :</span> ${esc(c.freelance||'—')}</div>
+    ${c.remarque?`<div><span style="color:#6b7280">Remarques :</span> ${esc(c.remarque)}</div>`:''}
+    <div style="margin-top:4px">${c.cvOUrl?`<a href="${esc(c.cvOUrl)}" target="_blank">📄 CV original</a>`:'<span style="color:#9ca3af">pas de CV original</span>'} · ${c.cvAUrl?`<a href="${esc(c.cvAUrl)}" target="_blank">📄 CV anonymisé</a>`:'<span style="color:#9ca3af">pas de CV anonymisé</span>'}</div></div>`
+    :`<div style="background:#fef9c3;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px">Le profil ${esc(s.nom)} n'existe plus dans « Les Profils » (supprimé ?). Le suivi reste consultable.</div>`;
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
+  <div class="modal" id="su-detail" style="width:760px;max-width:96vw;max-height:92vh;overflow:auto" onclick="event.stopPropagation()">${clientsDatalist()}
+    <datalist id="dl-postes">${S.postes.map(x=>`<option value="${esc(x.titre)}">`).join('')}</datalist>
+    <div class="m-title"><span>Suivi — ${esc(s.quad)} ${s.client?'· '+esc(s.client):''}</span><button class="m-close" onclick="closeM()">×</button></div>
+    ${info}
+    <div class="fg">
+      <div class="fr"><label class="fl">Client</label><input class="fi" list="dl-clients" value="${esc(s.client)}" onchange="suField('${id}','client',this.value)"></div>
+      <div class="fr"><label class="fl">Avancement</label><select class="fi" id="su-f-statut" onchange="suSetStatut('${id}',this.value)">${SU_STATUTS.map(x=>`<option value="${x.id}"${x.id===s.statut?' selected':''}>${x.label}</option>`).join('')}</select></div>
+    </div>
+    <div class="fr"><label class="fl">Poste (avec la référence client)</label><input class="fi" list="dl-postes" value="${esc(s.posteTitre)}" onchange="suField('${id}','posteTitre',this.value)"></div>
+    <div class="fg">${inp('Envoyé le','dateEnvoi','date')}${inp('Interlocuteur client (qui fait l\'entretien)','interlocuteur')}</div>
+    <div class="fg">${inp('Date d\'entretien','eDate','date')}${inp('Heure','eHeure','time')}</div>
+    ${inp('Lien Teams','teams','text','placeholder="https://teams.microsoft.com/…"')}
+    <div class="fr"><label class="fl">Notes</label><textarea class="fi" rows="2" onchange="suField('${id}','notes',this.value)">${esc(s.notes)}</textarea></div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin:6px 0 4px">Historique</div>
+    <div id="su-histo" style="max-height:110px;overflow:auto;margin-bottom:8px"></div>
+    <div class="m-actions" style="flex-wrap:wrap">
+      <button class="btn btn-r" onclick="suDelete('${id}')"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer</button>
+      <span style="flex:1"></span>
+      <button class="btn" onclick="suIcsDownload('${id}')">📅 Invitation .ics</button>
+      <button class="btn btn-p" onclick="openMailCand('${id}')">✉ Mail candidat</button>
+      <button class="btn btn-g" onclick="openMailClient('${id}')">✉ Mail client (entretien)</button>
+    </div>
+  </div></div>`;
+  suDetailRefreshHisto(id);
+}
+
+// ── Ajout manuel ──
+function openNewSuivi(){
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
+  <div class="modal" style="width:560px;max-width:96vw" onclick="event.stopPropagation()">${clientsDatalist()}
+    <div class="m-title"><span>Ajouter un suivi</span><button class="m-close" onclick="closeM()">×</button></div>
+    <div class="fr"><label class="fl">Profil</label>
+      <input class="fi" id="ns-q" placeholder="Tape un nom ou un trigramme…" autocomplete="off" oninput="nsFilter()">
+      <div id="ns-list" style="max-height:170px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px;margin-top:4px;display:none"></div>
+      <input type="hidden" id="ns-cid"><div id="ns-pick" style="font-size:12px;color:#166534;margin-top:4px"></div></div>
+    <div class="fr"><label class="fl">Poste (avec la référence client)</label><input class="fi" id="ns-poste" list="dl-postes2" autocomplete="off" oninput="nsPoste()">
+      <datalist id="dl-postes2">${S.postes.map(x=>`<option value="${esc(x.titre)}">`).join('')}</datalist></div>
+    <div class="fr"><label class="fl">Client</label><input class="fi" id="ns-client" list="dl-clients"></div>
+    <div id="ns-warn" style="font-size:12px;color:#b45309"></div>
+    <div class="m-actions"><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-g" onclick="nsSave()">Ajouter</button></div>
+  </div></div>`;
+}
+function nsFilter(){
+  const q=normNom(document.getElementById('ns-q').value);const L=document.getElementById('ns-list');
+  if(q.length<2){L.style.display='none';return;}
+  const r=S.candidates.filter(c=>normNom(c.nom+' '+(c.trigramme||'')).includes(q)).slice(0,12);
+  L.style.display=r.length?'block':'none';
+  L.innerHTML=r.map(c=>`<div style="padding:6px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid #f3f4f6" onclick="nsPick('${c.id}')"><strong>${esc(c.trigramme||quadDe(c.nom))}</strong> — ${esc(c.nom)} <span style="color:#9ca3af">${esc(c.sourcer||'')}</span></div>`).join('');
+}
+function nsPick(id){
+  const c=S.candidates.find(x=>x.id===id);if(!c)return;
+  document.getElementById('ns-cid').value=id;document.getElementById('ns-list').style.display='none';
+  document.getElementById('ns-q').value=c.nom;document.getElementById('ns-pick').textContent='✓ '+c.nom;
+  const p=gp(c.posteId);const pe=document.getElementById('ns-poste');
+  if(p&&!pe.value){pe.value=p.titre;nsPoste();}
+  nsDup();
+}
+function nsPoste(){
+  const p=posteOfTitre(document.getElementById('ns-poste').value);const ce=document.getElementById('ns-client');
+  if(p&&p.client&&!ce.value)ce.value=p.client;
+  nsDup();
+}
+function nsDup(){
+  const cid=document.getElementById('ns-cid').value,pt=document.getElementById('ns-poste').value;
+  const d=cid&&pt?suDoublons(cid,pt):[];
+  document.getElementById('ns-warn').innerHTML=d.length?'⚠ Déjà suivi pour ce poste : '+d.map(x=>esc(x.client||'?')+' ('+dateCourte(x.dateEnvoi)+', '+suSt(x.statut).label+')').join(' ; ')+'. Tu peux quand même l\'ajouter.':'';
+}
+async function nsSave(){
+  const cid=document.getElementById('ns-cid').value;const c=S.candidates.find(x=>x.id===cid);
+  if(!c){showToast('Choisis un profil dans la liste','warn');return;}
+  const pt=document.getElementById('ns-poste').value.trim();
+  if(!pt){showToast('Indique le poste','warn');return;}
+  try{await suCreate([{cand:c,posteTitre:pt,client:document.getElementById('ns-client').value}]);}
+  catch(e){console.error(e);showToast('Ajout impossible','warn');return;}
+  closeM();showToast('Ajouté au suivi');
+}
+
+// ═══════════════════════════════════════
+// MAILS DU SUIVI : mail client (entretien) + mail candidat
+// ═══════════════════════════════════════
+const SEP='-----------------------------------------------------';
+let SM=null; // état du mail en cours
+
+function suNeedDate(s){
+  if(!s.eDate||!s.eHeure){showToast("Renseigne d'abord la date et l'heure de l'entretien",'warn');openSuivi(s.id);return false;}
+  return true;
+}
+function suSubject(s){
+  return ['Entretien',s.client,'Profil '+s.quad,dateFR(s.eDate)+' '+s.eHeure,s.posteTitre].filter(Boolean).join(' - ');
+}
+function suClientBody(s,c){
+  const L=['Bonjour,','',SEP,''];
+  L.push('Profil '+s.quad+(s.posteTitre?' — '+s.posteTitre:''));
+  if(c){
+    const add=(l,v)=>{if(v&&String(v).trim())L.push(l+' : '+String(v).trim());};
+    add('Disponibilité',c.dispo);add('Mobilité',(c.mobilite||[]).join(', '));add('Prétention',c.pretention);add('TJM (€ HT)',c.tjm);add('Freelance',c.freelance);add('Remarques',c.remarque);
+  }
+  L.push('CV : voir pièce(s) jointe(s)');
+  L.push('',SEP,'');
+  L.push('Pourriez-vous nous communiquer les informations Teams (lien de connexion) pour l\'entretien du '+dateFR(s.eDate)+' à '+s.eHeure+(s.interlocuteur?' avec '+s.interlocuteur:'')+' ?');
+  L.push('',SEP,'');
+  L.push('Pourriez-vous également nous transmettre la fiche de poste ?');
+  return L.join('\n');
+}
+function suTextToHtml(t){
+  const FF='font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;';
+  const out=t.split('\n').map(l=>/^-{10,}$/.test(l.trim())
+    ?'<hr style="border:none;border-top:1px solid #9ca3af;margin:6px 0">'
+    :'<p style="margin:0;'+FF+'">'+(l.trim()===''?'&nbsp;':'<font color="#1a1a1a" face="Arial">'+esc(l).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1">$1</a>')+'</font>')+'</p>').join('');
+  return '<div style="'+FF+'">'+out+'</div>';
+}
+function openMailClient(id){
+  const s=suGet(id);if(!s||!suNeedDate(s))return;
+  const c=suCand(s);
+  SM={kind:'client',id,subject:suSubject(s),body:suClientBody(s,c)};
+  const cvs=[];
+  if(c&&c.cvOUrl)cvs.push({k:'o',label:'CV original',url:c.cvOUrl,name:c.cvOName||'CV_original.pdf'});
+  if(c&&c.cvAUrl)cvs.push({k:'a',label:'CV anonymisé',url:c.cvAUrl,name:c.cvAName||'CV_anonyme.pdf'});
+  SM.cvs=cvs;
+  suMailModal(`<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">CV à joindre</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px">${cvs.length?cvs.map((v,i)=>`<label style="font-size:12px"><input type="checkbox" class="sm-cv" data-i="${i}" checked> ${v.label} <span style="color:#9ca3af">(${esc(v.name)})</span></label>`).join(''):'<span style="font-size:12px;color:#c2410c">Aucun CV enregistré pour ce profil — ajoute-le dans « Les Profils ».</span>'}</div>
+    <div style="font-size:11px;color:#b45309;margin-bottom:10px">Le CV original contient le nom et les coordonnées du candidat.</div>`,'Mail client — entretien');
+}
+function openMailCand(id){
+  const s=suGet(id);if(!s||!suNeedDate(s))return;
+  const c=suCand(s);const p=posteOfTitre(s.posteTitre);
+  SM={kind:'cand',id,civ:s.civilite||'Monsieur',nomAppel:(c&&c.nom)||s.nom||'',fiche:(p&&p.description)||'',posteId:p?p.id:null,saveFiche:false};
+  suMailModal(`<div class="fg">
+      <div class="fr"><label class="fl">Civilité</label><select class="fi" id="sm-civ" onchange="suCandRegen()"><option${SM.civ==='Monsieur'?' selected':''}>Monsieur</option><option${SM.civ==='Madame'?' selected':''}>Madame</option></select></div>
+      <div class="fr"><label class="fl">Nom dans la salutation</label><input class="fi" id="sm-nom" value="${esc(SM.nomAppel)}" oninput="suCandRegen()"></div></div>
+    <div class="fr"><label class="fl">Lien Teams</label><input class="fi" id="sm-teams" value="${esc(s.teams)}" placeholder="Colle le lien Teams ici" oninput="suCandRegen()" onchange="suField('${id}','teams',this.value)"></div>
+    <div class="fr"><label class="fl">Fiche de poste ${SM.fiche?'<span style="color:#166534;font-weight:400">(reprise du poste)</span>':'<span style="color:#c2410c;font-weight:700">— manquante, colle-la ici</span>'}</label>
+      <textarea class="fi" id="sm-fiche" rows="4" oninput="suCandRegen()">${esc(SM.fiche)}</textarea>
+      ${p?`<label style="font-size:11px;color:#6b7280"><input type="checkbox" id="sm-savefiche"> Enregistrer cette fiche dans le poste</label>`:'<div style="font-size:11px;color:#9ca3af">Poste introuvable dans « Postes » : la fiche ne pourra pas y être enregistrée.</div>'}</div>
+    <div id="sm-client-warn"></div>`,'Mail candidat');
+  suCandRegen(true);
+}
+function suCandRegen(first){
+  const s=suGet(SM.id);if(!s)return;
+  const g=i=>{const e=document.getElementById(i);return e?e.value:'';};
+  const civ=g('sm-civ'),nom=g('sm-nom').trim(),teams=g('sm-teams').trim(),fiche=g('sm-fiche').trim();
+  const L=['Bonjour '+civ+(nom?' '+nom:'')+',','',
+    'Suite à l\'étude de votre profil, un entretien est prévu le '+dateFR(s.eDate)+' à '+s.eHeure+(s.interlocuteur?' avec '+s.interlocuteur:'')+'.','',
+    'Lien Teams : '+(teams||'[à compléter]'),'',
+    'Vous trouverez ci-dessous la fiche de poste :','',fiche||'[fiche de poste à compléter]','',
+    'Merci de me confirmer votre disponibilité.','','Cordialement,'];
+  SM.subject='Entretien - '+dateFR(s.eDate)+' '+s.eHeure+(s.posteTitre?' - '+s.posteTitre:'');
+  SM.body=L.join('\n');
+  const sb_=document.getElementById('sm-subject'),bd=document.getElementById('sm-body');
+  if(sb_)sb_.value=SM.subject;if(bd)bd.value=SM.body;
+  suClientGuard();
+}
+// le mail candidat ne doit jamais citer le nom du client
+function suClientGuard(){
+  const w=document.getElementById('sm-client-warn');if(!w||SM.kind!=='cand')return;
+  const s=suGet(SM.id);const cl=(s.client||'').trim();
+  if(!cl){w.innerHTML='';return;}
+  const re=new RegExp(cl.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i');
+  const txt=(document.getElementById('sm-subject')?.value||SM.subject)+'\n'+(document.getElementById('sm-body')?.value||SM.body);
+  w.innerHTML=re.test(txt)?`<div style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:8px 12px;font-size:12px;margin:6px 0">⚠ Le nom du client « ${esc(cl)} » apparaît dans le mail (souvent dans la fiche de poste). <button class="btn" style="font-size:11px;padding:2px 8px" onclick="suStripClient()">Le retirer</button></div>`:'';
+}
+function suStripClient(){
+  const s=suGet(SM.id);const cl=(s.client||'').trim();if(!cl)return;
+  const re=new RegExp(cl.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+  const f=document.getElementById('sm-fiche');if(f){f.value=f.value.replace(re,'le client');}
+  const b=document.getElementById('sm-body');if(b)b.value=b.value.replace(re,'le client');
+  const sj=document.getElementById('sm-subject');if(sj)sj.value=sj.value.replace(re,'').replace(/\s{2,}/g,' ');
+  SM.body=b?b.value:SM.body;SM.subject=sj?sj.value:SM.subject;suClientGuard();
+}
+function suMailModal(extraHTML,title){
+  document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
+  <div class="modal" style="width:820px;max-width:96vw;max-height:94vh;overflow:auto" onclick="event.stopPropagation()">
+    <div class="m-title"><span><i class="ti ti-mail" aria-hidden="true"></i> ${title}</span><button class="m-close" onclick="closeM()">×</button></div>
+    ${extraHTML}
+    <div class="fr"><label class="fl">Objet</label><div style="display:flex;gap:6px"><input class="fi" id="sm-subject" value="${esc(SM.subject||'')}" oninput="SM.subject=this.value;suClientGuard()"><button class="btn" onclick="suCopyText(document.getElementById('sm-subject').value,'Objet copié')">Copier</button></div></div>
+    <div class="fr"><label class="fl">Message (modifiable)</label><textarea class="fi" id="sm-body" rows="16" style="font-family:Arial,sans-serif;font-size:13px;line-height:1.45" oninput="SM.body=this.value;suClientGuard()">${esc(SM.body||'')}</textarea></div>
+    <div class="m-actions" style="flex-wrap:wrap">
+      <button class="btn" onclick="openSuivi('${SM.id}')">← Retour au suivi</button><span style="flex:1"></span>
+      ${SM.kind==='client'?'<button class="btn" onclick="suDlCvs(this)">⬇ Télécharger les CV</button>':''}
+      <button class="btn" onclick="suCopyBody()">Copier le message</button>
+      <button class="btn btn-g" id="sm-eml" onclick="suEml(this)">📨 Brouillon Outlook (.eml${SM.kind==='client'?' + CV':''})</button>
+    </div>
+  </div></div>`;
+  suClientGuard();
+}
+async function suCopyText(t,msg){
+  let ok=false;try{await navigator.clipboard.writeText(t);ok=true;}catch(e){}
+  if(!ok){const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-999px';document.body.appendChild(ta);ta.select();try{ok=document.execCommand('copy');}catch(e){}ta.remove();}
+  showToast(ok?msg:'Copie impossible',ok?'ok':'warn');
+}
+async function suCopyBody(){
+  const html=suTextToHtml(SM.body);let ok=false;
+  try{if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([SM.body],{type:'text/plain'})})]);ok=true;}}catch(e){}
+  if(!ok)return suCopyText(SM.body,'Message copié');
+  showToast('Message copié — colle dans Outlook');
+}
+function suSelectedCvs(){
+  return [...document.querySelectorAll('.sm-cv:checked')].map(cb=>SM.cvs[+cb.dataset.i]).filter(Boolean);
+}
+async function suDlCvs(btn){
+  const l=suSelectedCvs();if(!l.length){showToast('Aucun CV coché','warn');return;}
+  btn.disabled=true;for(const v of l){await dlRemote(v.url,v.name);await new Promise(r=>setTimeout(r,400));}btn.disabled=false;
+}
+
+// ── .eml : brouillon Outlook avec pièces jointes ──
+function b64utf8(str){const b=new TextEncoder().encode(str);let s='';b.forEach(x=>s+=String.fromCharCode(x));return btoa(s);}
+function wrap76(b64){return(b64.match(/.{1,76}/g)||[]).join('\r\n');}
+function encWord(str){ // RFC 2047, découpé pour rester < 75 caractères par mot encodé
+  if(/^[\x20-\x7e]*$/.test(str))return str;
+  const parts=[];let cur='';
+  for(const ch of str){
+    if(new TextEncoder().encode(cur+ch).length>42){parts.push(cur);cur='';}
+    cur+=ch;
+  }
+  if(cur)parts.push(cur);
+  return parts.map(p=>'=?UTF-8?B?'+b64utf8(p)+'?=').join('\r\n ');
+}
+async function urlToB64(url){
+  const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);
+  const buf=new Uint8Array(await r.arrayBuffer());let s='';
+  for(let i=0;i<buf.length;i+=0x8000)s+=String.fromCharCode.apply(null,buf.subarray(i,i+0x8000));
+  return{b64:btoa(s),type:r.headers.get('content-type')||'application/pdf'};
+}
+function buildEml(subject,html,atts){
+  const bd='----=_TAFINAR_'+Date.now().toString(36);
+  let m='X-Unsent: 1\r\nSubject: '+encWord(subject)+'\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="'+bd+'"\r\n\r\n';
+  m+='--'+bd+'\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n'+wrap76(b64utf8('<html><body>'+html+'</body></html>'))+'\r\n';
+  atts.forEach(a=>{
+    const fn=encWord(a.name);
+    m+='--'+bd+'\r\nContent-Type: '+a.type+'; name="'+fn+'"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="'+fn+'"\r\n\r\n'+wrap76(a.b64)+'\r\n';
+  });
+  return m+'--'+bd+'--\r\n';
+}
+function downloadBlob(data,type,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+async function suEml(btn){
+  const s=suGet(SM.id);const old=btn.innerHTML;btn.disabled=true;btn.textContent='Préparation…';
+  const atts=[];const miss=[];
+  if(SM.kind==='client'){
+    for(const v of suSelectedCvs()){
+      try{const r=await urlToB64(v.url);atts.push({name:v.name,type:r.type,b64:r.b64});}catch(e){console.warn(e);miss.push(v.label);}
+    }
+  }
+  const eml=buildEml(document.getElementById('sm-subject').value,suTextToHtml(document.getElementById('sm-body').value),atts);
+  downloadBlob(eml,'message/rfc822','Entretien_'+(s?s.quad:'')+'_'+(s?s.eDate:'')+'.eml');
+  btn.disabled=false;btn.innerHTML=old;
+  showToast(miss.length?'Brouillon créé SANS : '+miss.join(', ')+' (téléchargement impossible)':'Brouillon téléchargé — double-clique dessus pour l\'ouvrir dans Outlook',miss.length?'warn':'ok');
+}
+
+// ── .ics ──
+function icsEsc(t){return String(t||'').replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');}
+function suIcs(s){
+  const d=s.eDate.replace(/-/g,'');const[h,m]=(s.eHeure||'09:00').split(':').map(Number);
+  const st=d+'T'+pad2(h)+pad2(m||0)+'00';
+  const e=new Date(2000,0,1,h+1,m||0);const en=d+'T'+pad2(e.getHours())+pad2(e.getMinutes())+'00';
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//TAFINAR//Suivi//FR','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+    'UID:'+s.id+'@tafinar','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z','DTSTART:'+st,'DTEND:'+en,
+    'SUMMARY:'+icsEsc('Entretien '+(s.client?s.client+' - ':'')+'Profil '+s.quad),
+    'DESCRIPTION:'+icsEsc([s.posteTitre,s.interlocuteur?'Avec '+s.interlocuteur:'',s.teams?'Teams : '+s.teams:''].filter(Boolean).join('\n')),
+    'LOCATION:'+icsEsc(s.teams?'Microsoft Teams':''),s.teams?'URL:'+s.teams:null,'END:VEVENT','END:VCALENDAR'].filter(x=>x!==null);
+  return L.join('\r\n')+'\r\n';
+}
+function suIcsDownload(id){
+  const s=suGet(id);if(!s)return;
+  if(!s.eDate||!s.eHeure){showToast("Renseigne d'abord la date et l'heure",'warn');return;}
+  downloadBlob(suIcs(s),'text/calendar','Entretien_'+s.quad+'_'+s.eDate+'.ics');
+}
+
+// ═══════════════════════════════════════
+// LIEN MAIL RÉCAP → SUIVI
+// ═══════════════════════════════════════
+function suMailDups(){
+  const el=document.getElementById('mail-dups');if(!el)return;
+  if(!S.suiviOk){el.innerHTML='';return;}
+  const msgs=[];
+  mailLignes.forEach(l=>{
+    suDoublons(l.id,l.poste).forEach(d=>msgs.push('<strong>'+esc(l.quad)+'</strong> a déjà été envoyé pour ce poste'+(d.client?' ('+esc(d.client)+')':'')+' le '+dateCourte(d.dateEnvoi)+' — '+suSt(d.statut).label));
+  });
+  el.innerHTML=msgs.length?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px">⚠ Doublon(s) possible(s) :<br>${msgs.join('<br>')}</div>`:'';
+}
+let _autoItems=[];
+function suAfterCopy(){
+  if(!S.suiviOk)return;
+  const byPoste={};
+  mailLignes.forEach(l=>{const c=S.candidates.find(x=>x.id===l.id);if(c)(byPoste[l.poste]=byPoste[l.poste]||[]).push({cand:c,posteTitre:l.poste});});
+  _autoItems=[];const groups=[];
+  Object.keys(byPoste).forEach(pt=>{
+    const p=posteOfTitre(pt);
+    const prev=S.suivi.find(s=>normNom(s.posteTitre)===normNom(pt)&&s.client);
+    const client=(p&&p.client)||(prev&&prev.client)||'';
+    const items=byPoste[pt].map(it=>{const dup=suDoublons(it.cand.id,pt).length>0;const o={...it,dup,on:!dup};_autoItems.push(o);return o;});
+    groups.push({pt,client,items});
+  });
+  if(!_autoItems.length)return;
+  const old=document.getElementById('su-auto');if(old)old.remove();
+  const d=document.createElement('div');d.id='su-auto';
+  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10002;display:flex;align-items:center;justify-content:center';
+  d.innerHTML=`<div style="background:#fff;border-radius:14px;width:640px;max-width:95vw;max-height:88vh;overflow:auto;padding:20px 22px">${clientsDatalist()}
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">Ajouter ces envois au suivi ?</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Indique le client pour chaque poste. Les profils déjà suivis pour ce poste sont décochés.</div>
+    ${groups.map((g,gi)=>`<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">${esc(g.pt)}</div>
+      <input class="fi su-auto-client" data-pt="${esc(g.pt)}" list="dl-clients" placeholder="Client (ex. Capgemini)" value="${esc(g.client)}" style="margin-bottom:6px">
+      ${g.items.map(it=>`<label style="display:block;font-size:12px"><input type="checkbox" class="su-auto-cb" data-id="${it.cand.id}" data-pt="${esc(g.pt)}"${it.on?' checked':''}> ${esc(it.cand.trigramme||quadDe(it.cand.nom))} — ${esc(it.cand.nom)}${it.dup?' <span style="color:#c2410c">(déjà dans le suivi)</span>':''}</label>`).join('')}</div>`).join('')}
+    <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" onclick="document.getElementById('su-auto').remove()">Non merci</button><button class="btn btn-g" onclick="suAutoSave()">Ajouter au suivi</button></div></div>`;
+  document.body.appendChild(d);
+}
+async function suAutoSave(){
+  const clients={};document.querySelectorAll('.su-auto-client').forEach(i=>clients[i.dataset.pt]=i.value.trim());
+  const items=[];
+  document.querySelectorAll('.su-auto-cb:checked').forEach(cb=>{
+    const c=S.candidates.find(x=>x.id===cb.dataset.id);if(c)items.push({cand:c,posteTitre:cb.dataset.pt,client:clients[cb.dataset.pt]||''});
+  });
+  if(!items.length){document.getElementById('su-auto').remove();return;}
+  try{await suCreate(items);}catch(e){console.error(e);showToast('Ajout au suivi impossible','warn');return;}
+  document.getElementById('su-auto').remove();
+  showToast(items.length+' profil(s) ajouté(s) au suivi');
 }
 
 // ═══════════════════════════════════════
@@ -2224,6 +2815,7 @@ async function init(){
     window._local=scanLocal();
     await Promise.all([fetchPostes(),fetchKanban()]);
     await fetchCandidats();
+    await fetchSuivi();
     S._lastLoad=Date.now();
     render();
   }catch(e){
