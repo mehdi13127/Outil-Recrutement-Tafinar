@@ -778,6 +778,7 @@ const MAIL_COLS=[
   {id:'remarques',label:'Remarques',visible:true},
 ];
 let mailLignes=[];
+let mailClair=false; // style clair : en-têtes pâles + texte foncé (aucun texte blanc qui puisse noircir)
 let mailTxt={intro:'Bonjour,',intro2:'Veuillez trouver ci-dessous une sélection de profils :',outro:'Nous restons disponibles pour tout renseignement complémentaire.'};
 
 function quadDe(nom){
@@ -795,6 +796,7 @@ function openMailModal(){
     id:c._id,quad:c.trigramme||quadDe(c.nom),nom:c.nom,poste:p,dispo:c.dispo||'',
     mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',tjm:c.tjm||'',freelance:c.freelance||'',remarques:c.remarque||''
   })));
+  mailTxt.intro2='Veuillez trouver ci-dessous une sélection de profils pour '+(ordre.length>1?'les postes demandés':'le poste demandé')+' :';
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
   <div class="modal" style="width:960px;max-width:96vw" onclick="event.stopPropagation()">
     <div class="m-title"><span><i class="ti ti-mail" aria-hidden="true"></i> Mail récap — ${mailLignes.length} profil(s)</span><button class="m-close" onclick="closeM()">×</button></div>
@@ -807,6 +809,8 @@ function openMailModal(){
       <button class="btn btn-r" onclick="S.sel=new Set();closeM()">Vider sélection</button>
       <button class="btn" onclick="closeM()">Fermer</button>
       <button class="btn btn-p" onclick="dlTousCVs()"><i class="ti ti-download" aria-hidden="true"></i> Télécharger les CVs</button>
+      <button class="btn" id="mail-clair-btn" onclick="mailClair=!mailClair;this.classList.toggle('btn-p',mailClair);mailRender()" title="En-têtes clairs avec texte foncé : utile si le blanc devient noir dans Outlook">Style clair</button>
+      <button class="btn btn-p" onclick="mailEml(this)" title="Télécharge un brouillon que tu ouvres dans Outlook : mise en forme conservée">📨 Brouillon Outlook (.eml)</button>
       <button class="btn btn-g" id="mail-copy-btn" onclick="copyMailFormatted()"><i class="ti ti-copy" aria-hidden="true"></i> Copier → Outlook</button>
     </div>
   </div></div>`;
@@ -824,7 +828,9 @@ function mailToggles(){
 }
 function mailBuildHTML(editable){
   const cols=MAIL_COLS.filter(c=>c.visible);
-  const M='#0d3b6e',G='#f0f4f8',W='#ffffff',T='#1a1a1a';
+  const M='#0d3b6e',G='#f0f4f8',T='#1a1a1a';
+  const W=mailClair?'#fefefe':'#ffffff';
+  const HB=mailClair?'#dbe4ef':M, HT=mailClair?'#0d3b6e':'#ffffff';
   const FF='font-family:Arial,sans-serif;';
   const groupes={};const ordre=[];
   mailLignes.forEach((l,i)=>{if(!groupes[l.poste]){groupes[l.poste]=[];ordre.push(l.poste);}groupes[l.poste].push(i);});
@@ -843,8 +849,8 @@ function mailBuildHTML(editable){
       tb+='<tr bgcolor="'+bg+'">'+cols.map(c=>cell(esc(l[c.id]),bg,c.bold?M:T,c.bold,'padding:8px 12px;border:1px solid #d1d5db;vertical-align:top;',ce+' data-row="'+i+'" data-col="'+c.id+'"')).join('')+'</tr>';
     });
     tables+='<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="'+W+'" style="border-collapse:collapse;'+FF+'font-size:12px;margin-bottom:24px;"><thead>'
-      +'<tr bgcolor="'+M+'">'+cell(esc(poste),M,W,true,'padding:8px 14px;font-size:13px;',' colspan="'+cols.length+'"')+'</tr>'
-      +'<tr bgcolor="'+M+'">'+cols.map(c=>cell(esc(c.label),M,W,true,'padding:9px 12px;text-align:left;border:1px solid '+M+';white-space:nowrap;')).join('')+'</tr></thead><tbody>'+tb+'</tbody></table><p style="margin:0;line-height:12px">&nbsp;</p>';
+      +'<tr bgcolor="'+HB+'">'+cell(esc(poste),HB,HT,true,'padding:8px 14px;font-size:13px;',' colspan="'+cols.length+'"')+'</tr>'
+      +'<tr bgcolor="'+HB+'">'+cols.map(c=>cell(esc(c.label),HB,HT,true,'padding:9px 12px;text-align:left;border:1px solid '+HB+';white-space:nowrap;')).join('')+'</tr></thead><tbody>'+tb+'</tbody></table><p style="margin:0;line-height:12px">&nbsp;</p>';
   });
   const para=(k,mt,mb)=>'<p'+ce+' data-txt="'+k+'" style="margin:'+mt+'px 0 '+mb+'px;'+FF+'font-size:13px;color:'+T+';">'+(editable?'':'<font color="'+T+'" face="Arial">')+esc(mailTxt[k])+(editable?'':'</font>')+'</p>';
   return '<div style="'+FF+'font-size:13px;color:'+T+';max-width:750px;">'+para('intro',0,14)+para('intro2',0,20)+tables+para('outro',8,0)+'</div>';
@@ -2504,7 +2510,7 @@ async function urlToB64(url){
 function buildEml(subject,html,atts){
   const bd='----=_TAFINAR_'+Date.now().toString(36);
   let m='X-Unsent: 1\r\nSubject: '+encWord(subject)+'\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="'+bd+'"\r\n\r\n';
-  m+='--'+bd+'\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n'+wrap76(b64utf8('<html><body>'+html+'</body></html>'))+'\r\n';
+  m+='--'+bd+'\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n'+wrap76(b64utf8('<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"></head><body style="background-color:#ffffff;color:#1a1a1a">'+html+'</body></html>'))+'\r\n';
   atts.forEach(a=>{
     const fn=encWord(a.name);
     m+='--'+bd+'\r\nContent-Type: '+a.type+'; name="'+fn+'"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="'+fn+'"\r\n\r\n'+wrap76(a.b64)+'\r\n';
@@ -2527,6 +2533,15 @@ async function suEml(btn){
   downloadBlob(eml,'message/rfc822','Entretien_'+(s?s.quad:'')+'_'+(s?s.eDate:'')+'.eml');
   btn.disabled=false;btn.innerHTML=old;
   showToast(miss.length?'Brouillon créé SANS : '+miss.join(', ')+' (téléchargement impossible)':'Brouillon téléchargé — double-clique dessus pour l\'ouvrir dans Outlook',miss.length?'warn':'ok');
+}
+
+async function mailEml(btn){
+  const postes=[...new Set(mailLignes.map(l=>l.poste))];
+  const subj='Sélection de profils - '+(postes.length===1?postes[0]:postes.length+' postes');
+  const eml=buildEml(subj,mailBuildHTML(false),[]);
+  downloadBlob(eml,'message/rfc822','Selection_profils_'+todayISO()+'.eml');
+  showToast('Brouillon téléchargé — double-clique dessus pour l\'ouvrir dans Outlook');
+  if(S.suiviOk)suAfterCopy();
 }
 
 // ── .ics ──
