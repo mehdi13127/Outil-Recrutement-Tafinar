@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v58c</title>
+<title>Recrutement TAFINAR v61</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -22,6 +22,13 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--fs);color:var(--tp);font-size:15px;line-height:1.6;background:#eef0f3;min-height:100vh;padding:1.5rem 1rem 4rem}
 .wrap{max-width:960px;margin:0 auto}
+.wrap.wide{max-width:none}
+.dossier-table{table-layout:fixed}
+.dossier-table th{position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none}
+.dossier-table th .dh{cursor:grab}
+.dossier-table th .rz{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize}
+.dossier-table th .rz:hover,.dossier-table th .rz.on{background:rgba(255,255,255,.45)}
+.dossier-table th.dragover{box-shadow:inset 3px 0 0 #fff}
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px}
 h1{font-size:21px;font-weight:500}
 .sub{font-size:13px;color:var(--ts);margin-top:1px}
@@ -191,7 +198,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v58c</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v61</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -317,7 +324,9 @@ textarea{resize:vertical;line-height:1.5}
     <div class="card">
       <div class="ptitle" style="margin-bottom:12px"><i class="ti ti-user-off" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Selectionner les CVs a anonymiser</div>
       <div id="anon-from-analysis" style="display:none;margin-bottom:16px">
-        <div style="font-size:12px;color:var(--ts);margin-bottom:6px">CVs de l'analyse — coche ceux a anonymiser :</div>
+        <div style="font-size:12px;color:var(--ts);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">CVs de l'analyse — coche ceux a anonymiser :
+          <button type="button" class="btn-sm outline" onclick="anonCheckAll(true)">Tout cocher</button>
+          <button type="button" class="btn-sm outline" onclick="anonCheckAll(false)">Tout decocher</button></div>
         <div id="anon-check-list" class="cv-check-list"></div>
       </div>
       <div style="font-size:12px;color:var(--ts);margin-bottom:6px" id="anon-upload-label">Uploader de nouveaux PDFs :</div>
@@ -489,8 +498,9 @@ ETAPE 2 — PRESERVATION INTEGRALE DU CONTENU PROFESSIONNEL :
 REGLE ABSOLUE : reproduis TOUT le contenu professionnel mot pour mot, sans rien omettre, sans resumer, sans fusionner. Si une experience a 8 taches, le JSON doit avoir exactement 8 taches. Ne reduis jamais le nombre d'elements. Le permis de conduire est une information professionnelle : le garder.
 
 Le "titre" est le titre/poste principal du candidat. Pour les langues : score 0-1 (natif=1, courant=0.85, avance=0.7, intermediaire=0.55, notions=0.3). Sections dans l'ordre du CV (competences toujours apres experiences) : "apercu", "experiences", "competences", "formation", "certifications", "langues", "generic_tags", "generic_list".
+Les champs "prenom" et "nom" servent UNIQUEMENT au calcul interne du code : renseigne-les exactement comme sur le CV (prenom usuel dans "prenom", nom de famille complet dans "nom"). N'ecris AUCUN nom ou prenom ailleurs dans le JSON.
 UNIQUEMENT JSON valide, sans markdown, sans backtick.
-{"code":"NSDT","titre":"Titre principal","sections":[{"type":"apercu","contenu":"texte integral sans infos personnelles"},{"type":"experiences","titre":"Experiences Professionnelles","items":[{"entreprise":"Nom","poste":"Titre","date":"periode","taches":["tache 1 complete","tache 2 complete"]}]},{"type":"competences","titre":"Competences","items":["comp 1","comp 2"]},{"type":"formation","titre":"Formation","items":[{"ecole":"Nom","diplome":"Titre","specialite":"spec","date":"periode"}]},{"type":"certifications","titre":"Certifications","items":[{"nom":"cert","date":"2023"}]},{"type":"langues","titre":"Langues","items":[{"langue":"Francais","niveau":"Bilingue","score":1.0}]},{"type":"generic_tags","titre":"Centres d'interet","items":["item1"]}]}`;
+{"prenom":"Nicolas","nom":"Dupont","code":"NSDT","titre":"Titre principal","sections":[{"type":"apercu","contenu":"texte integral sans infos personnelles"},{"type":"experiences","titre":"Experiences Professionnelles","items":[{"entreprise":"Nom","poste":"Titre","date":"periode","taches":["tache 1 complete","tache 2 complete"]}]},{"type":"competences","titre":"Competences","items":["comp 1","comp 2"]},{"type":"formation","titre":"Formation","items":[{"ecole":"Nom","diplome":"Titre","specialite":"spec","date":"periode"}]},{"type":"certifications","titre":"Certifications","items":[{"nom":"cert","date":"2023"}]},{"type":"langues","titre":"Langues","items":[{"langue":"Francais","niveau":"Bilingue","score":1.0}]},{"type":"generic_tags","titre":"Centres d'interet","items":["item1"]}]}`;
 const ANON_PROMPT_EN = `You are an expert recruiter and professional translator. Your role is to anonymize, remove all personal information, fully translate into English, and structure a CV as JSON.
 
 STEP 1 — ANONYMIZATION AND PERSONAL DATA REMOVAL:
@@ -516,8 +526,9 @@ ABSOLUTE RULE: reproduce ALL professional content, nothing omitted, nothing summ
 
 Section titles in English: experiences="Professional Experience", competences="Skills", formation="Education", certifications="Certifications", langues="Languages". Sections in CV order, skills always after experience. Language scores: native=1, fluent=0.85, advanced=0.7, intermediate=0.55, basic=0.3.
 
+The "prenom" and "nom" fields are used ONLY for internal code computation: fill them exactly as written on the CV (usual first name in "prenom", full family name in "nom"). Write NO name or first name anywhere else in the JSON.
 ONLY valid JSON, no markdown, no backtick.
-{"code":"NSDT","titre":"Main Job Title in English","sections":[{"type":"apercu","contenu":"Full profile translated to English, no personal info"},{"type":"experiences","titre":"Professional Experience","items":[{"entreprise":"Company Name","poste":"Job Title in English","date":"period","taches":["Translated task 1","Translated task 2"]}]},{"type":"competences","titre":"Skills","items":["Skill in English"]},{"type":"formation","titre":"Education","items":[{"ecole":"School Name","diplome":"Degree in English","specialite":"Specialization in English","date":"period"}]},{"type":"certifications","titre":"Certifications","items":[{"nom":"Certification name","date":"2023"}]},{"type":"langues","titre":"Languages","items":[{"langue":"French","niveau":"Native","score":1.0}]},{"type":"generic_tags","titre":"Interests","items":["Interest in English"]}]}`;
+{"prenom":"Nicolas","nom":"Dupont","code":"NSDT","titre":"Main Job Title in English","sections":[{"type":"apercu","contenu":"Full profile translated to English, no personal info"},{"type":"experiences","titre":"Professional Experience","items":[{"entreprise":"Company Name","poste":"Job Title in English","date":"period","taches":["Translated task 1","Translated task 2"]}]},{"type":"competences","titre":"Skills","items":["Skill in English"]},{"type":"formation","titre":"Education","items":[{"ecole":"School Name","diplome":"Degree in English","specialite":"Specialization in English","date":"period"}]},{"type":"certifications","titre":"Certifications","items":[{"nom":"Certification name","date":"2023"}]},{"type":"langues","titre":"Languages","items":[{"langue":"French","niveau":"Native","score":1.0}]},{"type":"generic_tags","titre":"Interests","items":["Interest in English"]}]}`;
 
 /* Key helpers */
 function sk(k){return String(k||'').replace(/[^\x21-\x7E]/g,'').trim();}
@@ -579,6 +590,7 @@ function showTab(t){
   if(t==='historique')renderHistory();
   if(t==='anonymiser')refreshAnonFromAnalysis();
   if(t==='dossier')renderDossier();
+  const w=document.querySelector('.wrap');if(w)w.classList.toggle('wide',t==='dossier');
 }
 
 /* Job library */
@@ -720,7 +732,7 @@ async function callAnon(file){
   const keyA=sk(document.getElementById('key-ant').value);
   if(!keyA)throw new Error('Cle Anthropic requise pour l\'anonymisation.');
   const sel=document.getElementById('prov').value;
-  const model=(sel==='claude-opus-4-6'||sel==='claude-sonnet-4-6')?sel:'claude-haiku-4-5-20251001';
+  const model='claude-sonnet-4-6'; // anonymisation : Sonnet (choix de Mehdi)
   const b64=await toBase64(file);
   const lang=(document.getElementById('anon-lang')||{}).value||'fr';
   const userMsg=lang==='en'?'Anonymize and structure this CV as instructed.':'Anonymise et structure ce CV selon les instructions.';
@@ -736,6 +748,21 @@ async function callAnon(file){
 /* Render helpers */
 function sc(s){return s>=75?'sm':s>=50?'sp':'sn';}
 function gb(v){return v==='Match'?'bm':v==='Partiel'?'bpa':'bn';}
+/* Quadrigramme : 1re + derniere lettre du PRENOM, 1re + derniere lettre du NOM (calcule par le code, jamais par l'IA) */
+function lettersOnly(x){return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z]/g,'').toUpperCase();}
+function makeQuad(prenom,nom){
+  const p=lettersOnly(String(prenom||'').trim().split(/\s+/)[0]);   // 1er prenom (Jean-Luc = un seul prenom)
+  const n=lettersOnly(nom);                                         // nom complet (Ben Ali, De La Cruz...)
+  if(!p||!n)return '';
+  return p[0]+p[p.length-1]+n[0]+n[n.length-1];
+}
+function fixCode(d){
+  if(!d)return;
+  if(d.codeManual&&d.code)return;
+  const q=makeQuad(d.prenom,d.nom);
+  if(q)d.code=q;
+  else{const c=lettersOnly(d.code);d.code=c.length===4?c:'';}   // pas de nom fiable : on garde le code de l'IA seulement s'il fait 4 lettres
+}
 function cname(d){return[d.prenom,d.nom].filter(Boolean).join(' ')||'Candidat inconnu';}
 function statusIcon(s){return s==='ok'?'✅':s==='partial'?'⚠️':'❌';}
 function poidsLabel(p){
@@ -825,6 +852,7 @@ async function anonBulkMatches(){
 }
 
 /* Refresh anon from analysis */
+function anonCheckAll(v){document.querySelectorAll('#anon-check-list input[type=checkbox]').forEach(function(cb){cb.checked=v;});}
 function refreshAnonFromAnalysis(){
   const container=document.getElementById('anon-from-analysis');
   const list=document.getElementById('anon-check-list');
@@ -843,6 +871,7 @@ function refreshAnonFromAnalysis(){
 
 /* Build TAFINAR CV HTML */
 function buildTafinarHTML(cvData){
+  fixCode(cvData);
   const sections=cvData.sections||[];
   let body='';
   for(const sec of sections){
@@ -889,7 +918,7 @@ function buildTafinarHTML(cvData){
     }
   }
   body=body.replace(/<div class="divider"><\/div>\s*$/,'');
-  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>CV Anonymise — Profil '+(cvData.code||'')+'</title>'
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Profil '+(cvData.code||'')+'</title>'
     +'<style>'
     +'@page{size:A4;margin:0}'
     +'*{box-sizing:border-box;margin:0;padding:0}'
@@ -1220,6 +1249,7 @@ async function runAnonymise(){
 }
 
 function addAnonResultCard(data,filename,container,originalName){
+  fixCode(data);
   const rawHtml=buildTafinarHTML(data);
   // Split closing tags so HTML parser doesn't terminate the script early
   const SC='<'+'script>';
@@ -1241,13 +1271,23 @@ function addAnonResultCard(data,filename,container,originalName){
   card.className='anon-result-card';
   const nameDisp=originalName?' <span style="color:var(--ts);font-size:11px">('+escH(originalName)+')</span>':'';
   const info=document.createElement('div');
-  info.innerHTML='<div class="arc-info"><i class="ti ti-user-check" style="font-size:13px;margin-right:5px;color:var(--gs)"></i>Profil '+escH(data.code||'?')+nameDisp+' \u2014 '+escH(data.titre||'')+'</div><div class="arc-sub">'+escH(filename)+'</div>';
+  info.innerHTML='<div class="arc-info"><i class="ti ti-user-check" style="font-size:13px;margin-right:5px;color:var(--gs)"></i>Profil <span class="arc-code">'+escH(data.code||'?')+'</span>'+nameDisp+' \u2014 '+escH(data.titre||'')+'</div><div class="arc-sub">'+escH(filename)+'</div>';
+  const codeBox=document.createElement('div');
+  codeBox.style.cssText='display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ts);margin:4px 0';
+  codeBox.innerHTML='Quadrigramme : <input type="text" maxlength="6" value="'+escH(data.code||'')+'" style="width:70px;text-transform:uppercase;font-weight:700;padding:3px 6px;border:1px solid var(--bt);border-radius:4px"> <span>(corrige-le ici si besoin, puis clique « Ouvrir / Imprimer »)</span>';
   const link=document.createElement('a');
   link.href=url;link.target='_blank';link.className='btn-sm';
   link.style.cssText='background:#22c55e;text-decoration:none;display:inline-flex;align-items:center;gap:5px';
   link.innerHTML='<i class="ti ti-printer" style="font-size:13px"></i>Ouvrir / Imprimer';
-  link.addEventListener('click',function(){setTimeout(function(){URL.revokeObjectURL(url);},120000);});
-  card.appendChild(info);card.appendChild(link);
+  link.addEventListener('click',function(){
+    const v=lettersOnly(codeBox.querySelector('input').value);
+    if(v&&v!==data.code){data.code=v;data.codeManual=true;}
+    const h2=buildTafinarHTML(data).replace(STE,editCSS+STE).replace(BOE,editJS+BOE);
+    link.href=URL.createObjectURL(new Blob([h2],{type:'text/html'}));
+    const cs=info.querySelector('.arc-code');if(cs)cs.textContent=data.code||'?';
+    setTimeout(function(){URL.revokeObjectURL(link.href);},120000);
+  });
+  card.appendChild(info);card.appendChild(codeBox);card.appendChild(link);
   container.appendChild(card);
 }
 
@@ -1344,18 +1384,7 @@ function addToDossier(idx, btn){
   const r = lastResults[idx];
   if(!r || r.error){alert('Donnees indisponibles.');return;}
   const d = r.data;
-  // Build quadrigramme: 1ère+dernière lettre du 1er mot + 1ère+dernière lettre du dernier mot
-  let quad = '';
-  const fullName = ((d.prenom||'')+' '+(d.nom||'')).trim() || '';
-  if(fullName){
-    const words = fullName.split(/\s+/).filter(Boolean);
-    if(words.length>=2){
-      const w1=words[0];const w2=words[words.length-1];
-      quad=(w1[0]||'').toUpperCase()+(w1[w1.length-1]||'').toUpperCase()+(w2[0]||'').toUpperCase()+(w2[w2.length-1]||'').toUpperCase();
-    }else if(words.length===1){
-      const w=words[0];quad=(w[0]||'').toUpperCase()+(w[1]||'').toUpperCase()+(w[w.length-2]||'').toUpperCase()+(w[w.length-1]||'').toUpperCase();
-    }
-  }
+  const quad = makeQuad(d.prenom, d.nom);
   const arr = getDossier();
   // Check duplicate
   if(arr.find(x => x.filename === r.filename)){
@@ -1409,6 +1438,65 @@ function clearDossier(){
   updateDossierCount();
   renderDossier();
 }
+
+/* ── Dossier client : colonnes (ordre + largeur memorises sur cet ordinateur) ── */
+function dossierCols(){
+  const inp=function(field,ph){return function(r){return '<td><input type="text" value="'+escA(r[field]||'')+'" placeholder="'+ph+'" onchange="updateDossierField('+r.id+',\''+field+'\',this.value)"></td>';};};
+  const all=[
+    {id:'nom',label:'Nom complet',w:200,cell:inp('nom_complet','Nom Prenom')},
+    {id:'quad',label:'Quadri.',w:90,cell:inp('quad','')},
+    {id:'score',label:'Score',w:70,cell:function(r){const sp=function(s){return s>=75?'background:var(--gb);color:var(--gs)':s>=50?'background:var(--wb);color:var(--ws)':'background:var(--db);color:var(--ds)';};return '<td style="text-align:center">'+(r.score?'<span class="score-pill" style="'+sp(parseInt(r.score)||0)+'">'+r.score+'</span>':'<span style="color:var(--tt);font-size:11px">—</span>')+'</td>';}},
+    {id:'tel',label:'Tel.',w:170,cell:inp('telephone','06 XX XX')},
+    {id:'poste',label:'Poste analyse',w:340,cell:function(r){return '<td><input type="text" value="'+escA(r.poste_analyse||r.verdict||'')+'" title="'+escA(r.poste_analyse||r.verdict||'')+'" placeholder="Intitule poste" onchange="updateDossierField('+r.id+',\'poste_analyse\',this.value)"></td>';}},
+    {id:'dispo',label:'Disponibilite',w:170,cell:inp('disponibilite','Date / Immediat')},
+    {id:'mob',label:'Mobilite',w:180,cell:inp('mobilite','Region / France')},
+    {id:'pret',label:'Pretention',w:140,cell:inp('pretention','50K euros')},
+    {id:'tjm',label:'TJM',w:110,cell:inp('tjm','450 euros')},
+    {id:'cv',label:'CV anonyme',w:140,cell:inp('cv_anonyme','Profil XXXX')},
+    {id:'rem',label:'Remarques',w:300,cell:function(r){return '<td><textarea placeholder="Notes..." onchange="updateDossierField('+r.id+',\'remarques\',this.value)">'+escA(r.remarques)+'</textarea></td>';}},
+    {id:'del',label:'',w:44,cell:function(r){return '<td><button class="dossier-row-rm" onclick="removeDossierRow('+r.id+')" title="Retirer"><i class="ti ti-x" aria-hidden="true"></i></button></td>';}}
+  ];
+  const lay=dossierLayout();
+  const byId={};all.forEach(function(c){byId[c.id]=c;});
+  let order=(lay.order||[]).filter(function(i){return byId[i]&&i!=='del';});
+  all.forEach(function(c){if(c.id!=='del'&&order.indexOf(c.id)<0)order.push(c.id);});
+  order.push('del');
+  return order.map(function(i){return byId[i];});
+}
+function dossierLayout(){try{const l=JSON.parse(localStorage.getItem('cvdossier_layout')||'{}');return{order:l.order||[],widths:l.widths||{}};}catch(e){return{order:[],widths:{}};}}
+function saveDossierLayout(l){try{localStorage.setItem('cvdossier_layout',JSON.stringify(l));}catch(e){}}
+function dossierBind(){
+  const tbl=document.getElementById('dossier-tbl');if(!tbl)return;
+  tbl.querySelectorAll('th .rz').forEach(function(rz){
+    rz.addEventListener('mousedown',function(e){
+      e.preventDefault();e.stopPropagation();
+      const th=rz.parentNode,id=th.dataset.col,col=tbl.querySelector('col[data-col="'+id+'"]');
+      const x0=e.clientX,w0=th.getBoundingClientRect().width,t0=parseFloat(tbl.style.width)||tbl.getBoundingClientRect().width;
+      rz.classList.add('on');
+      function mv(ev){const w=Math.max(50,Math.round(w0+ev.clientX-x0));col.style.width=w+'px';tbl.style.width=Math.round(t0+(w-w0))+'px';}
+      function up(ev){
+        document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);rz.classList.remove('on');
+        const l=dossierLayout();l.widths[id]=Math.max(50,Math.round(w0+ev.clientX-x0));saveDossierLayout(l);
+      }
+      document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+    });
+  });
+  let dragId=null;
+  tbl.querySelectorAll('th .dh').forEach(function(h){
+    h.addEventListener('dragstart',function(e){dragId=h.parentNode.dataset.col;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',dragId);}catch(x){}});
+  });
+  tbl.querySelectorAll('th[data-col]').forEach(function(th){
+    th.addEventListener('dragover',function(e){if(dragId&&th.dataset.col!=='del'){e.preventDefault();th.classList.add('dragover');}});
+    th.addEventListener('dragleave',function(){th.classList.remove('dragover');});
+    th.addEventListener('drop',function(e){
+      e.preventDefault();th.classList.remove('dragover');
+      const to=th.dataset.col;if(!dragId||dragId===to||to==='del')return;
+      const order=dossierCols().map(function(c){return c.id;}).filter(function(i){return i!=='del';});
+      order.splice(order.indexOf(dragId),1);order.splice(order.indexOf(to),0,dragId);
+      const l=dossierLayout();l.order=order;saveDossierLayout(l);dragId=null;renderDossier();
+    });
+  });
+}
 function renderDossier(){
   const arr = getDossier();
   const el = document.getElementById('dossier-content');
@@ -1417,39 +1505,25 @@ function renderDossier(){
     return;
   }
   const sp=function(s){return s>=75?'background:var(--gb);color:var(--gs)':s>=50?'background:var(--wb);color:var(--ws)':'background:var(--db);color:var(--ds)';};
-  let html = '<div style="overflow-x:auto"><table class="dossier-table"><thead><tr>';
-  html += '<th style="width:120px">Nom complet</th>';
-  html += '<th style="width:60px">Quadri.</th>';
-  html += '<th style="width:45px">Score</th>';
-  html += '<th style="width:100px">Tel.</th>';
-  html += '<th style="min-width:130px">Poste analyse</th>';
-  html += '<th style="width:110px">Disponibilite</th>';
-  html += '<th style="width:110px">Mobilite</th>';
-  html += '<th style="width:100px">Pretention</th>';
-  html += '<th style="width:80px">TJM</th>';
-  html += '<th style="width:90px">CV anonyme</th>';
-  html += '<th>Remarques</th>';
-  html += '<th style="width:40px"></th></tr></thead><tbody>';
-  arr.forEach(r => {
-    const scoreStyle=r.score?sp(parseInt(r.score)||0):'';
+  const COLS=dossierCols();
+  const lay=dossierLayout();
+  const total=COLS.reduce(function(t,c){return t+(lay.widths[c.id]||c.w);},0);
+  let html = '<div style="overflow-x:auto"><table class="dossier-table" id="dossier-tbl" style="width:'+total+'px;min-width:100%"><colgroup>';
+  COLS.forEach(function(c){html += '<col data-col="'+c.id+'" style="width:'+(lay.widths[c.id]||c.w)+'px">';});
+  html += '</colgroup><thead><tr>';
+  COLS.forEach(function(c){
+    html += '<th data-col="'+c.id+'">'+(c.label?'<span class="dh" draggable="true" title="Glisse pour deplacer la colonne">'+c.label+'</span><i class="rz" title="Tire pour elargir / reduire"></i>':'')+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+  arr.forEach(function(r){
     html += '<tr>';
-    html += '<td><input type="text" value="'+escA(r.nom_complet||'')+'" placeholder="Nom Prenom" onchange="updateDossierField('+r.id+',\'nom_complet\',this.value)"></td>';
-    html += '<td><input type="text" value="'+escA(r.quad)+'" onchange="updateDossierField('+r.id+',\'quad\',this.value)"></td>';
-    html += '<td style="text-align:center">'+(r.score?'<span class="score-pill" style="'+scoreStyle+'">'+r.score+'</span>':'<span style="color:var(--tt);font-size:11px">—</span>')+'</td>';
-    html += '<td><input type="text" value="'+escA(r.telephone||'')+'" placeholder="06 XX XX" onchange="updateDossierField('+r.id+',\'telephone\',this.value)"></td>';
-    html += '<td><input type="text" value="'+escA(r.poste_analyse||r.verdict||'')+'" placeholder="Intitule poste" onchange="updateDossierField('+r.id+',\'poste_analyse\',this.value)"></td>';
-    html += '<td><input type="text" value="'+escA(r.disponibilite)+'" placeholder="Date / Immediat" onchange="updateDossierField('+r.id+',\'disponibilite\',this.value)"></td>';
-    html += '<td><input type="text" value="'+escA(r.mobilite)+'" placeholder="Region / France" onchange="updateDossierField('+r.id+',\'mobilite\',this.value)"></td>';
-    html += '<td><input type="text" value="'+escA(r.pretention)+'" placeholder="50K euros" onchange="updateDossierField('+r.id+',\'pretention\',this.value)"></td>';
-    html += '<td><input type="text" value="'+escA(r.tjm)+'" placeholder="450 euros" onchange="updateDossierField('+r.id+',\'tjm\',this.value)"></td>';
-    html += '<td><input type="text" value="'+escA(r.cv_anonyme)+'" placeholder="Profil XXXX" onchange="updateDossierField('+r.id+',\'cv_anonyme\',this.value)"></td>';
-    html += '<td><textarea placeholder="Notes..." onchange="updateDossierField('+r.id+',\'remarques\',this.value)">'+escA(r.remarques)+'</textarea></td>';
-    html += '<td><button class="dossier-row-rm" onclick="removeDossierRow('+r.id+')" title="Retirer"><i class="ti ti-x" aria-hidden="true"></i></button></td>';
+    COLS.forEach(function(c){html += c.cell(r);});
     html += '</tr>';
   });
   html += '</tbody></table></div>';
   html += '<button class="add-row-btn" onclick="addEmptyDossierRow()"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px"></i>Ajouter une ligne vide</button>';
   el.innerHTML = html;
+  dossierBind();
 }
 function escA(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
