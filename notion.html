@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v61</title>
+<title>Notion TAFINAR v62</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -147,7 +147,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v61</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v62</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -778,7 +778,6 @@ const MAIL_COLS=[
   {id:'remarques',label:'Remarques',visible:true},
 ];
 let mailLignes=[];
-let mailClair=false; // style clair : en-têtes pâles + texte foncé (aucun texte blanc qui puisse noircir)
 let mailTxt={intro:'Bonjour,',intro2:'Veuillez trouver ci-dessous une sélection de profils :',outro:'Nous restons disponibles pour tout renseignement complémentaire.'};
 
 function quadDe(nom){
@@ -805,12 +804,13 @@ function openMailModal(){
     <div style="font-size:11px;color:#6b7280;margin-bottom:10px">Clique sur un texte ou une cellule pour le modifier avant de copier (le profil n'est pas modifié). Le nom est masqué par défaut : documents client = quadrigramme.</div>
     <div id="mail-dups"></div>
     <div id="mail-prev" style="background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:16px;max-height:55vh;overflow:auto"></div>
+    <div id="mail-copied" style="display:none;background:#dcfce7;border:1px solid #86efac;color:#166534;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;margin-top:10px">✓ Copié — fais Ctrl+V dans ton mail Outlook</div>
     <div class="m-actions">
       <button class="btn btn-r" onclick="S.sel=new Set();closeM()">Vider sélection</button>
       <button class="btn" onclick="closeM()">Fermer</button>
       <button class="btn btn-p" onclick="dlTousCVs()"><i class="ti ti-download" aria-hidden="true"></i> Télécharger les CVs</button>
-      <button class="btn" id="mail-clair-btn" onclick="mailClair=!mailClair;this.classList.toggle('btn-p',mailClair);mailRender()" title="En-têtes clairs avec texte foncé : utile si le blanc devient noir dans Outlook">Style clair</button>
       <button class="btn btn-p" onclick="mailEml(this)" title="Télécharge un brouillon que tu ouvres dans Outlook : mise en forme conservée">📨 Brouillon Outlook (.eml)</button>
+      <button class="btn" onclick="suAddFromMail()" title="Enregistre ces envois dans l'onglet Suivi">+ Ajouter au suivi</button>
       <button class="btn btn-g" id="mail-copy-btn" onclick="copyMailFormatted()"><i class="ti ti-copy" aria-hidden="true"></i> Copier → Outlook</button>
     </div>
   </div></div>`;
@@ -829,8 +829,9 @@ function mailToggles(){
 function mailBuildHTML(editable){
   const cols=MAIL_COLS.filter(c=>c.visible);
   const M='#0d3b6e',G='#f0f4f8',T='#1a1a1a';
-  const W=mailClair?'#fefefe':'#ffffff';
-  const HB=mailClair?'#dbe4ef':M, HT=mailClair?'#0d3b6e':'#ffffff';
+  const W='#ffffff';
+  // En-têtes aux couleurs TAFINAR : ligne bleue (poste) + ligne verte (colonnes), texte noir (lisible sur ces deux couleurs, et Outlook ne le change plus)
+  const BL='#2563eb',GR='#22c55e',HT='#000000';
   const FF='font-family:Arial,sans-serif;';
   const groupes={};const ordre=[];
   mailLignes.forEach((l,i)=>{if(!groupes[l.poste]){groupes[l.poste]=[];ordre.push(l.poste);}groupes[l.poste].push(i);});
@@ -849,8 +850,8 @@ function mailBuildHTML(editable){
       tb+='<tr bgcolor="'+bg+'">'+cols.map(c=>cell(esc(l[c.id]),bg,c.bold?M:T,c.bold,'padding:8px 12px;border:1px solid #d1d5db;vertical-align:top;',ce+' data-row="'+i+'" data-col="'+c.id+'"')).join('')+'</tr>';
     });
     tables+='<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="'+W+'" style="border-collapse:collapse;'+FF+'font-size:12px;margin-bottom:24px;"><thead>'
-      +'<tr bgcolor="'+HB+'">'+cell(esc(poste),HB,HT,true,'padding:8px 14px;font-size:13px;',' colspan="'+cols.length+'"')+'</tr>'
-      +'<tr bgcolor="'+HB+'">'+cols.map(c=>cell(esc(c.label),HB,HT,true,'padding:9px 12px;text-align:left;border:1px solid '+HB+';white-space:nowrap;')).join('')+'</tr></thead><tbody>'+tb+'</tbody></table><p style="margin:0;line-height:12px">&nbsp;</p>';
+      +'<tr bgcolor="'+BL+'">'+cell(esc(poste),BL,HT,true,'padding:8px 14px;font-size:13px;',' colspan="'+cols.length+'"')+'</tr>'
+      +'<tr bgcolor="'+GR+'">'+cols.map(c=>cell(esc(c.label),GR,HT,true,'padding:9px 12px;text-align:left;border:1px solid '+GR+';white-space:nowrap;')).join('')+'</tr></thead><tbody>'+tb+'</tbody></table><p style="margin:0;line-height:12px">&nbsp;</p>';
   });
   const para=(k,mt,mb)=>'<p'+ce+' data-txt="'+k+'" style="margin:'+mt+'px 0 '+mb+'px;'+FF+'font-size:13px;color:'+T+';">'+(editable?'':'<font color="'+T+'" face="Arial">')+esc(mailTxt[k])+(editable?'':'</font>')+'</p>';
   return '<div style="'+FF+'font-size:13px;color:'+T+';max-width:750px;">'+para('intro',0,14)+para('intro2',0,20)+tables+para('outro',8,0)+'</div>';
@@ -881,7 +882,15 @@ async function copyMailFormatted(){
     s.removeAllRanges();tmp.remove();
   }
   showToast(ok?'Copié — colle dans Outlook':'Copie impossible : sélectionne le tableau et Ctrl+C',ok?'ok':'warn');
-  if(ok)suAfterCopy();
+  const note=document.getElementById('mail-copied');
+  if(ok&&note){
+    note.style.display='block';
+    if(btn){const old=btn.dataset.lbl||btn.innerHTML;btn.dataset.lbl=old;btn.innerHTML='✓ Copié';clearTimeout(btn._t);btn._t=setTimeout(function(){btn.innerHTML=old;note.style.display='none';},8000);}
+  }
+}
+function suAddFromMail(){
+  if(!S.suiviOk){showToast("La table du suivi n'existe pas encore (voir tafinar_TOUT_EN_UN.sql)",'warn');return;}
+  suAfterCopy();
 }
 
 // ── Téléchargement des CVs (depuis la base) ──
@@ -2541,7 +2550,6 @@ async function mailEml(btn){
   const eml=buildEml(subj,mailBuildHTML(false),[]);
   downloadBlob(eml,'message/rfc822','Selection_profils_'+todayISO()+'.eml');
   showToast('Brouillon téléchargé — double-clique dessus pour l\'ouvrir dans Outlook');
-  if(S.suiviOk)suAfterCopy();
 }
 
 // ── .ics ──
