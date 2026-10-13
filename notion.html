@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v62</title>
+<title>Notion TAFINAR v63</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -52,6 +52,8 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 .card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 28px 8px 28px;margin-bottom:6px;cursor:pointer;position:relative;transition:border-color .15s}
 .card:hover{border-color:var(--navy)}
 .card.dragging{opacity:.4}
+.card.drop-before{box-shadow:0 -3px 0 0 #2563eb}
+.drop-zone.drop-end{box-shadow:inset 0 -3px 0 0 #2563eb}
 .card.sel{border-color:var(--green);background:#f0faf4}
 .card-check{position:absolute;top:9px;left:8px;width:13px;height:13px;cursor:pointer;accent-color:var(--green)}
 .card-name{font-size:12px;font-weight:500}
@@ -147,7 +149,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v62</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v63</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -508,12 +510,15 @@ function render(){
 }
 
 // ── Ordre des cartes ──
+// Cartes jamais déplacées (ordre vide) : tout en haut, la plus récente d'abord.
+// Cartes classées à la main (ordre = 0,1,2…) : dessous, dans TON ordre.
 function cmpCard(a,b){
-  const oa=a.ordre===null?1e9:a.ordre,ob=b.ordre===null?1e9:b.ordre;
-  if(oa!==ob)return oa-ob;
+  const na=(a.ordre===null||a.ordre===undefined),nb=(b.ordre===null||b.ordre===undefined);
+  if(na!==nb)return na?-1:1;
+  if(!na&&a.ordre!==b.ordre)return a.ordre-b.ordre;
   const ca=String(a.createdAt||''),cb=String(b.createdAt||'');
-  if(ca!==cb)return ca<cb?-1:1;
-  return a.id<b.id?-1:1;
+  if(ca!==cb)return ca<cb?1:-1;
+  return a.id<b.id?1:-1;
 }
 function colIdxOf(c){const sts=S.statuts[c.sourcer]||[];const i=sts.indexOf(c.statut);return i<0?0:i;} // statut inconnu → 1ère colonne
 function colCards(src,idx){
@@ -550,6 +555,7 @@ function rSrc(){
             ${scoreBadge}
             ${ed?`<div style="position:absolute;top:4px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px">
               <button onclick="event.stopPropagation();delCand('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;color:#d1d5db;padding:0;line-height:1;font-weight:300" title="Supprimer">×</button>
+              <button onclick="event.stopPropagation();moveTop('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:#9ca3af;padding:0;line-height:1;font-weight:700" title="Tout en haut de la colonne">⤒</button>
               <button onclick="event.stopPropagation();moveCard('${c.id}','up')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Monter">▲</button>
               <button onclick="event.stopPropagation();moveCard('${c.id}','down')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#d1d5db;padding:0;line-height:1" title="Descendre">▼</button>
             </div>`:''}
@@ -1449,14 +1455,35 @@ async function moveCard(id,dir){
   try{await persistOrder(changed);}catch(e){fail(e,'Déplacement non enregistré');}
 }
 
+async function moveTop(id){
+  const c=S.candidates.find(x=>x.id===id);if(!c||!canEditC(c.sourcer))return;
+  const col=colCards(c.sourcer,colIdxOf(c));
+  if(col[0]&&col[0].id===id&&c.ordre===0)return;
+  const list=[c].concat(col.filter(x=>x.id!==id));
+  const changed=normalizeCol(list);
+  if(!changed.includes(c))changed.push(c);
+  render();
+  try{await persistOrder(changed);}catch(e){fail(e,'Déplacement non enregistré');}
+}
 function dst(e,id){S.dragId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>document.querySelector(`[data-id="${id}"]`)?.classList.add('dragging'),0);}
-function den(){document.querySelectorAll('.card.dragging').forEach(el=>el.classList.remove('dragging'));}
+function clearDropMarks(){document.querySelectorAll('.card.drop-before,.drop-zone.drop-end').forEach(x=>x.classList.remove('drop-before','drop-end'));}
+function den(){document.querySelectorAll('.card.dragging').forEach(el=>el.classList.remove('dragging'));clearDropMarks();S.dropIdx=null;S.dropCol=null;}
 function colDStart(e,idx){S.colDragIdx=idx;e.dataTransfer.effectAllowed='move';setTimeout(()=>document.querySelectorAll('.col')[idx]?.classList.add('col-dragging'),0);}
 function colDEnd(){S.colDragIdx=null;document.querySelectorAll('.col').forEach(el=>el.classList.remove('col-dragging','col-drag-over'));render();}
 function onColOver(e,idx){
   e.preventDefault();
   if(S.colDragIdx!==null&&S.colDragIdx!==idx){
     document.querySelectorAll('.col').forEach((el,i)=>el.classList.toggle('col-drag-over',i===idx));
+  }else if(S.dragId&&S.colDragIdx===null){
+    // où la carte va tomber : avant la carte survolée (moitié haute) ou à la fin
+    const col=document.querySelectorAll('.col')[idx];if(!col)return;
+    const cards=[...col.querySelectorAll('.card')].filter(el=>!el.classList.contains('dragging'));
+    let at=cards.length;
+    for(let i=0;i<cards.length;i++){const r=cards[i].getBoundingClientRect();if(e.clientY<r.top+r.height/2){at=i;break;}}
+    S.dropIdx=at;S.dropCol=idx;
+    clearDropMarks();
+    if(at<cards.length)cards[at].classList.add('drop-before');
+    else{const z=col.querySelector('.drop-zone');if(z)z.classList.add('drop-end');}
   }
 }
 async function onColDrop(e,colEnc,toIdx){
@@ -1475,15 +1502,23 @@ async function onColDrop(e,colEnc,toIdx){
     const c=S.candidates.find(x=>x.id===S.dragId);
     S.dragId=null;
     if(!c||!canEditC(c.sourcer)||c.sourcer!==S.srcr)return;
-    if(colIdxOf(c)===toIdx&&c.statut===colName)return;
-    // en fin de colonne
+    // insertion à l'endroit où tu l'as lâchée (par défaut : tout en haut)
+    const same=colIdxOf(c)===toIdx;
     const dest=colCards(c.sourcer,toIdx).filter(x=>x.id!==c.id);
+    const before=colCards(c.sourcer,toIdx).map(x=>x.id).join();
+    let at=(S.dropCol===toIdx&&S.dropIdx!==null&&S.dropIdx!==undefined)?S.dropIdx:0;
+    at=Math.max(0,Math.min(at,dest.length));
+    S.dropIdx=null;S.dropCol=null;clearDropMarks();
+    dest.splice(at,0,c);
+    if(same&&c.statut===colName&&dest.map(x=>x.id).join()===before)return; // position inchangée
+    c.statut=colName;
     const changed=normalizeCol(dest);
-    c.statut=colName;c.ordre=dest.length;
+    if(!changed.includes(c))changed.push(c);
     render();
     try{
       await dbUpd(c.id,{statut:c.statut,ordre:c.ordre});
-      if(changed.length)await persistOrder(changed);
+      const others=changed.filter(x=>x.id!==c.id);
+      if(others.length)await persistOrder(others);
     }catch(err){fail(err,'Déplacement non enregistré');}
   }
 }
