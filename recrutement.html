@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v63</title>
+<title>Recrutement TAFINAR v66</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -198,7 +198,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v63</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v66</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -728,21 +728,49 @@ function getAnonPrompt(){
   const lang=(document.getElementById('anon-lang')||{}).value||'fr';
   return lang==='en'?ANON_PROMPT_EN:ANON_PROMPT;
 }
+/* Appel d'anonymisation commun : temperature 0, grande limite, controle de coupure, 1 nouvel essai */
+async function anonRequest(userContent,keyA){
+  async function once(maxTok){
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',keyA),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTok,temperature:0,system:getAnonPrompt(),messages:[{role:'user',content:userContent}]})});
+    const d=await r.json();if(d.error)throw new Error(d.error.message);
+    const txt=(d.content&&d.content[0]&&d.content[0].text)||'';
+    return {txt:txt,cut:d.stop_reason==='max_tokens'};
+  }
+  let res=await once(16000),data=null;
+  if(res.cut){res=await once(32000);}                       // coupe : on retente avec une limite plus haute
+  try{data=pj(res.txt);}catch(e){
+    if(!res.cut){res=await once(32000);data=pj(res.txt);}   // JSON invalide : 1 nouvel essai
+    else throw new Error('CV trop long : la reponse de l\'IA a ete coupee, le profil serait incomplet. Clique sur Relancer, ou decoupe le CV.');
+  }
+  if(res.cut)data._incomplete=true;                          // toujours coupe : on previent l'utilisateur
+  return data;
+}
 async function callAnon(file){
   const keyA=sk(document.getElementById('key-ant').value);
   if(!keyA)throw new Error('Cle Anthropic requise pour l\'anonymisation.');
-  const sel=document.getElementById('prov').value;
-  const model='claude-sonnet-4-6'; // anonymisation : Sonnet (choix de Mehdi)
   const b64=await toBase64(file);
   const lang=(document.getElementById('anon-lang')||{}).value||'fr';
   const userMsg=lang==='en'?'Anonymize and structure this CV as instructed.':'Anonymise et structure ce CV selon les instructions.';
-  const content=[
+  return anonRequest([
     {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
     {type:'text',text:userMsg}
-  ];
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',keyA),body:JSON.stringify({model:model,max_tokens:8000,system:getAnonPrompt(),messages:[{role:'user',content:content}]})});
-  const d=await r.json();if(d.error)throw new Error(d.error.message);
-  return pj(d.content[0].text);
+  ],keyA);
+}
+
+/* Son de fin : 1 ding = tout est bon, 2 notes graves = au moins une erreur */
+let _audioCtx=null;
+function primeSound(){try{_audioCtx=_audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(_audioCtx.state==='suspended')_audioCtx.resume();}catch(e){}}
+function playDone(ok){
+  try{
+    primeSound();if(!_audioCtx)return;
+    const notes=ok?[[784,0],[988,0.15],[1318,0.30]]:[[330,0],[262,0.22]];
+    notes.forEach(function(n){
+      const o=_audioCtx.createOscillator(),g=_audioCtx.createGain(),t=_audioCtx.currentTime+n[1];
+      o.type='sine';o.frequency.value=n[0];
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.45,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+      o.connect(g);g.connect(_audioCtx.destination);o.start(t);o.stop(t+0.55);
+    });
+  }catch(e){}
 }
 
 /* Render helpers */
@@ -838,17 +866,19 @@ async function anonFromResult(idx){
   if(!r.fileObj){showTab('anonymiser');alert('PDF non disponible. Utilise l\'onglet Anonymiser.');return;}
   const btns=document.querySelectorAll('[onclick="anonFromResult('+idx+')"]');
   btns.forEach(b=>{b.disabled=true;b.textContent='...';});
-  try{const data=await callAnon(r.fileObj);openAnonWindow(data);}
-  catch(e){alert('Erreur : '+e.message);}
+  primeSound();try{const data=await callAnon(r.fileObj);openAnonWindow(data);playDone(true);}
+  catch(e){playDone(false);alert('Erreur : '+e.message);}
   finally{btns.forEach(b=>{b.disabled=false;b.innerHTML='<i class="ti ti-user-off" aria-hidden="true" style="font-size:11px;margin-right:3px"></i>Anonymiser';});}
 }
 async function anonBulkMatches(){
   const targets=lastResults.filter(r=>!r.error&&r.fileObj&&(r.data.verdict_court==='Match'||r.data.verdict_court==='Partiel'));
   if(!targets.length){alert('Aucun Match/Partiel avec PDF disponible.');return;}
+  primeSound();let bad=0;
   for(const r of targets){
     try{const data=await callAnon(r.fileObj);openAnonWindow(data);}
-    catch(e){console.warn('Erreur anon '+r.filename+':'+e.message);}
+    catch(e){bad++;console.warn('Erreur anon '+r.filename+':'+e.message);}
   }
+  playDone(bad===0);
 }
 
 /* Refresh anon from analysis */
@@ -920,7 +950,7 @@ function buildTafinarHTML(cvData){
   body=body.replace(/<div class="divider"><\/div>\s*$/,'');
   return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Profil '+(cvData.code||'')+'</title>'
     +'<style>'
-    +'@page{size:A4;margin:0}'
+    +'@page{size:A4;margin:14mm 0}@page :first{margin:0 0 14mm 0}.exp-block,.apercu,.tags{break-inside:avoid}.sh{break-after:avoid}.exp-tasks li{break-inside:avoid}'
     +'*{box-sizing:border-box;margin:0;padding:0}'
     +'body{font-family:\'Helvetica Neue\',Arial,sans-serif;background:#fff;color:#111;font-size:13pt;line-height:1.55}'
     +'.no-print{text-align:center;padding:14px;background:#f3f4f6}'
@@ -1232,7 +1262,7 @@ async function runAnonymise(){
   const pl=document.getElementById('anon-prog-label');
   const out=document.getElementById('anon-out');
   const resultsEl=document.getElementById('anon-results');
-  pw.style.display='block';out.innerHTML='';resultsEl.innerHTML='';anonCanceled=false;
+  pw.style.display='block';out.innerHTML='';resultsEl.innerHTML='';anonCanceled=false;primeSound();let anonErrs=0;
   for(let i=0;i<toAnon.length;i++){
     if(anonCanceled){pl.textContent='Annule — '+i+'/'+toAnon.length+' traite(s)';break;}
     const f=toAnon[i];
@@ -1241,14 +1271,14 @@ async function runAnonymise(){
     try{
       const data=f._isText ? await callAnonText(f.text) : await callAnon(f);
       if(forcedTitle)data.titre=forcedTitle;
-      addAnonResultCard(data,f.name,resultsEl,origNames[i]);
-    }catch(e){out.innerHTML+='<div class="err"><strong>'+f.name+' :</strong> '+e.message+'</div>';}
+      addAnonResultCard(data,f.name,resultsEl,origNames[i],f);
+    }catch(e){anonErrs++;out.innerHTML+='<div class="err"><strong>'+f.name+' :</strong> '+e.message+'</div>';}
   }
-  if(!anonCanceled){pb.style.width='100%';pl.textContent='Termine — '+toAnon.length+' CV(s) traite(s)';}
+  if(!anonCanceled){pb.style.width='100%';pl.textContent='Termine — '+toAnon.length+' CV(s) traite(s)';playDone(anonErrs===0);}
   setTimeout(function(){pw.style.display='none';},3000);
 }
 
-function addAnonResultCard(data,filename,container,originalName){
+function addAnonResultCard(data,filename,container,originalName,srcFile,replaceEl){
   fixCode(data);
   const rawHtml=buildTafinarHTML(data);
   // Split closing tags so HTML parser doesn't terminate the script early
@@ -1287,8 +1317,32 @@ function addAnonResultCard(data,filename,container,originalName){
     const cs=info.querySelector('.arc-code');if(cs)cs.textContent=data.code||'?';
     setTimeout(function(){URL.revokeObjectURL(link.href);},120000);
   });
-  card.appendChild(info);card.appendChild(codeBox);card.appendChild(link);
-  container.appendChild(card);
+  card.appendChild(info);
+  if(data._incomplete){
+    const w=document.createElement('div');
+    w.style.cssText='background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:6px 8px;font-size:11px;margin:4px 0;font-weight:600';
+    w.textContent='\u26a0 CV probablement incomplet (reponse coupee). Clique « Relancer ce CV » et verifie le resultat.';
+    card.appendChild(w);
+  }
+  card.appendChild(codeBox);card.appendChild(link);
+  if(srcFile){
+    const rb=document.createElement('button');
+    rb.type='button';rb.className='btn-sm';
+    rb.style.cssText='margin-left:6px;background:#fff;color:#2563eb;border:1px solid #2563eb';
+    rb.innerHTML='<i class="ti ti-refresh" style="font-size:13px;margin-right:4px"></i>Relancer ce CV';
+    rb.addEventListener('click',async function(){
+      rb.disabled=true;rb.textContent='Relance...';
+      try{
+        const nd=srcFile._isText?await callAnonText(srcFile.text):await callAnon(srcFile);
+        const forced=(document.getElementById('anon-poste-title')||{}).value;
+        if(forced&&forced.trim())nd.titre=forced.trim();
+        addAnonResultCard(nd,filename,container,originalName,srcFile,card);
+        playDone(true);
+      }catch(e){rb.disabled=false;rb.innerHTML='Relancer ce CV';alert('Erreur : '+e.message);playDone(false);}
+    });
+    card.appendChild(rb);
+  }
+  if(replaceEl&&replaceEl.parentNode){replaceEl.parentNode.replaceChild(card,replaceEl);}else{container.appendChild(card);}
 }
 
 
@@ -1677,9 +1731,7 @@ const JOB_ANALYSIS_PROMPT = 'Tu es un expert senior en recrutement. Analyse la d
 async function callAnonText(text){
   const keyA=sk(document.getElementById('key-ant').value);
   if(!keyA)throw new Error('Cle Anthropic requise.');
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:buildHeaders('ant',keyA),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8000,system:getAnonPrompt(),messages:[{role:'user',content:((document.getElementById('anon-lang')||{}).value==='en'?'Anonymize and structure this CV as instructed.':'Anonymise et structure ce CV selon les instructions.')+'\n\nCV:\n'+text}]})});
-  const d=await r.json();if(d.error)throw new Error(d.error.message);
-  return pj(d.content[0].text);
+  return anonRequest(((document.getElementById('anon-lang')||{}).value==='en'?'Anonymize and structure this CV as instructed.':'Anonymise et structure ce CV selon les instructions.')+'\n\nCV:\n'+text,keyA);
 }
 
 async function analyzeJobForAPEC(){
@@ -1759,6 +1811,32 @@ function downloadAnonPDF(){
     setTimeout(function(){ win.print(); }, 300);
   });
 }
+
+
+/* ── v66 : CV anonyme demandé depuis la fiche profil (Notion) ── */
+window.tnAnonForFiche=async function(nom,win,getFile){
+  const nrm=function(x){return String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(function(w){return w.length>1;}).sort().join(' ');};
+  const target=nrm(nom),words=target.split(' ').filter(Boolean);
+  let file=null;
+  for(const r of (lastResults||[])){
+    if(r.error||!r.fileObj||!r.data)continue;
+    const full=nrm([r.data.prenom,r.data.nom].filter(Boolean).join(' '));
+    const fn=nrm(String(r.filename||'').replace(/\.pdf$/i,'')).split(' ');
+    if(full===target||(words.length&&words.every(function(w){return fn.indexOf(w)>=0;}))){file=r.fileObj;break;}
+  }
+  if(!file&&getFile){try{file=await getFile();}catch(e){}}
+  if(!file)return{ok:false,msg:'CV original introuvable : analyse-le d\'abord dans Recrutement (onglet Analyse), ou ajoute-le dans la fiche (CV original).'};
+  try{
+    const data=await callAnon(file);
+    fixCode(data);
+    const SC='<'+'script>',SCE='<'+'/script>',STE='<'+'/style>',BOE='<'+'/body>';
+    const editCSS='[contenteditable]{outline:none}[contenteditable]:hover{background:rgba(37,99,235,.06);border-radius:2px;cursor:text}[contenteditable]:focus{background:rgba(37,99,235,.1);border-radius:2px;box-shadow:0 0 0 1.5px #2563eb}';
+    const editJS=SC+'window.addEventListener("load",function(){var sel=[".profil-code",".poste-title",".exp-title",".exp-date",".exp-tasks li",".tag",".apercu","li","p"];sel.forEach(function(s){try{document.querySelectorAll(s).forEach(function(el){if(!el.querySelector("ul,ol,table")&&el.textContent.trim()){el.contentEditable="true";el.spellcheck=false;}});}catch(e){}});});'+SCE;
+    const h=buildTafinarHTML(data).replace(STE,editCSS+STE).replace(BOE,editJS+BOE);
+    win.document.open();win.document.write(h);win.document.close();
+    return{ok:true,code:data.code};
+  }catch(e){return{ok:false,msg:e.message||String(e)};}
+};
 
 /* ── NOTION TAFINAR INTEGRATION ── */
 const SB_URL='https://lqqgweqsscyfrqosbcah.supabase.co';
