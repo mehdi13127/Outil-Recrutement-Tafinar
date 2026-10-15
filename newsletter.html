@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newsletter TAFINAR v66</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#eef0f3;color:#1c2433;font-size:13px;min-height:100vh}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+h1{font-size:17px;color:#0d3b6e;display:flex;align-items:center;gap:8px}
+h1 small{font-size:11px;color:#9ca3af;font-weight:400}
+.sub{color:#6b7280;font-size:12px;margin:2px 0 12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{padding:7px 14px;border-radius:8px;border:1.5px solid #d1d5db;background:#fff;font-size:13px;font-weight:600;color:#374151;cursor:pointer;font-family:inherit}
+.tab.active{background:#0d3b6e;border-color:#0d3b6e;color:#fff}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:12px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.btn{padding:7px 13px;border-radius:8px;border:1.5px solid #d1d5db;background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;color:#374151;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:#f3f4f6}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-p{background:#0d3b6e;border-color:#0d3b6e;color:#fff}.btn-p:hover{background:#0a2f58}
+.btn-g{background:#0e7c3a;border-color:#0e7c3a;color:#fff}.btn-g:hover{background:#0a6430}
+.btn-r{color:#b91c1c;border-color:#fecaca;background:#fff}.btn-r:hover{background:#fef2f2}
+table.t{width:100%;border-collapse:collapse}
+.t th{padding:7px 9px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+.t td{padding:7px 9px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.t tr:hover td{background:#fafbfc}
+.quad{font-weight:700;color:#0348ac;letter-spacing:1.5px}
+.muted{color:#9ca3af}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.ok{background:#dcfce7;color:#166534}.no{background:#fee2e2;color:#991b1b}
+.sec{margin-bottom:14px}
+.sec h3{font-size:14px;color:#0348ac;border-bottom:2px solid #2563eb;padding:4px 0;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+.sec h3 span.n{font-size:11px;color:#6b7280;font-weight:400}
+.sec h3 .btn{margin-left:auto;padding:3px 9px;font-size:11.5px}
+.empty{padding:30px;text-align:center;color:#9ca3af}
+input.i,select.i{border:1px solid #d1d5db;border-radius:6px;padding:5px 7px;font-size:12.5px;font-family:inherit;width:100%}
+.frame{border:1px solid #e5e7eb;border-radius:8px;background:#fff;padding:12px;overflow:auto}
+.note{font-size:11.5px;color:#6b7280}
+.warn{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;color:#854d0e}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.toast.warn{background:#b45309}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:#0d3b6e;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v66</small></h1>
+  <div class="sub">Les profils arrivent ici depuis la fiche (bouton « Envoyer à la newsletter » ou popup après Enregistrer).</div>
+  <div id="warn"></div>
+  <div class="tabs">
+    <button class="tab active" id="tb-pending" onclick="setTab('pending')">Pas encore envoyé <span id="c-pending"></span></button>
+    <button class="tab" id="tb-sent" onclick="setTab('sent')">Déjà envoyé <span id="c-sent"></span></button>
+  </div>
+  <div id="view"></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const SB_URL='https://lqqgweqsscyfrqosbcah.supabase.co';
+const SB_KEY='sb_publishable_HpXipfY__RmCKOqeGZZMHQ_wJ83l2Yi';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+
+let ROWS=[],CANDS={},CLIENTS=[],TAB='pending';
+let SEL={pending:new Set(),sent:new Set()};
+let PREP=null;      // {ids:[...], assign:{id:{secteur,poste}}, loading:bool}
+let SENT_PERIOD='all';
+let SCHEMA_OK=true;
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m,t){const el=document.getElementById('toast');el.textContent=m;el.className='toast show'+(t==='warn'?' warn':'');clearTimeout(toast._t);toast._t=setTimeout(()=>el.className='toast',3200);}
+
+/* ───────── Données ───────── */
+async function load(){
+  const r=await sb.from('news_liste').select('*').order('added_at',{ascending:false});
+  if(r.error){
+    SCHEMA_OK=false;
+    document.getElementById('warn').innerHTML='<div class="warn"><b>Table newsletter absente.</b> Ouvre Supabase → SQL Editor, colle le contenu de <b>tafinar_TOUT_EN_UN.sql</b> et clique Run (1 seule fois), puis recharge.<br><span class="note">'+esc(r.error.message||'')+'</span></div>';
+    ROWS=[];render();return;
+  }
+  SCHEMA_OK=true;document.getElementById('warn').innerHTML='';
+  ROWS=r.data||[];
+  const ids=[...new Set(ROWS.map(x=>x.cand_id).filter(Boolean))];
+  CANDS={};
+  if(ids.length){
+    for(let i=0;i<ids.length;i+=100){
+      const c=await sb.from('candidats').select('local_id,nom,trigramme,dispo,mobilite,tjm,cv_anonyme_url,cv_anonyme_name,poste_titre').in('local_id',ids.slice(i,i+100));
+      (c.data||[]).forEach(x=>CANDS[x.local_id]=x);
+    }
+  }
+  try{const p=await sb.from('postes').select('client');CLIENTS=[...new Set((p.data||[]).map(x=>(x.client||'').trim()).filter(x=>x.length>=3))];}catch(e){}
+  render();
+}
+function mobOf(r){
+  const c=CANDS[r.cand_id];
+  if(c&&c.mobilite){try{const a=JSON.parse(c.mobilite);if(Array.isArray(a))return a.join(', ');}catch(e){return c.mobilite;}}
+  return r.mobilite||'';
+}
+function live(r){
+  const c=CANDS[r.cand_id]||{};
+  return{
+    id:r.id,quad:(c.trigramme||r.quad||'').toUpperCase(),
+    dispo:(c.dispo!=null&&c.dispo!==''?c.dispo:r.dispo)||'',
+    mob:mobOf(r),
+    tjm:(c.tjm!=null&&c.tjm!==''?c.tjm:r.tjm)||'',
+    cvUrl:c.cv_anonyme_url||r.cv_anonyme_url||'',
+    cvName:c.cv_anonyme_name||r.cv_anonyme_name||'',
+    posteBrut:r.poste_titre||c.poste_titre||'',
+    secteurBrut:r.secteur||'',
+  };
+}
+function tjmTxt(t){const d=String(t||'').replace(/[^\d]/g,'');return d?d+' €':'Sur demande';}
+
+/* ───────── Onglets ───────── */
+function setTab(t){TAB=t;document.getElementById('tb-pending').classList.toggle('active',t==='pending');document.getElementById('tb-sent').classList.toggle('active',t==='sent');render();}
+function render(){
+  const P=ROWS.filter(r=>r.statut!=='sent'),S=ROWS.filter(r=>r.statut==='sent');
+  document.getElementById('c-pending').textContent='('+P.length+')';
+  document.getElementById('c-sent').textContent='('+S.length+')';
+  document.getElementById('view').innerHTML=TAB==='pending'?viewPending(P):viewSent(S);
+  if(TAB==='pending'&&PREP)renderPrep();
+}
+function fmtDate(d){return d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';}
+
+/* ───────── Pas encore envoyé ───────── */
+function viewPending(P){
+  if(!SCHEMA_OK)return'';
+  if(!P.length)return'<div class="card empty">Aucun profil en attente.<br>Utilise « 📬 Envoyer à la newsletter » dans la fiche profil.</div>';
+  const n=[...SEL.pending].filter(id=>P.some(r=>r.id===id)).length;
+  let h=`<div class="card"><div class="bar">
+    <button class="btn" onclick="selAll('pending',true)">Tout sélectionner</button>
+    <button class="btn" onclick="selAll('pending',false)">Tout désélectionner</button>
+    <button class="btn btn-r" onclick="removeSel()" ${n?'':'disabled'}><i class="ti ti-trash"></i> Retirer (${n})</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-p" onclick="prepare()"><i class="ti ti-sparkles"></i> Préparer la newsletter ${n?'('+n+' sélectionnés)':'(tous)'}</button>
+  </div>
+  <table class="t"><thead><tr><th></th><th>Profil</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>TJM</th><th>CV anonyme</th><th>Ajouté</th><th>Par</th></tr></thead><tbody>`;
+  P.forEach(r=>{
+    const l=live(r);
+    h+=`<tr><td><input type="checkbox" ${SEL.pending.has(r.id)?'checked':''} onchange="tog('pending','${r.id}',this.checked)"></td>
+    <td class="quad">${esc(l.quad)}</td><td style="max-width:280px">${esc(l.posteBrut)}</td><td>${esc(l.dispo)||'<span class="muted">—</span>'}</td><td>${esc(l.mob)||'<span class="muted">—</span>'}</td>
+    <td>${esc(tjmTxt(l.tjm))}</td><td>${l.cvUrl?'<span class="pill ok">oui</span>':'<span class="pill no">manquant</span>'}</td><td class="muted">${fmtDate(r.added_at)}</td><td class="muted">${esc(r.sourcer||'')}</td></tr>`;
+  });
+  h+='</tbody></table></div><div id="prep"></div>';
+  return h;
+}
+function tog(tab,id,on){on?SEL[tab].add(id):SEL[tab].delete(id);render();}
+function selAll(tab,on){
+  const list=ROWS.filter(r=>tab==='sent'?r.statut==='sent':r.statut!=='sent');
+  SEL[tab]=new Set(on?list.map(r=>r.id):[]);render();
+}
+async function removeSel(){
+  const ids=[...SEL.pending];if(!ids.length)return;
+  if(!confirm('Retirer '+ids.length+' profil(s) de la newsletter ? (les profils ne sont pas supprimés)'))return;
+  const r=await sb.from('news_liste').delete().in('id',ids);
+  if(r.error){toast('Suppression impossible','warn');return;}
+  SEL.pending=new Set();PREP=null;await load();toast('Retiré','ok');
+}
+
+/* ───────── Classement IA ───────── */
+function cleanPoste(t){
+  return String(t||'').replace(/CGEMJP\d+/gi,' ').replace(/\b[A-Z0-9]{5,8}\b(?=_)/g,' ').replace(/^M&O_/i,'').replace(/_/g,' ')
+    .replace(/\b(L[1-4])\b/g,' ').replace(/Pas de télétravail|Remote partiel|Télétravail partiel|Partiel/gi,' ').replace(/\(H\/F\)/gi,' ')
+    .replace(/\s+-\s+$/,' ').replace(/\s{2,}/g,' ').trim();
+}
+function forbiddenIn(txt){
+  const bad=[];
+  if(/CGEMJP/i.test(txt)||/\b[A-Z]{3,}\d{5,}\b/.test(txt))bad.push('code de référence');
+  const low=String(txt).toLowerCase();
+  CLIENTS.forEach(c=>{if(low.includes(c.toLowerCase()))bad.push('client « '+c+' »');});
+  return bad;
+}
+function pastSectors(){return[...new Set(ROWS.filter(r=>r.statut==='sent'&&r.secteur).map(r=>r.secteur))];}
+async function askHaiku(items,extra){
+  const key=(localStorage.getItem('cvk_ant')||'').trim();
+  if(!key)throw new Error('Clé Anthropic absente (enregistre-la dans l\'onglet Recrutement)');
+  const past=pastSectors();
+  const system=`Tu prépares une newsletter de profils de candidats destinée à des clients d'un cabinet d'ingénierie.
+Pour chaque profil tu reçois un id et l'intitulé brut du poste. Cet intitulé peut contenir des codes de référence, un nom de client, une ville, un niveau (L2, L3), une mention de télétravail : tout cela doit disparaître.
+Tu renvoies, pour chaque profil :
+- "secteur" : le secteur d'activité (court, 1 à 3 mots, ex : Supply Chain, HSE / Sécurité, Pharma / Santé, Nucléaire / Énergie, Aéronautique, Finance). Aucune liste fermée : choisis le secteur le plus juste pour le métier, et crée-en un nouveau si besoin.${past.length?`\n  Secteurs déjà utilisés dans les précédentes newsletters, à réutiliser EXACTEMENT quand ils conviennent : ${past.join(' ; ')}.`:''}
+- "poste" : l'intitulé du métier, propre et lisible (sans code, sans ville, sans niveau, sans nom de client). Les profils qui correspondent au même métier doivent avoir exactement le même libellé de poste.
+Réponds uniquement par un objet JSON, sans texte autour : {"profils":[{"id":0,"secteur":"...","poste":"..."}]}. Chaque id doit apparaître une seule fois.`;
+  let user=JSON.stringify(items.map(i=>({id:i.i,poste_brut:i.poste})));
+  if(extra)user+='\n\nCorrection demandée : '+extra;
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:3000,temperature:0,system,messages:[{role:'user',content:user}]})});
+  const j=await res.json();
+  if(!res.ok)throw new Error((j.error&&j.error.message)||('Erreur '+res.status));
+  const txt=(j.content||[]).map(b=>b.text||'').join('');
+  const m=txt.match(/\{[\s\S]*\}/);if(!m)throw new Error('Réponse IA illisible');
+  return JSON.parse(m[0]);
+}
+function validate(out,items){
+  const errs=[];const seen=new Set();
+  const list=(out&&out.profils)||[];
+  list.forEach(p=>{
+    if(seen.has(p.id))errs.push('id '+p.id+' en double');seen.add(p.id);
+    if(!items.some(i=>i.i===p.id))errs.push('id '+p.id+' inconnu');
+    if(!String(p.secteur||'').trim()||!String(p.poste||'').trim())errs.push('id '+p.id+' sans secteur ou poste');
+    forbiddenIn((p.secteur||'')+' '+(p.poste||'')).forEach(b=>errs.push('id '+p.id+' contient un '+b));
+  });
+  items.forEach(i=>{if(!seen.has(i.i))errs.push('id '+i.i+' manquant');});
+  return errs;
+}
+async function prepare(){
+  const P=ROWS.filter(r=>r.statut!=='sent');
+  let rows=P.filter(r=>SEL.pending.has(r.id));if(!rows.length)rows=P;
+  if(!rows.length)return;
+  PREP={ids:rows.map(r=>r.id),assign:{},loading:true,msg:''};
+  render();
+  const items=rows.map((r,i)=>({i,id:r.id,poste:r.poste_titre||live(r).posteBrut}));
+  let out=null,errs=[],used='ia';
+  try{
+    out=await askHaiku(items);errs=validate(out,items);
+    if(errs.length){out=await askHaiku(items,'La réponse précédente avait ces problèmes : '+errs.join(' ; ')+'. Corrige.');errs=validate(out,items);}
+  }catch(e){errs=[e.message];out=null;}
+  const byI={};if(out&&!errs.length)(out.profils||[]).forEach(p=>byI[p.id]=p);
+  items.forEach(it=>{
+    const p=byI[it.i];
+    PREP.assign[it.id]=p?{secteur:p.secteur.trim(),poste:p.poste.trim()}:{secteur:(rows.find(r=>r.id===it.id).secteur||'À classer'),poste:cleanPoste(it.poste)};
+  });
+  if(errs.length){PREP.msg='Classement automatique impossible ('+errs.slice(0,3).join(' ; ')+'). Valeurs provisoires : corrige-les ci-dessous.';used='fallback';}
+  PREP.loading=false;PREP.fresh=true;render();
+}
+
+/* ───────── Aperçu + édition ───────── */
+function groupsFromPrep(){
+  const g=new Map();
+  PREP.ids.forEach(id=>{
+    const r=ROWS.find(x=>x.id===id);if(!r)return;
+    const a=PREP.assign[id]||{secteur:'À classer',poste:cleanPoste(r.poste_titre)};
+    const l=live(r);
+    if(!g.has(a.secteur))g.set(a.secteur,new Map());
+    const pm=g.get(a.secteur);if(!pm.has(a.poste))pm.set(a.poste,[]);
+    pm.get(a.poste).push({id,quad:l.quad,dispo:l.dispo||'—',mob:l.mob||'—',tjm:tjmTxt(l.tjm)});
+  });
+  return[...g.entries()].map(([secteur,pm])=>({secteur,postes:[...pm.entries()].map(([poste,profils])=>({poste,profils}))}))
+    .sort((a,b)=>count(b)-count(a));
+}
+const count=g=>g.postes.reduce((n,p)=>n+p.profils.length,0);
+function renderPrep(){
+  const el=document.getElementById('prep');if(!el)return;
+  if(PREP.loading){el.innerHTML='<div class="card"><span class="spin"></span> Classement par l\'IA en cours…</div>';return;}
+  const sects=[...new Set([...Object.values(PREP.assign).map(a=>a.secteur),...pastSectors()])];
+  let h='<div class="card"><div style="font-weight:700;color:#0d3b6e;margin-bottom:6px">Classement proposé — modifiable</div>';
+  if(PREP.msg)h+='<div class="warn">'+esc(PREP.msg)+'</div>';
+  h+='<datalist id="dl-sect">'+sects.map(s=>`<option value="${esc(s)}">`).join('')+'</datalist>';
+  h+='<table class="t"><thead><tr><th>Profil</th><th>Secteur</th><th>Poste affiché</th></tr></thead><tbody>';
+  PREP.ids.forEach(id=>{
+    const r=ROWS.find(x=>x.id===id);if(!r)return;const a=PREP.assign[id];
+    h+=`<tr><td class="quad">${esc(live(r).quad)}</td>
+      <td><input class="i" list="dl-sect" value="${esc(a.secteur)}" onchange="setAssign('${id}','secteur',this.value)"></td>
+      <td><input class="i" value="${esc(a.poste)}" onchange="setAssign('${id}','poste',this.value)"></td></tr>`;
+  });
+  h+='</tbody></table></div>';
+  const groups=groupsFromPrep();
+  const total=PREP.ids.length;
+  const missing=PREP.ids.filter(id=>!live(ROWS.find(x=>x.id===id)).cvUrl).length;
+  h+=`<div class="card"><div class="bar">
+    <button class="btn btn-p" onclick="copyMail()"><i class="ti ti-copy"></i> Copier le mail</button>
+    <button class="btn" onclick="copySubject()"><i class="ti ti-mail"></i> Copier l'objet</button>
+    <button class="btn" onclick="zipPrep()"><i class="ti ti-file-zip"></i> Télécharger les CV anonymes (ZIP)</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-g" onclick="markSent()"><i class="ti ti-check"></i> Marquer ${total} profil(s) comme envoyés</button>
+  </div>
+  <div class="note" style="margin-bottom:8px">Colle le mail dans un nouveau message Outlook, destinataires en Cci. Objet : <b>${esc(subject())}</b>${missing?` · <span style="color:#b91c1c">${missing} profil(s) sans CV anonyme (ils seront listés lors du ZIP)</span>`:''}</div>
+  <div class="frame" id="nl">${nlHTML(groups)}</div></div>`;
+  el.innerHTML=h;
+  if(PREP.fresh){PREP.fresh=false;el.scrollIntoView({behavior:'smooth',block:'start'});}
+}
+function setAssign(id,k,v){PREP.assign[id][k]=String(v||'').trim()||(k==='secteur'?'À classer':'Poste');
+  const el=document.getElementById('prep');const y=window.scrollY;renderPrep();window.scrollTo(0,y);}
+
+/* ───────── Mail (HTML compatible Outlook) ───────── */
+const BLUE='#2563eb',BLUED='#0348ac',GREEN='#22c55e',GREEND='#166534',INK='#1c2433',MUTED='#5b6577',LINE='#dde3ec',TINT='#eef3fe';
+const FONT='font-family:Arial,Helvetica,sans-serif;';
+function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y0)/864e5+1)/7);}
+function subject(){return'Les profils qui vous manquent — Semaine '+isoWeek(new Date());}
+const plural=(n,w)=>n+' '+w+(n>1?'s':'');
+function nlHTML(groups){
+  const D=new Date(),WEEK=isoWeek(D);
+  const dateTxt=D.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  const total=groups.reduce((n,g)=>n+count(g),0);
+  const imm=groups.reduce((n,g)=>n+g.postes.reduce((m,p)=>m+p.profils.filter(x=>/imm[ée]diat/i.test(x.dispo)).length,0),0);
+  const cellH=(l,w,al)=>`<td width="${w}" align="${al||'left'}" style="${FONT}font-size:11px;font-weight:bold;color:${MUTED};padding:6px 10px;border-bottom:2px solid ${BLUE};text-align:${al||'left'};">${l}</td>`;
+  const cell=(t,w,o)=>{o=o||{};return`<td width="${w}" align="${o.al||'left'}" valign="middle" style="${FONT}font-size:14px;font-weight:${o.b?'bold':'normal'};color:${o.c||INK};padding:10px 10px;border-bottom:1px solid ${LINE};text-align:${o.al||'left'};${o.ls||''}">${esc(t)}</td>`;};
+  const poste=p=>{
+    let rows='';
+    p.profils.forEach(x=>{const na=x.tjm==='Sur demande';
+      rows+='<tr>'+cell(x.quad,'18%',{b:1,c:BLUED,ls:'letter-spacing:2px;'})+cell(x.dispo,'28%')+cell(x.mob,'30%')+cell(x.tjm,'24%',{al:'right',b:!na,c:na?MUTED:GREEND})+'</tr>';});
+    return`<div style="${FONT}font-size:15px;font-weight:bold;color:${INK};padding:18px 0 8px 0;">${esc(p.poste)} <span style="font-weight:normal;color:${MUTED};font-size:13px;">(${plural(p.profils.length,'profil')})</span></div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%;"><tr>${cellH('Profil','18%')}${cellH('Disponibilité','28%')}${cellH('Mobilité','30%')}${cellH('TJM (€ HT)','24%','right')}</tr>${rows}</table>`;
+  };
+  const secteur=g=>`<tr><td style="padding:28px 0 4px 0;"><div style="${FONT}font-size:22px;font-weight:bold;color:${BLUED};padding:0 0 6px 0;border-bottom:3px solid ${BLUE};">${esc(g.secteur)}</div>${g.postes.map(poste).join('')}</td></tr>`;
+  const summary=groups.map(g=>`<tr><td style="${FONT}font-size:14px;color:${INK};padding:7px 0;border-bottom:1px solid ${LINE};"><b style="color:${BLUED};">${esc(g.secteur)}</b></td><td align="right" style="${FONT}font-size:13px;color:${MUTED};padding:7px 0;border-bottom:1px solid ${LINE};">${plural(count(g),'profil')}</td></tr>`).join('');
+  const stat=(num,label,last)=>`<td width="33%" align="center" valign="top" style="padding:12px 6px;${last?'':'border-right:1px solid '+LINE+';'}"><div style="${FONT}font-size:28px;font-weight:bold;color:${BLUE};line-height:1;">${num}</div><div style="${FONT}font-size:12px;color:${MUTED};padding-top:6px;">${label}</div></td>`;
+  const STATS=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-top:1px solid ${LINE};border-bottom:1px solid ${LINE};"><tr>${stat(total,'profils qualifiés')}${stat(groups.length,'secteurs')}${stat(imm,'disponibles immédiatement',1)}</tr></table>`;
+  const msg=(inner,last)=>`<tr><td style="padding:14px 18px;${last?'':'border-bottom:1px solid #cfdcf6;'}${FONT}font-size:14px;color:${INK};line-height:1.6;">${inner}</td></tr>`;
+  const INFO=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${TINT}" style="margin-top:18px;background:${TINT};border:1px solid #cfdcf6;border-collapse:collapse;">`
+    +msg(`<b style="color:${BLUED};">Besoin de profils pour une activité ciblée ?</b> N’hésitez pas à nous le demander.`)
+    +msg(`<b style="color:${BLUED};">Cette sélection peut intéresser vos collègues ?</b> N’hésitez pas à la leur transmettre. Si vous souhaitez qu’un collègue soit ajouté à la liste, indiquez-nous simplement son nom et son adresse mail.`)
+    +`<tr><td style="padding:12px 18px;${FONT}font-size:12px;color:${MUTED};line-height:1.6;">Si vous ne souhaitez plus recevoir cette sélection de profils, il vous suffit de nous le signaler en répondant à ce mail.</td></tr></table>`;
+  const FOOTER=`<tr><td style="padding:30px 0 0 0;border-top:1px solid ${LINE};${FONT}font-size:14px;color:${INK};line-height:1.6;">Nous restons disponibles pour tout renseignement complémentaire.</td></tr><tr><td style="padding:18px 0 24px 0;${FONT}font-size:13px;color:${MUTED};line-height:1.6;">Cordialement,<br><b style="color:${BLUED};">TAFINAR Engineering</b></td></tr>`;
+  return`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"><tr><td align="center" style="padding:16px 8px;">
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" style="width:680px;max-width:100%;background:#ffffff;">
+<tr><td style="padding:8px 0 16px 0;border-bottom:4px solid ${BLUE};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="${FONT}font-size:15px;font-weight:bold;color:${BLUED};">TAFIN<span style="color:${GREEN};">A</span>R Engineering</td><td align="right" style="${FONT}font-size:12px;color:${MUTED};">Semaine ${WEEK} · ${esc(dateTxt)}</td></tr></table>
+<div style="${FONT}font-size:13px;font-weight:bold;letter-spacing:2px;color:${GREEND};padding:26px 0 0 0;">LES PROFILS QUI VOUS MANQUENT</div>
+<div style="${FONT}font-size:30px;font-weight:bold;color:${INK};line-height:1.2;padding:8px 0 0 0;">Les ingénieurs que vous cherchez ont déjà été trouvés.</div>
+<div style="${FONT}font-size:14px;color:${MUTED};line-height:1.6;padding:12px 0 0 0;">Bonjour,<br>Voici notre sélection de la semaine pour les postes demandés. Chaque profil est présenté sous son quadrigramme, avec sa disponibilité, sa mobilité et son TJM.</div>
+${INFO}${STATS}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">${summary}</table>
+</td></tr>${groups.map(secteur).join('')}${FOOTER}
+</table></td></tr></table>`;
+}
+async function copyMail(){
+  const el=document.getElementById('nl');if(!el)return;
+  const html=el.innerHTML;
+  try{
+    await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([el.innerText],{type:'text/plain'})})]);
+    toast('Mail copié — colle-le dans Outlook (Ctrl+V)','ok');
+  }catch(e){
+    try{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);document.execCommand('copy');s.removeAllRanges();toast('Mail copié — colle-le dans Outlook (Ctrl+V)','ok');}
+    catch(e2){toast('Copie impossible : sélectionne l\'aperçu et fais Ctrl+C','warn');}
+  }
+}
+async function copySubject(){try{await navigator.clipboard.writeText(subject());toast('Objet copié','ok');}catch(e){toast(subject());}}
+
+/* ───────── Envoyé ───────── */
+async function markSent(){
+  if(!PREP)return;
+  if(!confirm('Marquer '+PREP.ids.length+' profil(s) comme envoyés ? Ils passeront dans « Déjà envoyé », classés par secteur.'))return;
+  const now=new Date().toISOString(),batch='b'+Date.now().toString(36);
+  const res=await Promise.all(PREP.ids.map(id=>{const a=PREP.assign[id];
+    return sb.from('news_liste').update({statut:'sent',sent_at:now,batch_id:batch,secteur:a.secteur,poste_groupe:a.poste}).eq('id',id);}));
+  if(res.some(r=>r.error)){toast('Une partie n\'a pas pu être enregistrée','warn');}
+  else toast('Marqués comme envoyés','ok');
+  SEL.pending=new Set();PREP=null;await load();setTab('sent');
+}
+function viewSent(S){
+  if(!SCHEMA_OK)return'';
+  const days=SENT_PERIOD==='all'?null:+SENT_PERIOD;
+  const list=S.filter(r=>!days||(r.sent_at&&(Date.now()-new Date(r.sent_at))<days*864e5));
+  let h=`<div class="card"><div class="bar">
+    <label class="note">Période</label>
+    <select class="i" style="width:auto" onchange="SENT_PERIOD=this.value;render()">
+      ${[['all','Tout'],['7','7 derniers jours'],['30','30 derniers jours'],['90','90 derniers jours']].map(o=>`<option value="${o[0]}"${SENT_PERIOD===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>
+    <button class="btn" onclick="selAll('sent',true)">Tout sélectionner</button>
+    <button class="btn" onclick="selAll('sent',false)">Tout désélectionner</button>
+    <span style="flex:1"></span>
+    <button class="btn" onclick="requeue()"><i class="ti ti-arrow-back-up"></i> Remettre en attente</button>
+    <button class="btn btn-p" onclick="zipSent()"><i class="ti ti-file-zip"></i> Télécharger les CV (ZIP)</button>
+  </div>`;
+  if(!list.length)return h+'<div class="empty">Rien d\'envoyé sur cette période.</div></div>';
+  const g=new Map();list.forEach(r=>{const s=r.secteur||'À classer';if(!g.has(s))g.set(s,[]);g.get(s).push(r);});
+  [...g.entries()].sort((a,b)=>b[1].length-a[1].length).forEach(([sec,rows])=>{
+    h+=`<div class="sec"><h3>${esc(sec)} <span class="n">${plural(rows.length,'profil')}</span><button class="btn" onclick="zipSector('${esc(sec).replace(/'/g,'&#39;')}')"><i class="ti ti-file-zip"></i> CV du secteur</button></h3>
+    <table class="t"><tbody>`;
+    rows.sort((a,b)=>(a.poste_groupe||'').localeCompare(b.poste_groupe||'')||(b.sent_at||'').localeCompare(a.sent_at||'')).forEach(r=>{
+      const l=live(r);
+      h+=`<tr><td style="width:28px"><input type="checkbox" ${SEL.sent.has(r.id)?'checked':''} onchange="tog('sent','${r.id}',this.checked)"></td>
+      <td class="quad" style="width:80px">${esc(l.quad)}</td><td>${esc(r.poste_groupe||r.poste_titre||'')}</td>
+      <td class="muted" style="width:90px">${fmtDate(r.sent_at)}</td>
+      <td style="width:80px">${l.cvUrl?'<span class="pill ok">CV</span>':'<span class="pill no">sans CV</span>'}</td></tr>`;});
+    h+='</tbody></table></div>';
+  });
+  return h+'</div>';
+}
+async function requeue(){
+  const ids=[...SEL.sent];if(!ids.length){toast('Sélectionne des profils','warn');return;}
+  const r=await sb.from('news_liste').update({statut:'pending',sent_at:null,batch_id:null}).in('id',ids);
+  if(r.error){toast('Impossible','warn');return;}
+  SEL.sent=new Set();await load();toast('Remis en attente','ok');
+}
+
+/* ───────── ZIP des CV anonymes ───────── */
+const safe=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim()||'Autre';
+async function zipRows(rows,groupBy,name){
+  if(!rows.length){toast('Rien à télécharger','warn');return;}
+  if(typeof JSZip==='undefined'){toast('Bibliothèque ZIP non chargée (connexion ?)','warn');return;}
+  toast('Préparation du ZIP…','ok');
+  const zip=new JSZip();const missing=[];const used=new Set();let n=0;
+  for(const x of rows){
+    const l=live(x.r);
+    if(!l.cvUrl){missing.push(l.quad+' (pas de CV anonyme)');continue;}
+    try{
+      const resp=await fetch(l.cvUrl);if(!resp.ok)throw new Error(resp.status);
+      const blob=await resp.blob();
+      const ext=((l.cvName.match(/\.([A-Za-z0-9]{2,5})$/)||[])[1]||'pdf').toLowerCase();
+      const folder=groupBy?safe(x.sector)+'/':'';
+      let fn=folder+'Profil '+safe(l.quad)+'.'+ext,k=2;
+      while(used.has(fn))fn=folder+'Profil '+safe(l.quad)+' ('+(k++)+').'+ext;
+      used.add(fn);zip.file(fn,blob);n++;
+    }catch(e){missing.push(l.quad+' (téléchargement impossible)');}
+  }
+  if(missing.length)zip.file('_manquants.txt','CV non inclus :\n'+missing.join('\n'));
+  if(!n){toast('Aucun CV anonyme disponible'+(missing.length?' : '+missing.join(', '):''),'warn');return;}
+  const out=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(out);a.download=name+'.zip';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+  toast(n+' CV téléchargés'+(missing.length?' — '+missing.length+' manquant(s) (voir _manquants.txt)':''),missing.length?'warn':'ok');
+}
+function zipPrep(){
+  if(!PREP)return;
+  zipRows(PREP.ids.map(id=>{const r=ROWS.find(x=>x.id===id);return{r,sector:PREP.assign[id].secteur};}),true,'CV anonymes - newsletter '+new Date().toISOString().slice(0,10));
+}
+function zipSent(){
+  let ids=[...SEL.sent];const S=ROWS.filter(r=>r.statut==='sent');
+  const rows=(ids.length?S.filter(r=>ids.includes(r.id)):S).map(r=>({r,sector:r.secteur||'À classer'}));
+  zipRows(rows,true,'CV anonymes - envoyés '+new Date().toISOString().slice(0,10));
+}
+function zipSector(sec){
+  const rows=ROWS.filter(r=>r.statut==='sent'&&(r.secteur||'À classer')===sec).map(r=>({r,sector:sec}));
+  zipRows(rows,false,'CV anonymes - '+safe(sec));
+}
+
+window.addEventListener('message',e=>{if(e.data&&e.data.type==='tn_news_show')load();});
+load();
+</script>
+</body>
+</html>
