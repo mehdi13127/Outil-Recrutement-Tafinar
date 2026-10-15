@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v66</title>
+<title>Recrutement TAFINAR v67</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -198,7 +198,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v66</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v67</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -950,7 +950,7 @@ function buildTafinarHTML(cvData){
   body=body.replace(/<div class="divider"><\/div>\s*$/,'');
   return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Profil '+(cvData.code||'')+'</title>'
     +'<style>'
-    +'@page{size:A4;margin:14mm 0}@page :first{margin:0 0 14mm 0}.exp-block,.apercu,.tags{break-inside:avoid}.sh{break-after:avoid}.exp-tasks li{break-inside:avoid}'
+    +'@page{size:A4;margin:14mm 0}@page :first{margin:0 0 14mm 0}.exp-tasks li,.tag,.exp-title,.exp-date{break-inside:avoid}.sh,.exp-title,.exp-date{break-after:avoid}.apercu,.exp-tasks li{orphans:2;widows:2}'
     +'*{box-sizing:border-box;margin:0;padding:0}'
     +'body{font-family:\'Helvetica Neue\',Arial,sans-serif;background:#fff;color:#111;font-size:13pt;line-height:1.55}'
     +'.no-print{text-align:center;padding:14px;background:#f3f4f6}'
