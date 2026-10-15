@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAFINAR v58 — Espace de travail</title>
+<title>TAFINAR v66 — Espace de travail</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -44,6 +44,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#eef0f3;height:10
 .nav-not:hover{background:#c6f5d5}
 .nav-not.active{background:#0e7c3a;color:#fff;border-color:#0e7c3a}
 
+/* Newsletter — orange */
+.nav-news{background:#fff1e0;color:#9a4a00;border-color:#fed7aa}
+.nav-news:hover{background:#ffe4c4}
+.nav-news.active{background:#c2570c;color:#fff;border-color:#c2570c}
 .spacer{flex:1}
 
 /* ── Iframes ── */
@@ -80,11 +84,17 @@ iframe.visible{
     <i class="ti ti-file-search" aria-hidden="true"></i>
     Recrutement TAFINAR
   </button>
+
+  <button class="nav-btn nav-news" id="btn-news" onclick="switchTo('news')">
+    <i class="ti ti-mail-forward" aria-hidden="true"></i>
+    Newsletter
+  </button>
 </div>
 
 <div class="frames">
   <iframe id="frame-rec" class="visible" src="recrutement.html" title="Recrutement TAFINAR"></iframe>
   <iframe id="frame-notion" class="hidden" src="notion.html" title="Notion TAFINAR"></iframe>
+  <iframe id="frame-news" class="hidden" src="newsletter.html" title="Newsletter TAFINAR"></iframe>
 </div>
 
 <script>
@@ -95,31 +105,25 @@ function switchTo(app) {
 }
 
 function switchToWithData(app, payload) {
-  const frameRec    = document.getElementById('frame-rec');
-  const frameNotion = document.getElementById('frame-notion');
-  const btnRec      = document.getElementById('btn-rec');
-  const btnNotion   = document.getElementById('btn-notion');
-
+  const frames = {rec:'frame-rec', notion:'frame-notion', news:'frame-news'};
+  const btns   = {rec:'btn-rec',   notion:'btn-notion',   news:'btn-news'};
   current = app;
-
-  if (app === 'rec') {
-    frameRec.classList.replace('hidden', 'visible');
-    frameNotion.classList.replace('visible', 'hidden');
-    btnRec.classList.add('active');
-    btnNotion.classList.remove('active');
-  } else {
-    frameNotion.classList.replace('hidden', 'visible');
-    frameRec.classList.replace('visible', 'hidden');
-    btnNotion.classList.add('active');
-    btnRec.classList.remove('active');
-    // Send prefill data to notion iframe
-    if (payload) {
-      if (payload.type === 'tn_poste') {
-        frameNotion.contentWindow.postMessage({type:'tn_poste', payload:payload}, '*');
-      } else {
-        frameNotion.contentWindow.postMessage({type:'tn_prefill', payload:payload}, '*');
-      }
+  Object.keys(frames).forEach(function(k){
+    const f = document.getElementById(frames[k]);
+    const b = document.getElementById(btns[k]);
+    if (k === app) { f.classList.remove('hidden'); f.classList.add('visible'); b.classList.add('active'); }
+    else           { f.classList.remove('visible'); f.classList.add('hidden'); b.classList.remove('active'); }
+  });
+  if (app === 'notion' && payload) {
+    const fn = document.getElementById('frame-notion');
+    if (payload.type === 'tn_poste') {
+      fn.contentWindow.postMessage({type:'tn_poste', payload:payload}, '*');
+    } else {
+      fn.contentWindow.postMessage({type:'tn_prefill', payload:payload}, '*');
     }
+  }
+  if (app === 'news') {
+    try { document.getElementById('frame-news').contentWindow.postMessage({type:'tn_news_show'}, '*'); } catch(e) {}
   }
 }
 </script>
