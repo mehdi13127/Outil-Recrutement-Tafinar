@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v68</title>
+<title>Recrutement TAFINAR v72</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -198,7 +198,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v68</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v72</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -1325,6 +1325,15 @@ function addAnonResultCard(data,filename,container,originalName,srcFile,replaceE
     card.appendChild(w);
   }
   card.appendChild(codeBox);card.appendChild(link);
+  if(!replaceEl&&window.tnAutoStoreByCode){
+    window.tnAutoStoreByCode(data,rawHtml).then(function(nm){
+      if(!nm)return;
+      const n=document.createElement('div');
+      n.style.cssText='font-size:11px;color:#166534;margin-top:4px';
+      n.textContent='✔ CV enregistré dans la fiche de '+nm+' (rouvrable depuis la fiche)';
+      card.appendChild(n);
+    });
+  }
   if(srcFile){
     const rb=document.createElement('button');
     rb.type='button';rb.className='btn-sm';
@@ -1813,8 +1822,48 @@ function downloadAnonPDF(){
 }
 
 
-/* ── v66 : CV anonyme demandé depuis la fiche profil (Notion) ── */
-window.tnAnonForFiche=async function(nom,win,getFile){
+/* ── v72 : CV anonyme lié à la fiche (stockage HTML dans Supabase, table cv_anon) ── */
+const _LOGO_URI='data:image/png;base64,'+LOGO_B64;
+window.tnLogoUri=_LOGO_URI;
+function _anonEditable(html,candId){
+  const SC='<'+'script>',SCE='<'+'/script>',STE='<'+'/style>',BOE='<'+'/body>';
+  const editCSS='[contenteditable]{outline:none}[contenteditable]:hover{background:rgba(37,99,235,.06);border-radius:2px;cursor:text}[contenteditable]:focus{background:rgba(37,99,235,.1);border-radius:2px;box-shadow:0 0 0 1.5px #2563eb}#tn-save{display:inline-block;margin-left:12px;font-size:12px;color:#6b7280;font-family:system-ui,sans-serif}';
+  let js='window.addEventListener("load",function(){var sel=[".profil-code",".poste-title",".exp-title",".exp-date",".exp-tasks li",".tag",".apercu","li","p"];sel.forEach(function(s){try{document.querySelectorAll(s).forEach(function(el){if(!el.querySelector("ul,ol,table")&&el.textContent.trim()){el.contentEditable="true";el.spellcheck=false;}});}catch(e){}});';
+  if(candId){
+    js+='var CAND='+JSON.stringify(String(candId))+',T=null;'
+      +'function badge(t,c){var b=document.getElementById("tn-save");if(b){b.textContent=t;b.style.color=c||"#6b7280";}}'
+      +'function store(){var R=null;try{R=window.opener.parent.document.getElementById("frame-rec").contentWindow;}catch(e){}if(!R||!R.tnStoreAnon){try{R=window.opener;}catch(e){}}'
+      +'if(!R||!R.tnStoreAnon){badge("Fiche non joignable : modifications non enregistrées","#b91c1c");return;}'
+      +'var c=document.documentElement.cloneNode(true);c.querySelectorAll("script").forEach(function(e){e.remove();});c.querySelectorAll("[contenteditable]").forEach(function(e){e.removeAttribute("contenteditable");e.removeAttribute("spellcheck");});'
+      +'var b=c.querySelector("#tn-save");if(b)b.remove();'
+      +'R.tnStoreAnon(CAND,"<!DOCTYPE html>"+c.outerHTML).then(function(ok){badge(ok?"✔ Enregistré dans la fiche":"Enregistrement impossible",ok?"#166534":"#b91c1c");});}'
+      +'document.addEventListener("input",function(){badge("Modification…");clearTimeout(T);T=setTimeout(store,1500);});'
+      +'badge("✔ Enregistré dans la fiche","#166534");';
+  }
+  js+='});';
+  let h=html.replace(STE,editCSS+STE).replace(BOE,SC+js+SCE+BOE);
+  if(candId)h=h.replace('<button onclick="window.print()"','<button onclick="window.print()"');
+  return h.replace('Imprimer / Telecharger PDF</button>','Imprimer / Telecharger PDF</button>'+(candId?'<span id="tn-save"></span>':''));
+}
+window.tnStoreAnon=async function(candId,html){
+  try{
+    if(!candId)return false;
+    const h=String(html).split(_LOGO_URI).join('{{LOGO}}');
+    const{error}=await sbClient.from('cv_anon').upsert({cand_id:String(candId),html:h,updated_at:new Date().toISOString()});
+    if(error){console.error('tnStoreAnon',error);return false;}
+    return true;
+  }catch(e){console.error(e);return false;}
+};
+window.tnOpenAnonSaved=async function(candId,win){
+  try{
+    const{data,error}=await sbClient.from('cv_anon').select('html').eq('cand_id',String(candId)).maybeSingle();
+    if(error||!data)return{ok:false,msg:'Aucun CV anonyme enregistré pour ce profil.'};
+    const html=data.html.split('{{LOGO}}').join(_LOGO_URI);
+    win.document.open();win.document.write(_anonEditable(html,candId));win.document.close();
+    return{ok:true};
+  }catch(e){return{ok:false,msg:e.message||String(e)};}
+};
+window.tnAnonForFiche=async function(nom,win,getFile,candId){
   const nrm=function(x){return String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(function(w){return w.length>1;}).sort().join(' ');};
   const target=nrm(nom),words=target.split(' ').filter(Boolean);
   let file=null;
@@ -1829,13 +1878,24 @@ window.tnAnonForFiche=async function(nom,win,getFile){
   try{
     const data=await callAnon(file);
     fixCode(data);
-    const SC='<'+'script>',SCE='<'+'/script>',STE='<'+'/style>',BOE='<'+'/body>';
-    const editCSS='[contenteditable]{outline:none}[contenteditable]:hover{background:rgba(37,99,235,.06);border-radius:2px;cursor:text}[contenteditable]:focus{background:rgba(37,99,235,.1);border-radius:2px;box-shadow:0 0 0 1.5px #2563eb}';
-    const editJS=SC+'window.addEventListener("load",function(){var sel=[".profil-code",".poste-title",".exp-title",".exp-date",".exp-tasks li",".tag",".apercu","li","p"];sel.forEach(function(s){try{document.querySelectorAll(s).forEach(function(el){if(!el.querySelector("ul,ol,table")&&el.textContent.trim()){el.contentEditable="true";el.spellcheck=false;}});}catch(e){}});});'+SCE;
-    const h=buildTafinarHTML(data).replace(STE,editCSS+STE).replace(BOE,editJS+BOE);
-    win.document.open();win.document.write(h);win.document.close();
-    return{ok:true,code:data.code};
+    const raw=buildTafinarHTML(data);
+    let stored=false;
+    if(candId)stored=await window.tnStoreAnon(candId,raw);
+    win.document.open();win.document.write(_anonEditable(raw,stored?candId:''));win.document.close();
+    return{ok:true,code:data.code,stored:stored};
   }catch(e){return{ok:false,msg:e.message||String(e)};}
+};
+// Anonymisation lancée depuis l'onglet Anonymiser : rattachement automatique à la fiche si UN SEUL profil porte ce quadrigramme
+window.tnAutoStoreByCode=async function(data,raw){
+  try{
+    const code=lettersOnly(data&&data.code);if(code.length!==4)return null;
+    const{data:rows,error}=await sbClient.from('candidats').select('local_id,nom,deleted_at').eq('trigramme',code).limit(5);
+    if(error||!rows)return null;
+    const ok=rows.filter(x=>!x.deleted_at);
+    if(ok.length!==1)return null;
+    const done=await window.tnStoreAnon(ok[0].local_id,raw);
+    return done?ok[0].nom:null;
+  }catch(e){return null;}
 };
 
 /* ── NOTION TAFINAR INTEGRATION ── */
