@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Newsletter TAFINAR v72</title>
+<title>Newsletter TAFINAR v74</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
@@ -50,7 +50,7 @@ input.i,select.i{border:1px solid #d1d5db;border-radius:6px;padding:5px 7px;font
 </head>
 <body>
 <div class="wrap">
-  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v72</small></h1>
+  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v74</small></h1>
   <div class="sub">Les profils arrivent ici depuis la fiche (bouton « Envoyer à la newsletter » ou popup après Enregistrer).</div>
   <div id="warn"></div>
   <div class="tabs">
@@ -70,7 +70,7 @@ let ROWS=[],CANDS={},CLIENTS=[],TAB='pending';
 let SEL={pending:new Set(),sent:new Set()};
 let PREP=null;      // {ids:[...], assign:{id:{secteur,poste}}, loading:bool}
 let SENT_PERIOD='all';
-let SCHEMA_OK=true,ANON=new Set(),DIR=null;
+let PHT_OK=true,SCHEMA_OK=true,ANON=new Set(),DIR=null;
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m,t){const el=document.getElementById('toast');el.textContent=m;el.className='toast show'+(t==='warn'?' warn':'');clearTimeout(toast._t);toast._t=setTimeout(()=>el.className='toast',3200);}
@@ -89,7 +89,10 @@ async function load(){
   CANDS={};
   if(ids.length){
     for(let i=0;i<ids.length;i+=100){
-      const c=await sb.from('candidats').select('local_id,nom,trigramme,dispo,mobilite,tjm,cv_anonyme_url,cv_anonyme_name,poste_titre').in('local_id',ids.slice(i,i+100));
+      const base='local_id,nom,trigramme,dispo,mobilite,tjm,cv_anonyme_url,cv_anonyme_name,poste_titre';
+      let c=await sb.from('candidats').select(base+',pretention,propose_ht').in('local_id',ids.slice(i,i+100));
+      if(c.error){c=await sb.from('candidats').select(base+',pretention').in('local_id',ids.slice(i,i+100));PHT_OK=false;}
+      if(c.error)c=await sb.from('candidats').select(base).in('local_id',ids.slice(i,i+100));
       (c.data||[]).forEach(x=>CANDS[x.local_id]=x);
     }
   }
@@ -109,6 +112,8 @@ function live(r){
     dispo:(c.dispo!=null&&c.dispo!==''?c.dispo:r.dispo)||'',
     mob:mobOf(r),
     tjm:(c.tjm!=null&&c.tjm!==''?c.tjm:r.tjm)||'',
+    pret:c.pretention||'',
+    pht:c.propose_ht||'',
     cvUrl:c.cv_anonyme_url||r.cv_anonyme_url||'',
     cvName:c.cv_anonyme_name||r.cv_anonyme_name||'',
     posteBrut:r.poste_titre||c.poste_titre||'',
@@ -140,12 +145,12 @@ function viewPending(P){
     <span style="flex:1"></span>
     <button class="btn btn-p" onclick="prepare()"><i class="ti ti-sparkles"></i> Préparer la newsletter ${n?'('+n+' sélectionnés)':'(tous)'}</button>
   </div>
-  <table class="t"><thead><tr><th></th><th>Profil</th><th>Poste</th><th>Dispo ✎</th><th>Mobilité ✎</th><th>TJM € ✎</th><th>CV anonyme</th><th>Ajouté</th><th>Par</th></tr></thead><tbody>`;
+  <table class="t"><thead><tr><th></th><th>Profil</th><th>Poste</th><th>Dispo ✎</th><th>Mobilité ✎</th><th>TJM € ✎</th><th>Prétention</th><th>Proposé € HT ✎</th><th>CV anonyme</th><th>Ajouté</th><th>Par</th></tr></thead><tbody>`;
   P.forEach(r=>{
     const l=live(r);
     h+=`<tr><td><input type="checkbox" ${SEL.pending.has(r.id)?'checked':''} onchange="tog('pending','${r.id}',this.checked)"></td>
     <td class="quad">${esc(l.quad)}</td><td style="max-width:280px">${esc(l.posteBrut)}</td><td><input class="i" style="min-width:110px" value="${esc(l.dispo)}" placeholder="ex: Immédiatement" onchange="editField('${r.id}','dispo',this.value)"></td><td><input class="i" style="min-width:140px" value="${esc(l.mob)}" placeholder="ex: Toulouse, Paris" onchange="editField('${r.id}','mob',this.value)"></td>
-    <td><input class="i" style="width:84px" value="${esc(String(l.tjm||''))}" placeholder="TJM €" onchange="editField('${r.id}','tjm',this.value)"></td><td style="white-space:nowrap">${l.cvUrl?'<span class="pill ok">PDF</span>':'<span class="pill no">pas de PDF</span>'}${ANON.has(r.cand_id)?` <a href="#" onclick="openAnon('${esc(r.cand_id)}');return false" style="font-size:11.5px">voir / imprimer</a>`:''}</td><td class="muted">${fmtDate(r.added_at)}</td><td class="muted">${esc(r.sourcer||'')}</td></tr>`;
+    <td><input class="i" style="width:84px" value="${esc(String(l.tjm||''))}" placeholder="TJM €" onchange="editField('${r.id}','tjm',this.value)"></td><td style="white-space:nowrap;font-weight:600">${esc(l.pret)||'<span class="muted">—</span>'}</td><td><input class="i" style="width:84px" value="${esc(String(l.pht||''))}" placeholder="€ HT" onchange="editField('${r.id}','pht',this.value)"></td><td style="white-space:nowrap">${l.cvUrl?'<span class="pill ok">PDF</span>':'<span class="pill no">pas de PDF</span>'}${ANON.has(r.cand_id)?` <a href="#" onclick="openAnon('${esc(r.cand_id)}');return false" style="font-size:11.5px">voir / imprimer</a>`:''}</td><td class="muted">${fmtDate(r.added_at)}</td><td class="muted">${esc(r.sourcer||'')}</td></tr>`;
   });
   h+='</tbody></table></div><div id="prep"></div>';
   return h;
@@ -158,11 +163,12 @@ async function editField(id,field,val){
   let candUpd={},newsUpd={};
   if(field==='dispo'){candUpd={dispo:val};newsUpd={dispo:val};}
   if(field==='tjm'){candUpd={tjm:val};newsUpd={tjm:val};}
+  if(field==='pht'){candUpd={propose_ht:val};newsUpd=null;}
   if(field==='mob'){const arr=val.split(',').map(x=>x.trim()).filter(Boolean);candUpd={mobilite:JSON.stringify(arr)};newsUpd={mobilite:arr.join(', ')};}
   try{
     if(c){const a=await sb.from('candidats').update(candUpd).eq('local_id',r.cand_id);if(a.error)throw a.error;Object.assign(c,candUpd);}
-    const b=await sb.from('news_liste').update(newsUpd).eq('id',id);if(b.error)throw b.error;
-    Object.assign(r,newsUpd);
+    if(newsUpd){const b=await sb.from('news_liste').update(newsUpd).eq('id',id);if(b.error)throw b.error;
+    Object.assign(r,newsUpd);}
     toast('Enregistré'+(c?' (fiche mise à jour aussi)':''),'ok');
     if(PREP)renderPrep();
   }catch(e){console.error(e);toast('Enregistrement impossible','warn');}
@@ -389,6 +395,7 @@ function viewSent(S){
       const l=live(r);
       h+=`<tr><td style="width:28px"><input type="checkbox" ${SEL.sent.has(r.id)?'checked':''} onchange="tog('sent','${r.id}',this.checked)"></td>
       <td class="quad" style="width:80px">${esc(l.quad)}</td><td>${esc(r.poste_groupe||r.poste_titre||'')}</td>
+      <td class="muted" style="width:150px;white-space:nowrap">${l.pret?'Prét. '+esc(l.pret):''}${l.pht?' · Proposé '+esc(l.pht)+' € HT':''}</td>
       <td class="muted" style="width:90px">${fmtDate(r.sent_at)}</td>
       <td style="width:190px;white-space:nowrap">${l.cvUrl?'<span class="pill ok">PDF</span>':'<span class="pill no">pas de PDF</span>'}${ANON.has(r.cand_id)?` <a href="#" onclick="openAnon('${esc(r.cand_id)}');return false" style="font-size:11.5px">voir / imprimer</a>`:''}</td></tr>`;});
     h+='</tbody></table></div>';
