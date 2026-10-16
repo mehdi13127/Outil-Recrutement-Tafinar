@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Newsletter TAFINAR v66</title>
+<title>Newsletter TAFINAR v72</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#eef0f3;color:#1c2433;font-size:13px;min-height:100vh}
@@ -51,7 +50,7 @@ input.i,select.i{border:1px solid #d1d5db;border-radius:6px;padding:5px 7px;font
 </head>
 <body>
 <div class="wrap">
-  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v66</small></h1>
+  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v72</small></h1>
   <div class="sub">Les profils arrivent ici depuis la fiche (bouton « Envoyer à la newsletter » ou popup après Enregistrer).</div>
   <div id="warn"></div>
   <div class="tabs">
@@ -71,7 +70,7 @@ let ROWS=[],CANDS={},CLIENTS=[],TAB='pending';
 let SEL={pending:new Set(),sent:new Set()};
 let PREP=null;      // {ids:[...], assign:{id:{secteur,poste}}, loading:bool}
 let SENT_PERIOD='all';
-let SCHEMA_OK=true;
+let SCHEMA_OK=true,ANON=new Set(),DIR=null;
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m,t){const el=document.getElementById('toast');el.textContent=m;el.className='toast show'+(t==='warn'?' warn':'');clearTimeout(toast._t);toast._t=setTimeout(()=>el.className='toast',3200);}
@@ -94,6 +93,7 @@ async function load(){
       (c.data||[]).forEach(x=>CANDS[x.local_id]=x);
     }
   }
+  try{const a=await sb.from('cv_anon').select('cand_id');ANON=new Set((a.data||[]).map(x=>x.cand_id));}catch(e){ANON=new Set();}
   try{const p=await sb.from('postes').select('client');CLIENTS=[...new Set((p.data||[]).map(x=>(x.client||'').trim()).filter(x=>x.length>=3))];}catch(e){}
   render();
 }
@@ -140,15 +140,32 @@ function viewPending(P){
     <span style="flex:1"></span>
     <button class="btn btn-p" onclick="prepare()"><i class="ti ti-sparkles"></i> Préparer la newsletter ${n?'('+n+' sélectionnés)':'(tous)'}</button>
   </div>
-  <table class="t"><thead><tr><th></th><th>Profil</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>TJM</th><th>CV anonyme</th><th>Ajouté</th><th>Par</th></tr></thead><tbody>`;
+  <table class="t"><thead><tr><th></th><th>Profil</th><th>Poste</th><th>Dispo ✎</th><th>Mobilité ✎</th><th>TJM € ✎</th><th>CV anonyme</th><th>Ajouté</th><th>Par</th></tr></thead><tbody>`;
   P.forEach(r=>{
     const l=live(r);
     h+=`<tr><td><input type="checkbox" ${SEL.pending.has(r.id)?'checked':''} onchange="tog('pending','${r.id}',this.checked)"></td>
-    <td class="quad">${esc(l.quad)}</td><td style="max-width:280px">${esc(l.posteBrut)}</td><td>${esc(l.dispo)||'<span class="muted">—</span>'}</td><td>${esc(l.mob)||'<span class="muted">—</span>'}</td>
-    <td>${esc(tjmTxt(l.tjm))}</td><td>${l.cvUrl?'<span class="pill ok">oui</span>':'<span class="pill no">manquant</span>'}</td><td class="muted">${fmtDate(r.added_at)}</td><td class="muted">${esc(r.sourcer||'')}</td></tr>`;
+    <td class="quad">${esc(l.quad)}</td><td style="max-width:280px">${esc(l.posteBrut)}</td><td><input class="i" style="min-width:110px" value="${esc(l.dispo)}" placeholder="ex: Immédiatement" onchange="editField('${r.id}','dispo',this.value)"></td><td><input class="i" style="min-width:140px" value="${esc(l.mob)}" placeholder="ex: Toulouse, Paris" onchange="editField('${r.id}','mob',this.value)"></td>
+    <td><input class="i" style="width:84px" value="${esc(String(l.tjm||''))}" placeholder="TJM €" onchange="editField('${r.id}','tjm',this.value)"></td><td style="white-space:nowrap">${l.cvUrl?'<span class="pill ok">PDF</span>':'<span class="pill no">pas de PDF</span>'}${ANON.has(r.cand_id)?` <a href="#" onclick="openAnon('${esc(r.cand_id)}');return false" style="font-size:11.5px">voir / imprimer</a>`:''}</td><td class="muted">${fmtDate(r.added_at)}</td><td class="muted">${esc(r.sourcer||'')}</td></tr>`;
   });
   h+='</tbody></table></div><div id="prep"></div>';
   return h;
+}
+/* Modification d'une info depuis l'onglet : enregistrée dans la fiche du candidat ET dans la liste */
+async function editField(id,field,val){
+  const r=ROWS.find(x=>x.id===id);if(!r)return;
+  val=String(val||'').trim();
+  const c=CANDS[r.cand_id];
+  let candUpd={},newsUpd={};
+  if(field==='dispo'){candUpd={dispo:val};newsUpd={dispo:val};}
+  if(field==='tjm'){candUpd={tjm:val};newsUpd={tjm:val};}
+  if(field==='mob'){const arr=val.split(',').map(x=>x.trim()).filter(Boolean);candUpd={mobilite:JSON.stringify(arr)};newsUpd={mobilite:arr.join(', ')};}
+  try{
+    if(c){const a=await sb.from('candidats').update(candUpd).eq('local_id',r.cand_id);if(a.error)throw a.error;Object.assign(c,candUpd);}
+    const b=await sb.from('news_liste').update(newsUpd).eq('id',id);if(b.error)throw b.error;
+    Object.assign(r,newsUpd);
+    toast('Enregistré'+(c?' (fiche mise à jour aussi)':''),'ok');
+    if(PREP)renderPrep();
+  }catch(e){console.error(e);toast('Enregistrement impossible','warn');}
 }
 function tog(tab,id,on){on?SEL[tab].add(id):SEL[tab].delete(id);render();}
 function selAll(tab,on){
@@ -184,7 +201,7 @@ async function askHaiku(items,extra){
   const system=`Tu prépares une newsletter de profils de candidats destinée à des clients d'un cabinet d'ingénierie.
 Pour chaque profil tu reçois un id et l'intitulé brut du poste. Cet intitulé peut contenir des codes de référence, un nom de client, une ville, un niveau (L2, L3), une mention de télétravail : tout cela doit disparaître.
 Tu renvoies, pour chaque profil :
-- "secteur" : le secteur d'activité (court, 1 à 3 mots, ex : Supply Chain, HSE / Sécurité, Pharma / Santé, Nucléaire / Énergie, Aéronautique, Finance). Aucune liste fermée : choisis le secteur le plus juste pour le métier, et crée-en un nouveau si besoin.${past.length?`\n  Secteurs déjà utilisés dans les précédentes newsletters, à réutiliser EXACTEMENT quand ils conviennent : ${past.join(' ; ')}.`:''}
+- "secteur" : le secteur d'activité (court, 1 à 3 mots, ex : Supply Chain, HSE / Sécurité, Pharma / Santé, Nucléaire / Énergie, Aéronautique, Finance). Aucune liste fermée : choisis le secteur le plus juste pour le métier, et crée-en un nouveau si besoin. Sois précis : base-toi sur le domaine d'application du métier (ex : Ferroviaire, Automobile, Nucléaire, Aéronautique, Énergie, Pharma / Santé, Supply Chain, HSE, Data / IT, Finance…). N'utilise JAMAIS un secteur fourre-tout comme « Ingénierie », « Industrie », « Autre » ou « Divers » ; si les profils relèvent de domaines différents, sépare-les en plusieurs secteurs.${past.length?`\n  Secteurs déjà utilisés dans les précédentes newsletters, à réutiliser EXACTEMENT quand ils conviennent : ${past.join(' ; ')}.`:''}
 - "poste" : l'intitulé du métier, propre et lisible (sans code, sans ville, sans niveau, sans nom de client). Les profils qui correspondent au même métier doivent avoir exactement le même libellé de poste.
 Réponds uniquement par un objet JSON, sans texte autour : {"profils":[{"id":0,"secteur":"...","poste":"..."}]}. Chaque id doit apparaître une seule fois.`;
   let user=JSON.stringify(items.map(i=>({id:i.i,poste_brut:i.poste})));
@@ -267,11 +284,12 @@ function renderPrep(){
   h+=`<div class="card"><div class="bar">
     <button class="btn btn-p" onclick="copyMail()"><i class="ti ti-copy"></i> Copier le mail</button>
     <button class="btn" onclick="copySubject()"><i class="ti ti-mail"></i> Copier l'objet</button>
-    <button class="btn" onclick="zipPrep()"><i class="ti ti-file-zip"></i> Télécharger les CV anonymes (ZIP)</button>
+    <button class="btn" onclick="pickDir()" title="Les CV seront enregistrés directement dans ce dossier (Chrome / Edge)"><i class="ti ti-folder"></i> <span id="dirname">Choisir un dossier</span></button>
+    <button class="btn" onclick="dlPrep()"><i class="ti ti-download"></i> Télécharger les CV (fichiers séparés)</button>
     <span style="flex:1"></span>
     <button class="btn btn-g" onclick="markSent()"><i class="ti ti-check"></i> Marquer ${total} profil(s) comme envoyés</button>
   </div>
-  <div class="note" style="margin-bottom:8px">Colle le mail dans un nouveau message Outlook, destinataires en Cci. Objet : <b>${esc(subject())}</b>${missing?` · <span style="color:#b91c1c">${missing} profil(s) sans CV anonyme (ils seront listés lors du ZIP)</span>`:''}</div>
+  <div class="note" style="margin-bottom:8px">Colle le mail dans un nouveau message Outlook, destinataires en Cci. <b>Après Ctrl+V, clique sur la petite icône « (Ctrl) » qui apparaît et choisis « Conserver la mise en forme source »</b> (sinon Outlook efface les couleurs et les tailles). Objet : <b>${esc(subject())}</b>${missing?` · <span style="color:#b91c1c">${missing} profil(s) sans CV anonyme (ils seront listés au téléchargement)</span>`:''}</div>
   <div class="frame" id="nl">${nlHTML(groups)}</div></div>`;
   el.innerHTML=h;
   if(PREP.fresh){PREP.fresh=false;el.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -280,45 +298,47 @@ function setAssign(id,k,v){PREP.assign[id][k]=String(v||'').trim()||(k==='secteu
   const el=document.getElementById('prep');const y=window.scrollY;renderPrep();window.scrollTo(0,y);}
 
 /* ───────── Mail (HTML compatible Outlook) ───────── */
-const BLUE='#2563eb',BLUED='#0348ac',GREEN='#22c55e',GREEND='#166534',INK='#1c2433',MUTED='#5b6577',LINE='#dde3ec',TINT='#eef3fe';
-const FONT='font-family:Arial,Helvetica,sans-serif;';
+const BLUE='#2563eb',NAVY='#0b2a55',GREEN='#16a34a',INK='#1c2433',MUTED='#6b7686',LINE='#e3e8ef',SOFT='#f5f8fc';
+const FONT='font-family:Segoe UI,Arial,Helvetica,sans-serif;';
 function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y0)/864e5+1)/7);}
 function subject(){return'Les profils qui vous manquent — Semaine '+isoWeek(new Date());}
 const plural=(n,w)=>n+' '+w+(n>1?'s':'');
+const isImm=d=>/imm[ée]diat/i.test(d||'');
 function nlHTML(groups){
   const D=new Date(),WEEK=isoWeek(D);
   const dateTxt=D.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
   const total=groups.reduce((n,g)=>n+count(g),0);
-  const imm=groups.reduce((n,g)=>n+g.postes.reduce((m,p)=>m+p.profils.filter(x=>/imm[ée]diat/i.test(x.dispo)).length,0),0);
-  const cellH=(l,w,al)=>`<td width="${w}" align="${al||'left'}" style="${FONT}font-size:11px;font-weight:bold;color:${MUTED};padding:6px 10px;border-bottom:2px solid ${BLUE};text-align:${al||'left'};">${l}</td>`;
-  const cell=(t,w,o)=>{o=o||{};return`<td width="${w}" align="${o.al||'left'}" valign="middle" style="${FONT}font-size:14px;font-weight:${o.b?'bold':'normal'};color:${o.c||INK};padding:10px 10px;border-bottom:1px solid ${LINE};text-align:${o.al||'left'};${o.ls||''}">${esc(t)}</td>`;};
-  const poste=p=>{
-    let rows='';
-    p.profils.forEach(x=>{const na=x.tjm==='Sur demande';
-      rows+='<tr>'+cell(x.quad,'18%',{b:1,c:BLUED,ls:'letter-spacing:2px;'})+cell(x.dispo,'28%')+cell(x.mob,'30%')+cell(x.tjm,'24%',{al:'right',b:!na,c:na?MUTED:GREEND})+'</tr>';});
-    return`<div style="${FONT}font-size:15px;font-weight:bold;color:${INK};padding:18px 0 8px 0;">${esc(p.poste)} <span style="font-weight:normal;color:${MUTED};font-size:13px;">(${plural(p.profils.length,'profil')})</span></div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%;"><tr>${cellH('Profil','18%')}${cellH('Disponibilité','28%')}${cellH('Mobilité','30%')}${cellH('TJM (€ HT)','24%','right')}</tr>${rows}</table>`;
+  const imm=groups.reduce((n,g)=>n+g.postes.reduce((m,p)=>m+p.profils.filter(x=>isImm(x.dispo)).length,0),0);
+  const th=(l,w,al)=>`<td width="${w}" align="${al||'left'}" style="${FONT}font-size:11px;font-weight:bold;color:${NAVY};padding:8px ${al==='right'?'12px 8px 8px':'8px'};letter-spacing:1px;border-bottom:2px solid ${BLUE};text-align:${al||'left'};">${l}</td>`;
+  const row=x=>{
+    const na=x.tjm==='Sur demande';
+    const dot=`<span style="color:${isImm(x.dispo)?GREEN:'#d97706'};font-size:14px;">&#9679;</span>&nbsp;`;
+    const tj=na?`<span style="color:${MUTED};">Sur demande</span>`:`<b style="color:#166534;">${esc(x.tjm)}</b><span style="color:${MUTED};font-size:11px;"> /jour</span>`;
+    return`<tr><td width="17%" style="padding:12px 12px 12px 0;border-bottom:1px solid ${LINE};"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#e8f0fe" style="${FONT}background:#e8f0fe;color:${BLUE};font-size:13px;font-weight:bold;letter-spacing:2px;padding:5px 10px;border:1px solid #c7d8f8;">${esc(x.quad)}</td></tr></table></td>
+<td width="29%" style="${FONT}font-size:14px;color:${INK};padding:12px 8px;border-bottom:1px solid ${LINE};">${x.dispo==='—'?esc(x.dispo):dot+esc(x.dispo)}</td>
+<td width="30%" style="${FONT}font-size:14px;color:${INK};padding:12px 8px;border-bottom:1px solid ${LINE};">${esc(x.mob)}</td>
+<td width="24%" align="right" style="${FONT}font-size:14px;padding:12px 12px 12px 8px;border-bottom:1px solid ${LINE};text-align:right;">${tj}</td></tr>`;
   };
-  const secteur=g=>`<tr><td style="padding:28px 0 4px 0;"><div style="${FONT}font-size:22px;font-weight:bold;color:${BLUED};padding:0 0 6px 0;border-bottom:3px solid ${BLUE};">${esc(g.secteur)}</div>${g.postes.map(poste).join('')}</td></tr>`;
-  const summary=groups.map(g=>`<tr><td style="${FONT}font-size:14px;color:${INK};padding:7px 0;border-bottom:1px solid ${LINE};"><b style="color:${BLUED};">${esc(g.secteur)}</b></td><td align="right" style="${FONT}font-size:13px;color:${MUTED};padding:7px 0;border-bottom:1px solid ${LINE};">${plural(count(g),'profil')}</td></tr>`).join('');
-  const stat=(num,label,last)=>`<td width="33%" align="center" valign="top" style="padding:12px 6px;${last?'':'border-right:1px solid '+LINE+';'}"><div style="${FONT}font-size:28px;font-weight:bold;color:${BLUE};line-height:1;">${num}</div><div style="${FONT}font-size:12px;color:${MUTED};padding-top:6px;">${label}</div></td>`;
-  const STATS=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-top:1px solid ${LINE};border-bottom:1px solid ${LINE};"><tr>${stat(total,'profils qualifiés')}${stat(groups.length,'secteurs')}${stat(imm,'disponibles immédiatement',1)}</tr></table>`;
-  const msg=(inner,last)=>`<tr><td style="padding:14px 18px;${last?'':'border-bottom:1px solid #cfdcf6;'}${FONT}font-size:14px;color:${INK};line-height:1.6;">${inner}</td></tr>`;
-  const INFO=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${TINT}" style="margin-top:18px;background:${TINT};border:1px solid #cfdcf6;border-collapse:collapse;">`
-    +msg(`<b style="color:${BLUED};">Besoin de profils pour une activité ciblée ?</b> N’hésitez pas à nous le demander.`)
-    +msg(`<b style="color:${BLUED};">Cette sélection peut intéresser vos collègues ?</b> N’hésitez pas à la leur transmettre. Si vous souhaitez qu’un collègue soit ajouté à la liste, indiquez-nous simplement son nom et son adresse mail.`)
-    +`<tr><td style="padding:12px 18px;${FONT}font-size:12px;color:${MUTED};line-height:1.6;">Si vous ne souhaitez plus recevoir cette sélection de profils, il vous suffit de nous le signaler en répondant à ce mail.</td></tr></table>`;
-  const FOOTER=`<tr><td style="padding:30px 0 0 0;border-top:1px solid ${LINE};${FONT}font-size:14px;color:${INK};line-height:1.6;">Nous restons disponibles pour tout renseignement complémentaire.</td></tr><tr><td style="padding:18px 0 24px 0;${FONT}font-size:13px;color:${MUTED};line-height:1.6;">Cordialement,<br><b style="color:${BLUED};">TAFINAR Engineering</b></td></tr>`;
+  const poste=(p,multi)=>`<tr><td style="padding:18px 0 0 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="${FONT}font-size:15px;font-weight:bold;color:${INK};padding:0 0 8px 0;">${esc(p.poste)}</td>${multi?`<td align="right" style="${FONT}font-size:12px;color:${MUTED};padding:0 0 8px 0;">${plural(p.profils.length,'profil')}</td>`:''}</tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>${th('PROFIL','17%')}${th('DISPONIBILITÉ','29%')}${th('MOBILITÉ','30%')}${th('TJM (€ HT)','24%','right')}</tr>${p.profils.map(row).join('')}</table></td></tr>`;
+  const secteur=g=>`<tr><td style="padding:34px 0 0 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="6" bgcolor="${GREEN}" style="background:${GREEN};font-size:1px;line-height:1px;">&nbsp;</td><td style="${FONT}font-size:21px;font-weight:bold;color:${NAVY};padding:2px 0 2px 12px;">${esc(g.secteur)}</td><td align="right" style="${FONT}font-size:12px;color:${MUTED};">${plural(count(g),'profil')}</td></tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${g.postes.map(p=>poste(p,g.postes.length>1)).join('')}</table></td></tr>`;
+  const stat=(v,l,last)=>`<td width="33%" align="center" style="padding:16px 6px;${last?'':'border-right:1px solid '+LINE+';'}"><div style="${FONT}font-size:30px;font-weight:bold;color:${BLUE};line-height:1;">${v}</div><div style="${FONT}font-size:12px;color:${MUTED};padding-top:6px;">${l}</div></td>`;
   return`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"><tr><td align="center" style="padding:16px 8px;">
-<table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" style="width:680px;max-width:100%;background:#ffffff;">
-<tr><td style="padding:8px 0 16px 0;border-bottom:4px solid ${BLUE};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="${FONT}font-size:15px;font-weight:bold;color:${BLUED};">TAFIN<span style="color:${GREEN};">A</span>R Engineering</td><td align="right" style="${FONT}font-size:12px;color:${MUTED};">Semaine ${WEEK} · ${esc(dateTxt)}</td></tr></table>
-<div style="${FONT}font-size:13px;font-weight:bold;letter-spacing:2px;color:${GREEND};padding:26px 0 0 0;">LES PROFILS QUI VOUS MANQUENT</div>
-<div style="${FONT}font-size:30px;font-weight:bold;color:${INK};line-height:1.2;padding:8px 0 0 0;">Les ingénieurs que vous cherchez ont déjà été trouvés.</div>
-<div style="${FONT}font-size:14px;color:${MUTED};line-height:1.6;padding:12px 0 0 0;">Bonjour,<br>Voici notre sélection de la semaine pour les postes demandés. Chaque profil est présenté sous son quadrigramme, avec sa disponibilité, sa mobilité et son TJM.</div>
-${INFO}${STATS}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">${summary}</table>
-</td></tr>${groups.map(secteur).join('')}${FOOTER}
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:680px;max-width:100%;background:#ffffff;">
+<tr><td bgcolor="#ffffff" style="border-top:6px solid ${BLUE};border-bottom:1px solid ${LINE};padding:22px 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td style="${FONT}font-size:18px;font-weight:bold;color:${NAVY};letter-spacing:1px;">TAFIN<span style="color:${GREEN};">A</span>R <span style="font-weight:normal;color:${MUTED};">Engineering</span></td>
+<td align="right" style="${FONT}font-size:12px;color:${MUTED};">Semaine ${WEEK} &nbsp;|&nbsp; ${esc(dateTxt)}</td></tr></table></td></tr>
+<tr><td style="padding:34px 32px 0 32px;">
+<div style="${FONT}font-size:12px;font-weight:bold;letter-spacing:3px;color:${GREEN};">LES PROFILS QUI VOUS MANQUENT</div>
+<div style="${FONT}font-size:30px;font-weight:bold;color:${NAVY};line-height:1.2;padding-top:10px;">Les ingénieurs que vous cherchez ont déjà été trouvés.</div>
+<div style="${FONT}font-size:15px;color:${MUTED};line-height:1.6;padding-top:14px;">Bonjour,<br>Voici notre sélection de la semaine pour les postes demandés. Chaque profil est présenté sous son quadrigramme, avec sa disponibilité, sa mobilité et son TJM.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px;border-top:1px solid ${LINE};border-bottom:1px solid ${LINE};"><tr>${stat(total,'profils qualifiés')}${stat(groups.length,'secteurs')}${stat(imm,'disponibles immédiatement',true)}</tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px;border:1px solid ${LINE};"><tr><td bgcolor="${SOFT}" style="${FONT}font-size:14px;color:${INK};line-height:1.6;padding:16px 20px;"><b style="color:${NAVY};">Besoin de profils pour une activité ciblée ?</b> N’hésitez pas à nous le demander.<br><br><b style="color:${NAVY};">Cette sélection peut intéresser vos collègues ?</b> N’hésitez pas à la leur transmettre. Si vous souhaitez qu’un collègue soit ajouté à la liste, indiquez-nous simplement son nom et son adresse mail.</td></tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${groups.map(secteur).join('')}</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:36px;"><tr><td style="${FONT}font-size:14px;color:${INK};line-height:1.6;padding:0 0 24px 0;">Nous restons disponibles pour tout renseignement complémentaire.<br><br>Cordialement,<br><b style="color:${NAVY};">TAFINAR Engineering</b></td></tr></table>
+</td></tr>
+<tr><td style="border-top:1px solid ${LINE};padding:18px 32px;${FONT}font-size:11px;color:${MUTED};line-height:1.6;">Si vous ne souhaitez plus recevoir cette sélection de profils, il vous suffit de nous le signaler en répondant à ce mail.<br>TAFINAR Engineering · 201 Route de la Seds, 13127 Vitrolles</td></tr>
 </table></td></tr></table>`;
 }
 async function copyMail(){
@@ -357,19 +377,20 @@ function viewSent(S){
     <button class="btn" onclick="selAll('sent',false)">Tout désélectionner</button>
     <span style="flex:1"></span>
     <button class="btn" onclick="requeue()"><i class="ti ti-arrow-back-up"></i> Remettre en attente</button>
-    <button class="btn btn-p" onclick="zipSent()"><i class="ti ti-file-zip"></i> Télécharger les CV (ZIP)</button>
+    <button class="btn" onclick="pickDir()" title="Les CV seront enregistrés directement dans ce dossier (Chrome / Edge)"><i class="ti ti-folder"></i> <span id="dirname">Choisir un dossier</span></button>
+    <button class="btn btn-p" onclick="dlSent()"><i class="ti ti-download"></i> Télécharger les CV (fichiers séparés)</button>
   </div>`;
   if(!list.length)return h+'<div class="empty">Rien d\'envoyé sur cette période.</div></div>';
   const g=new Map();list.forEach(r=>{const s=r.secteur||'À classer';if(!g.has(s))g.set(s,[]);g.get(s).push(r);});
   [...g.entries()].sort((a,b)=>b[1].length-a[1].length).forEach(([sec,rows])=>{
-    h+=`<div class="sec"><h3>${esc(sec)} <span class="n">${plural(rows.length,'profil')}</span><button class="btn" onclick="zipSector('${esc(sec).replace(/'/g,'&#39;')}')"><i class="ti ti-file-zip"></i> CV du secteur</button></h3>
+    h+=`<div class="sec"><h3>${esc(sec)} <span class="n">${plural(rows.length,'profil')}</span><button class="btn" onclick="dlSector('${esc(sec).replace(/'/g,'&#39;')}')"><i class="ti ti-download"></i> CV du secteur</button></h3>
     <table class="t"><tbody>`;
     rows.sort((a,b)=>(a.poste_groupe||'').localeCompare(b.poste_groupe||'')||(b.sent_at||'').localeCompare(a.sent_at||'')).forEach(r=>{
       const l=live(r);
       h+=`<tr><td style="width:28px"><input type="checkbox" ${SEL.sent.has(r.id)?'checked':''} onchange="tog('sent','${r.id}',this.checked)"></td>
       <td class="quad" style="width:80px">${esc(l.quad)}</td><td>${esc(r.poste_groupe||r.poste_titre||'')}</td>
       <td class="muted" style="width:90px">${fmtDate(r.sent_at)}</td>
-      <td style="width:80px">${l.cvUrl?'<span class="pill ok">CV</span>':'<span class="pill no">sans CV</span>'}</td></tr>`;});
+      <td style="width:190px;white-space:nowrap">${l.cvUrl?'<span class="pill ok">PDF</span>':'<span class="pill no">pas de PDF</span>'}${ANON.has(r.cand_id)?` <a href="#" onclick="openAnon('${esc(r.cand_id)}');return false" style="font-size:11.5px">voir / imprimer</a>`:''}</td></tr>`;});
     h+='</tbody></table></div>';
   });
   return h+'</div>';
@@ -381,45 +402,57 @@ async function requeue(){
   SEL.sent=new Set();await load();toast('Remis en attente','ok');
 }
 
-/* ───────── ZIP des CV anonymes ───────── */
+/* ───────── Téléchargement des CV anonymes : fichiers séparés « Profil QUAD.pdf » ───────── */
 const safe=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim()||'Autre';
-async function zipRows(rows,groupBy,name){
+function updDir(){document.querySelectorAll('#dirname').forEach(e=>e.textContent=DIR?('Dossier : '+DIR.name):'Choisir un dossier');}
+async function pickDir(){
+  if(!window.showDirectoryPicker){toast('Choix de dossier impossible sur ce navigateur (utilise Chrome ou Edge) : les CV iront dans Téléchargements','warn');return;}
+  try{DIR=await window.showDirectoryPicker({mode:'readwrite'});updDir();toast('Dossier choisi : '+DIR.name,'ok');}catch(e){}
+}
+async function dlRows(rows){
   if(!rows.length){toast('Rien à télécharger','warn');return;}
-  if(typeof JSZip==='undefined'){toast('Bibliothèque ZIP non chargée (connexion ?)','warn');return;}
-  toast('Préparation du ZIP…','ok');
-  const zip=new JSZip();const missing=[];const used=new Set();let n=0;
-  for(const x of rows){
-    const l=live(x.r);
-    if(!l.cvUrl){missing.push(l.quad+' (pas de CV anonyme)');continue;}
+  const missing=[],items=[];
+  for(const r of rows){const l=live(r);if(!l.cvUrl)missing.push(l.quad+(ANON.has(r.cand_id)?' (pas de PDF : ouvre le CV anonyme et imprime-le en PDF)':' (pas de CV anonyme)'));else items.push({r,l});}
+  if(!items.length){toast('Aucun PDF disponible : '+missing.join(' ; '),'warn');return;}
+  if(DIR){
+    try{
+      const old=[];for await(const [name,h] of DIR.entries()){if(h.kind==='file'&&/^Profil .+\.(pdf|docx?)$/i.test(name))old.push(name);}
+      if(old.length&&confirm('Le dossier « '+DIR.name+' » contient '+old.length+' ancien(s) CV (« Profil … »).\n\nOK = les supprimer avant de télécharger\nAnnuler = les garder (les fichiers du même nom seront remplacés)')){
+        for(const n of old)await DIR.removeEntry(n);
+      }
+    }catch(e){console.error(e);toast('Dossier inaccessible : ré-autorise-le','warn');DIR=null;updDir();return;}
+  }
+  toast('Téléchargement de '+items.length+' CV…','ok');
+  const used=new Set();let n=0;
+  for(const {r,l} of items){
     try{
       const resp=await fetch(l.cvUrl);if(!resp.ok)throw new Error(resp.status);
       const blob=await resp.blob();
       const ext=((l.cvName.match(/\.([A-Za-z0-9]{2,5})$/)||[])[1]||'pdf').toLowerCase();
-      const folder=groupBy?safe(x.sector)+'/':'';
-      let fn=folder+'Profil '+safe(l.quad)+'.'+ext,k=2;
-      while(used.has(fn))fn=folder+'Profil '+safe(l.quad)+' ('+(k++)+').'+ext;
-      used.add(fn);zip.file(fn,blob);n++;
+      let fn='Profil '+safe(l.quad)+'.'+ext,k=2;
+      while(used.has(fn))fn='Profil '+safe(l.quad)+' ('+(k++)+').'+ext;
+      used.add(fn);
+      if(DIR){const fh=await DIR.getFileHandle(fn,{create:true});const w=await fh.createWritable();await w.write(blob);await w.close();}
+      else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);await new Promise(z=>setTimeout(z,450));}
+      n++;
     }catch(e){missing.push(l.quad+' (téléchargement impossible)');}
   }
-  if(missing.length)zip.file('_manquants.txt','CV non inclus :\n'+missing.join('\n'));
-  if(!n){toast('Aucun CV anonyme disponible'+(missing.length?' : '+missing.join(', '):''),'warn');return;}
-  const out=await zip.generateAsync({type:'blob'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(out);a.download=name+'.zip';document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href),60000);
-  toast(n+' CV téléchargés'+(missing.length?' — '+missing.length+' manquant(s) (voir _manquants.txt)':''),missing.length?'warn':'ok');
+  toast(n+' CV '+(DIR?'enregistrés dans « '+DIR.name+' »':'téléchargés')+(missing.length?' — '+missing.length+' manquant(s) : '+missing.join(' ; '):''),missing.length?'warn':'ok');
 }
-function zipPrep(){
-  if(!PREP)return;
-  zipRows(PREP.ids.map(id=>{const r=ROWS.find(x=>x.id===id);return{r,sector:PREP.assign[id].secteur};}),true,'CV anonymes - newsletter '+new Date().toISOString().slice(0,10));
+function dlPrep(){if(PREP)dlRows(PREP.ids.map(id=>ROWS.find(x=>x.id===id)).filter(Boolean));}
+function dlSent(){
+  const S=ROWS.filter(r=>r.statut==='sent');const ids=[...SEL.sent];
+  dlRows(ids.length?S.filter(r=>ids.includes(r.id)):S);
 }
-function zipSent(){
-  let ids=[...SEL.sent];const S=ROWS.filter(r=>r.statut==='sent');
-  const rows=(ids.length?S.filter(r=>ids.includes(r.id)):S).map(r=>({r,sector:r.secteur||'À classer'}));
-  zipRows(rows,true,'CV anonymes - envoyés '+new Date().toISOString().slice(0,10));
-}
-function zipSector(sec){
-  const rows=ROWS.filter(r=>r.statut==='sent'&&(r.secteur||'À classer')===sec).map(r=>({r,sector:sec}));
-  zipRows(rows,false,'CV anonymes - '+safe(sec));
+function dlSector(sec){dlRows(ROWS.filter(r=>r.statut==='sent'&&(r.secteur||'À classer')===sec));}
+async function openAnon(candId){
+  let rec=null;try{rec=window.parent.document.getElementById('frame-rec').contentWindow;}catch(e){}
+  if(!rec||!rec.tnOpenAnonSaved){toast('Outil Recrutement non disponible ici (ouvre l\'outil via la page principale)','warn');return;}
+  const w=window.open('','_blank');
+  if(!w){toast('Autorise les popups pour ouvrir le CV anonyme','warn');return;}
+  w.document.write('<!DOCTYPE html><title>CV anonyme…</title><body style="font-family:system-ui;padding:48px;color:#0d3b6e"><h2>Ouverture du CV anonyme…</h2></body>');
+  const res=await rec.tnOpenAnonSaved(candId,w);
+  if(!res||!res.ok){try{w.document.body.innerHTML='<h2 style="color:#b91c1c">Impossible</h2><p>'+String((res&&res.msg)||'erreur').replace(/</g,'&lt;')+'</p>';}catch(e){}toast((res&&res.msg)||'Impossible','warn');}
 }
 
 window.addEventListener('message',e=>{if(e.data&&e.data.type==='tn_news_show')load();});
