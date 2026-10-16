@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v66</title>
+<title>Notion TAFINAR v72</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -149,10 +149,13 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v64</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v72</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
+  </button>
+  <button id="news-btn" class="btn" onclick="newsAddSelected()" style="opacity:.4;pointer-events:none;border-color:#0348ac;color:#0348ac;font-size:12px" title="Ajouter les profils sélectionnés à la newsletter">
+    <i class="ti ti-mail-forward" aria-hidden="true"></i> Newsletter
   </button>
   <div class="nav">
     <button class="tab active" onclick="showTab('s')">Sourceurs</button>
@@ -234,6 +237,8 @@ function updateMailBtn(){
   btn.innerHTML=`<i class="ti ti-mail" aria-hidden="true"></i> Mail récap${n>0?` <strong>(${n})</strong>`:''}`;
   btn.style.opacity=n>0?'1':'.4';
   btn.style.pointerEvents=n>0?'auto':'none';
+  const nb=document.getElementById('news-btn');
+  if(nb){nb.innerHTML=`<i class="ti ti-mail-forward" aria-hidden="true"></i> Newsletter${n>0?` <strong>(${n})</strong>`:''}`;nb.style.opacity=n>0?'1':'.4';nb.style.pointerEvents=n>0?'auto':'none';}
 }
 
 // ═══════════════════════════════════════
@@ -410,7 +415,7 @@ async function loadAll(silent){
   try{
     await Promise.all([fetchPostes(),fetchKanban()]);
     await fetchCandidats();
-    await fetchSuivi();await fetchNews();
+    await fetchSuivi();await fetchNews();await fetchAnonIds();
     S._lastLoad=Date.now();
     render();
   }catch(e){
@@ -1011,7 +1016,7 @@ function openForm(id){
       <div class="cv-row"><span class="cv-lbl">CV original</span><label class="cv-up${eCV.o?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i><span id="cvol">${eCV.o?esc(eCV.o.name):'Choisir fichier'}</span><input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="fCvUp('o',this)"></label><div id="cvo-act" style="display:${eCV.o?'flex':'none'};gap:4px"><button type="button" class="btn" style="font-size:11px;padding:2px 6px" onclick="fCvDl('o')"><i class="ti ti-download" aria-hidden="true"></i></button><button type="button" class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="fCvRm('o')"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div>
       <div class="cv-row"><span class="cv-lbl">CV anonyme</span><label class="cv-up${eCV.a?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i><span id="cval">${eCV.a?esc(eCV.a.name):'Choisir fichier'}</span><input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="fCvUp('a',this)"></label><div id="cva-act" style="display:${eCV.a?'flex':'none'};gap:4px"><button type="button" class="btn" style="font-size:11px;padding:2px 6px" onclick="fCvDl('a')"><i class="ti ti-download" aria-hidden="true"></i></button><button type="button" class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="fCvRm('a')"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div>
     </div>
-    <div class="m-actions" style="flex-wrap:wrap"><div style="margin-right:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" style="background:#eef3fe;color:#0348ac;border-color:#cfdcf6;font-weight:600" title="Enregistre le profil puis l'ajoute à la newsletter" onclick="saveC('${c?.id||''}',{news:true})">📬 Envoyer à la newsletter</button><button class="btn" style="background:#f0faf4;color:#166534;border-color:#bbf7d0;font-weight:600" title="Ouvre le CV anonyme dans un nouvel onglet" onclick="ficheAnon()">🕶 Générer le CV anonyme</button></div><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-p" onclick="saveC('${c?.id||''}')">Enregistrer</button></div>
+    <div class="m-actions" style="flex-wrap:wrap"><div style="margin-right:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" style="background:#eef3fe;color:#0348ac;border-color:#cfdcf6;font-weight:600" title="Enregistre le profil puis l'ajoute à la newsletter" onclick="saveC('${c?.id||''}',{news:true})">📬 Envoyer à la newsletter</button><button class="btn" style="background:#f0faf4;color:#166534;border-color:#bbf7d0;font-weight:600" title="Ouvre le CV anonyme dans un nouvel onglet" onclick="ficheAnon('${c?.id||''}')">🕶 Générer le CV anonyme</button>${(c&&S.anon&&S.anon.has(c.id))?`<button class="btn" style="background:#fff;color:#166534;border-color:#bbf7d0;font-weight:600" title="Rouvre le CV anonyme enregistré (modifiable, puis Imprimer en PDF)" onclick="ficheOpenAnon('${c.id}')">📄 Rouvrir le CV anonyme</button>`:''}</div><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-p" onclick="saveC('${c?.id||''}')">Enregistrer</button></div>
   </div></div>`;
   // Restore draft for new candidates
   if(!isEdit){
@@ -2318,17 +2323,41 @@ async function fetchNews(){
 }
 function newsHas(cid){return(S.news||[]).some(n=>n.cand_id===cid&&n.statut==='pending');}
 function newsLastSent(cid){const l=(S.news||[]).filter(n=>n.cand_id===cid&&n.statut==='sent'&&n.sent_at).sort((a,b)=>(b.sent_at||'').localeCompare(a.sent_at||''));return l[0]||null;}
-async function newsAdd(c){
+function newsRow(c){
   const p=gp(c.posteId);
-  const row={id:uid(),cand_id:c.id,quad:c.trigramme,poste_titre:c.posteTitre||(p?p.titre:''),secteur:(p&&p.secteur)||'',
+  return{id:uid(),cand_id:c.id,quad:c.trigramme,poste_titre:c.posteTitre||(p?p.titre:''),secteur:(p&&p.secteur)||'',
     dispo:c.dispo||'',mobilite:(c.mobilite||[]).join(', '),tjm:c.tjm||'',
     cv_anonyme_url:c.cvAUrl||null,cv_anonyme_name:c.cvAName||null,sourcer:c.sourcer||'',statut:'pending'};
+}
+async function newsAdd(c){
+  const row=newsRow(c);
   const{error}=await sb.from('news_liste').insert(row);
   if(error){console.error('newsAdd',error);showToast('Ajout à la newsletter impossible','warn');return false;}
   row.added_at=new Date().toISOString();
   S.news=[row,...(S.news||[])];
   showToast('📬 '+c.trigramme+' ajouté à la newsletter (onglet Newsletter → Pas encore envoyé)','ok');
   return true;
+}
+// Ajout en lot : profils sélectionnés (cartes cochées, comme pour le mail récap)
+async function newsAddSelected(){
+  if(!S.newsOk){showToast('Table newsletter absente : lance le SQL dans Supabase','warn');return;}
+  const cands=[...S.sel].map(id=>S.candidates.find(x=>x.id===id)).filter(Boolean);
+  if(!cands.length)return;
+  const noQuad=cands.filter(c=>!c.trigramme);
+  const dup=cands.filter(c=>c.trigramme&&newsHas(c.id));
+  const toAdd=cands.filter(c=>c.trigramme&&!newsHas(c.id));
+  if(!toAdd.length){showToast((dup.length?dup.length+' déjà dans la newsletter':'')+(dup.length&&noQuad.length?' · ':'')+(noQuad.length?noQuad.length+' sans quadrigramme ('+noQuad.map(c=>c.nom).join(', ')+')':''),'warn');return;}
+  if(!confirm('Ajouter '+toAdd.length+' profil(s) à la newsletter ?\n\n'+toAdd.map(c=>c.trigramme+' — '+(c.posteTitre||'')).join('\n')))return;
+  const rows=toAdd.map(newsRow);
+  const{error}=await sb.from('news_liste').insert(rows);
+  if(error){console.error('newsAddSelected',error);showToast('Ajout à la newsletter impossible','warn');return;}
+  const now=new Date().toISOString();rows.forEach(r=>r.added_at=now);
+  S.news=[...rows,...(S.news||[])];
+  S.sel=new Set();render();
+  let msg='📬 '+rows.length+' ajouté'+(rows.length>1?'s':'')+' à la newsletter';
+  if(dup.length)msg+=' · '+dup.length+' déjà présent'+(dup.length>1?'s':'');
+  if(noQuad.length)msg+=' · '+noQuad.length+' sans quadrigramme ('+noQuad.map(c=>c.nom).join(', ')+')';
+  showToast(msg,(dup.length||noQuad.length)?'warn':'ok');
 }
 // Appelé après un enregistrement réussi. Le popup n'apparaît que si tout est bon
 // (les popups « poste » ont déjà fait return plus haut, donc aucun chevauchement).
@@ -2366,7 +2395,20 @@ function playDoneN(ok){
     });
   }catch(e){}
 }
-async function ficheAnon(){
+async function ficheOpenAnon(id){
+  let rec=null;try{rec=window.parent.document.getElementById('frame-rec').contentWindow;}catch(e){}
+  if(!rec||!rec.tnOpenAnonSaved){showToast('Outil Recrutement non disponible ici (ouvre l\'outil via la page principale)','warn');return;}
+  const w=window.open('','_blank');
+  if(!w){showToast('Autorise les popups pour ouvrir le CV anonyme','warn');return;}
+  w.document.write('<!DOCTYPE html><title>CV anonyme…</title><body style="font-family:system-ui;padding:48px;color:#0d3b6e"><h2>Ouverture du CV anonyme…</h2></body>');
+  const res=await rec.tnOpenAnonSaved(id,w);
+  if(!res||!res.ok){try{w.document.body.innerHTML='<h2 style="color:#b91c1c">Impossible</h2><p>'+String((res&&res.msg)||'erreur').replace(/</g,'&lt;')+'</p>';}catch(e){}showToast((res&&res.msg)||'Impossible','warn');}
+}
+async function fetchAnonIds(){
+  try{const{data,error}=await sb.from('cv_anon').select('cand_id');if(error)throw error;S.anon=new Set((data||[]).map(x=>x.cand_id));}
+  catch(e){S.anon=new Set();}
+}
+async function ficheAnon(candId){
   const nom=(document.getElementById('f-nom')?.value||'').trim();
   if(!nom){showToast('Renseigne le nom du candidat d\'abord','warn');return;}
   let rec=null;try{rec=window.parent.document.getElementById('frame-rec').contentWindow;}catch(e){}
@@ -2381,8 +2423,12 @@ async function ficheAnon(){
     if(eCV&&eCV.o&&eCV.o.url){const r=await fetch(eCV.o.url);const b=await r.blob();return new File([b],eCV.o.name||'cv.pdf',{type:'application/pdf'});}
     return null;
   };
-  const res=await rec.tnAnonForFiche(nom,w,getFile);
-  if(res&&res.ok){playDoneN(true);showToast('CV anonyme prêt dans le nouvel onglet','ok');}
+  const res=await rec.tnAnonForFiche(nom,w,getFile,candId||'');
+  if(res&&res.ok){
+    playDoneN(true);
+    if(res.stored){(S.anon=S.anon||new Set()).add(candId);showToast('CV anonyme prêt et enregistré dans la fiche','ok');}
+    else showToast(candId?'CV anonyme prêt (enregistrement dans la fiche impossible)':'CV anonyme prêt — enregistre d\'abord le profil pour le conserver dans la fiche',candId?'warn':'ok');
+  }
   else{
     playDoneN(false);
     try{w.document.body.innerHTML='<h2 style="color:#b91c1c">Anonymisation impossible</h2><p>'+String((res&&res.msg)||'erreur').replace(/</g,'&lt;')+'</p>';}catch(e){}
@@ -2960,7 +3006,7 @@ async function init(){
     window._local=scanLocal();
     await Promise.all([fetchPostes(),fetchKanban()]);
     await fetchCandidats();
-    await fetchSuivi();await fetchNews();
+    await fetchSuivi();await fetchNews();await fetchAnonIds();
     S._lastLoad=Date.now();
     render();
   }catch(e){
