@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v73</title>
+<title>Notion TAFINAR v74</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -149,7 +149,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v73</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v74</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -344,7 +344,7 @@ function rowToCand(r){
     nom:r.nom||'',trigramme:r.trigramme||'',
     posteId:'',posteTitre:r.poste_titre||'',
     dispo:r.dispo||'',mobilite:mob,
-    pretention:r.pretention||'',tjm:r.tjm||'',freelance:r.freelance||'Non',
+    pretention:r.pretention||'',tjm:r.tjm||'',proposeHt:r.propose_ht||'',freelance:r.freelance||'Non',
     remarque:r.remarque||'',sourcer:r.sourcer||'',
     statut:r.statut||'',ordre:(r.ordre===null||r.ordre===undefined)?null:Number(r.ordre),
     score:r.score||null,verdict:r.verdict||null,
@@ -361,7 +361,7 @@ function candToRow(c){
     local_id:c.id,nom:c.nom,trigramme:c.trigramme||'',
     poste_titre:c.posteTitre||(gp(c.posteId)?.titre||''),
     dispo:c.dispo||'',mobilite:JSON.stringify(c.mobilite||[]),
-    pretention:c.pretention||'',tjm:c.tjm||'',freelance:c.freelance||'Non',
+    pretention:c.pretention||'',tjm:c.tjm||'',propose_ht:c.proposeHt||'',freelance:c.freelance||'Non',
     remarque:c.remarque||'',sourcer:c.sourcer||'',statut:c.statut||'',
     ordre:(c.ordre===undefined?null:c.ordre),
     score:c.score||null,verdict:c.verdict||null,
@@ -617,6 +617,7 @@ function rProfils(){
       <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">
         ${c.pretention?`<span class="ptag ptag-b">${esc(c.pretention)}</span>`:''}
         ${c.tjm?`<span class="ptag ptag-g">TJM ${esc(c.tjm)}</span>`:''}
+        ${c.proposeHt?`<span class="ptag ptag-g">Proposé ${esc(c.proposeHt)} € HT</span>`:''}
         ${c.freelance==='Oui'?'<span class="ptag ptag-g">Freelance</span>':''}
         ${c.dispo?`<span class="ptag ptag-n">${esc(c.dispo)}</span>`:''}
         ${sc(c)}
@@ -1007,7 +1008,10 @@ function openForm(id){
       <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="f-pret" value="${esc(c?.pretention||'')}" placeholder="ex: 45k" oninput="saveDraft();updQuadBtn()"></div>
       <div class="fr"><label class="fl">Freelance</label><select class="fi" id="f-free" onchange="saveDraft()"><option value="Non"${(c?.freelance||'Non')==='Non'?' selected':''}>Non</option><option value="Oui"${c?.freelance==='Oui'?' selected':''}>Oui</option><option value="CDI"${c?.freelance==='CDI'?' selected':''}>CDI</option><option value="À valider"${c?.freelance==='À valider'?' selected':''}>À valider</option></select></div>
     </div>
-    <div class="fr"><label class="fl">TJM (€ HT / jour)</label><input class="fi" id="f-tjm" value="${esc(c?.tjm||'')}" placeholder="ex: 450" oninput="saveDraft()"></div>
+    <div class="fg">
+      <div class="fr"><label class="fl">TJM (€ HT / jour)</label><input class="fi" id="f-tjm" value="${esc(c?.tjm||'')}" placeholder="ex: 450" oninput="saveDraft()"></div>
+      <div class="fr"><label class="fl">Proposé à (€ HT)</label><input class="fi" id="f-pht" value="${esc(c?.proposeHt||'')}" placeholder="ex: 520" oninput="saveDraft()"></div>
+    </div>
     <div class="fr">${isAdmin()?`<label class='fl'>Sourceur</label><select class='fi' id='f-src'>${S.sourceurs.map(s=>`<option value='${s}'${srcr===s?' selected':''}>${s}</option>`).join('')}</select>`:`<input type='hidden' id='f-src' value='${srcr}'>`}</div>
     <div class="fr" style="position:relative">
       <label class="fl">Remarque</label>
@@ -1036,6 +1040,7 @@ function openForm(id){
         if(draft.rem)set('f-rem',draft.rem);
         if(draft.tel)set('f-tel',draft.tel);
         if(draft.tjm)set('f-tjm',draft.tjm);
+        if(draft.pht)set('f-pht',draft.pht);
         if(draft.free){const el=document.getElementById('f-free');if(el)el.value=draft.free;}
         if(draft.ps){
           set('f-ps',draft.ps);
@@ -1133,6 +1138,7 @@ function captureFormState(){
     remarque:document.getElementById('f-rem')?.value||'',
     telephone:document.getElementById('f-tel')?.value||'',
     tjm:document.getElementById('f-tjm')?.value||'',
+    proposeHt:document.getElementById('f-pht')?.value||'',
     mobilite:[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim()),
     posteSearch:document.getElementById('f-ps')?.value||'',
     posteId:document.getElementById('f-pid')?.value||'',
@@ -1223,6 +1229,7 @@ async function saveC(id,opt){
     sourcer,remarque:rem,
     telephone:(document.getElementById('f-tel')?.value||'').trim(),
     tjm:(document.getElementById('f-tjm')?.value||'').trim(),
+    proposeHt:(document.getElementById('f-pht')?.value||'').trim(),
   };
   const old=id?S.candidates.find(x=>x.id===id):null;
   const cid=old?old.id:uid();
@@ -1241,7 +1248,7 @@ async function saveC(id,opt){
       const upd={
         nom:fields.nom,trigramme:fields.trigramme,poste_titre:fields.posteTitre,dispo:fields.dispo,
         mobilite:JSON.stringify(mobilite),pretention:fields.pretention,freelance:fields.freelance,
-        remarque:fields.remarque,sourcer,telephone:fields.telephone,tjm:fields.tjm,
+        remarque:fields.remarque,sourcer,telephone:fields.telephone,tjm:fields.tjm,propose_ht:fields.proposeHt,
         cv_original_url:cvFields.cvOUrl,cv_original_name:cvFields.cvOName,
         cv_anonyme_url:cvFields.cvAUrl,cv_anonyme_name:cvFields.cvAName,
       };
@@ -1294,6 +1301,7 @@ function openView(id){
       <div><span style="color:#6b7280">Dispo :</span> ${esc(c.dispo)||'—'}</div>
       <div><span style="color:#6b7280">Prétention :</span> ${esc(c.pretention)||'—'}</div>
       <div><span style="color:#6b7280">TJM (€ HT) :</span> ${esc(c.tjm)||'—'}</div>
+      <div><span style="color:#6b7280">Proposé à (€ HT) :</span> ${esc(c.proposeHt)||'—'}</div>
       <div><span style="color:#6b7280">Mobilité :</span> ${esc((c.mobilite||[]).join(', '))||'—'}</div>
       <div><span style="color:#6b7280">Freelance :</span> ${esc(c.freelance)}</div>
       ${c.telephone?`<div><span style="color:#6b7280">Téléphone :</span> <strong>${esc(c.telephone)}</strong></div>`:''}
@@ -1559,7 +1567,7 @@ function reopenCandidatFormWithState(newPosteId,newPosteTitre){
   setTimeout(()=>{
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
     set('f-nom',state.nom);set('f-tri',state.trigramme);set('f-dis',state.dispo);
-    set('f-pret',state.pretention);set('f-rem',state.remarque);set('f-tel',state.telephone||'');set('f-tjm',state.tjm||'');
+    set('f-pret',state.pretention);set('f-rem',state.remarque);set('f-tel',state.telephone||'');set('f-tjm',state.tjm||'');set('f-pht',state.proposeHt||'');
     const ff=document.getElementById('f-free');if(ff)ff.value=state.freelance;
     const fs=document.getElementById('f-src');if(fs)fs.value=state.sourcer;
     if(state.posteSearch){set('f-ps',state.posteSearch);set('f-pid',state.posteId||'');}
@@ -2514,7 +2522,7 @@ function openSuivi(id){
   const info=c?`<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:12px">
     <div style="font-weight:700;margin-bottom:2px">${esc(c.nom)} <span style="color:#0d3b6e">${esc(c.trigramme||s.quad)}</span></div>
     <div><span style="color:#6b7280">Dispo :</span> ${esc(c.dispo||'—')} · <span style="color:#6b7280">Mobilité :</span> ${esc((c.mobilite||[]).join(', ')||'—')}</div>
-    <div><span style="color:#6b7280">Prétention :</span> ${esc(c.pretention||'—')} · <span style="color:#6b7280">TJM :</span> ${esc(c.tjm||'—')} · <span style="color:#6b7280">Freelance :</span> ${esc(c.freelance||'—')}</div>
+    <div><span style="color:#6b7280">Prétention :</span> ${esc(c.pretention||'—')} · <span style="color:#6b7280">TJM :</span> ${esc(c.tjm||'—')} · <span style="color:#6b7280">Proposé HT :</span> ${esc(c.proposeHt||'—')} · <span style="color:#6b7280">Freelance :</span> ${esc(c.freelance||'—')}</div>
     ${c.remarque?`<div><span style="color:#6b7280">Remarques :</span> ${esc(c.remarque)}</div>`:''}
     <div style="margin-top:4px">${c.cvOUrl?`<a href="${esc(c.cvOUrl)}" target="_blank">📄 CV original</a>`:'<span style="color:#9ca3af">pas de CV original</span>'} · ${c.cvAUrl?`<a href="${esc(c.cvAUrl)}" target="_blank">📄 CV anonymisé</a>`:'<span style="color:#9ca3af">pas de CV anonymisé</span>'}</div></div>`
     :`<div style="background:#fef9c3;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px">Le profil ${esc(s.nom)} n'existe plus dans « Les Profils » (supprimé ?). Le suivi reste consultable.</div>`;
@@ -3015,14 +3023,14 @@ async function runMigration(){
 // VÉRIFICATION DE LA BASE (script SQL v59 exécuté ?)
 // ═══════════════════════════════════════
 async function checkSchema(){
-  const a=await sb.from('candidats').select('ordre,deleted_at,cv_original_url,cv_anonyme_url,analyse_cv,tjm').limit(1);
+  const a=await sb.from('candidats').select('ordre,deleted_at,cv_original_url,cv_anonyme_url,analyse_cv,tjm,propose_ht').limit(1);
   const b=await sb.from('kanban_config').select('sourcer').limit(1);
   if(!a.error&&!b.error)return true;
   const err=a.error||b.error;console.error('checkSchema',err);
   const offline=!err.code&&/fetch|network|failed/i.test(err.message||'');
   document.getElementById('mroot').innerHTML=`<div style="position:fixed;inset:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;z-index:400"><div style="background:#fff;border-radius:16px;padding:32px;width:520px;max-width:94vw;box-shadow:0 8px 32px rgba(0,0,0,.12)">
     <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:10px">${offline?'Connexion à la base impossible':'Mise à jour de la base nécessaire (1 seule fois)'}</div>
-    <div style="font-size:13px;color:#374151;line-height:1.7">${offline?'Vérifie ta connexion internet puis réessaie.':'Ouvre <strong>Supabase → SQL Editor</strong>, colle le contenu du fichier <strong>tafinar_v59_migration.sql</strong> et clique <strong>Run</strong>. Rien n\'est supprimé. Reviens ensuite ici.'}
+    <div style="font-size:13px;color:#374151;line-height:1.7">${offline?'Vérifie ta connexion internet puis réessaie.':'Ouvre <strong>Supabase → SQL Editor</strong>, colle le contenu du fichier <strong>tafinar_TOUT_EN_UN.sql</strong> et clique <strong>Run</strong>. Rien n\'est supprimé. Reviens ensuite ici.'}
     <div style="font-size:11px;color:#9ca3af;margin-top:8px">${esc(err.message||'')}</div></div>
     <div style="margin-top:16px"><button class="btn btn-p" onclick="location.reload()">Réessayer</button></div></div></div>`;
   return false;
@@ -3097,6 +3105,7 @@ function saveDraft(){
       rem:document.getElementById('f-rem')?.value||'',
       tel:document.getElementById('f-tel')?.value||'',
       tjm:document.getElementById('f-tjm')?.value||'',
+      pht:document.getElementById('f-pht')?.value||'',
       ts:Date.now()
     };
     localStorage.setItem('tn_form_draft',JSON.stringify(draft));
