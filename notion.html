@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v72</title>
+<title>Notion TAFINAR v73</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -149,10 +149,13 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v72</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v73</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
+  </button>
+  <button id="quad-btn" class="btn" onclick="fillAllQuads()" style="display:none;border-color:#7c3aed;color:#7c3aed;font-size:12px" title="Remplit d'un coup tous les quadrigrammes manquants (une seule fois)">
+    ✨ Quadrigrammes
   </button>
   <button id="news-btn" class="btn" onclick="newsAddSelected()" style="opacity:.4;pointer-events:none;border-color:#0348ac;color:#0348ac;font-size:12px" title="Ajouter les profils sélectionnés à la newsletter">
     <i class="ti ti-mail-forward" aria-hidden="true"></i> Newsletter
@@ -237,6 +240,8 @@ function updateMailBtn(){
   btn.innerHTML=`<i class="ti ti-mail" aria-hidden="true"></i> Mail récap${n>0?` <strong>(${n})</strong>`:''}`;
   btn.style.opacity=n>0?'1':'.4';
   btn.style.pointerEvents=n>0?'auto':'none';
+  const qb=document.getElementById('quad-btn');
+  if(qb){const m=isAdmin()?quadMissing().filter(c=>makeQuadN(c.nom)).length:0;qb.style.display=m>0?'inline-flex':'none';qb.innerHTML='✨ Quadrigrammes manquants <strong>('+m+')</strong>';}
   const nb=document.getElementById('news-btn');
   if(nb){nb.innerHTML=`<i class="ti ti-mail-forward" aria-hidden="true"></i> Newsletter${n>0?` <strong>(${n})</strong>`:''}`;nb.style.opacity=n>0?'1':'.4';nb.style.pointerEvents=n>0?'auto':'none';}
 }
@@ -975,7 +980,7 @@ function openForm(id){
     <div class="m-title">${isEdit?'Modifier':'Ajouter'} un profil<button class="m-close" onclick="closeM()">×</button></div>
     <div class="fg">
       <div class="fr"><label class="fl">Nom et prénom *</label><input class="fi" id="f-nom" value="${esc(c?.nom||'')}" oninput="chkDupC();saveDraft()"><div id="dup-c"></div></div>
-      <div class="fr"><label class="fl">Trigramme</label><input class="fi" id="f-tri" value="${esc(c?.trigramme||'')}" oninput="saveDraft()"></div>
+      <div class="fr"><label class="fl">Trigramme</label><div style="display:flex;gap:6px"><input class="fi" id="f-tri" value="${esc(c?.trigramme||'')}" oninput="saveDraft()" style="flex:1"><button type="button" id="tri-auto" class="btn" style="display:${quadBtnVisible(c?.pretention)?'inline-flex':'none'};white-space:nowrap;font-size:12px" title="Calcule le quadrigramme à partir du nom (1ère et dernière lettre du prénom, puis du nom)" onclick="autoQuad()">✨ Auto-remplir</button></div></div>
     </div>
     <div class="fr" style="position:relative">
       <label class="fl">Poste ciblé *</label>
@@ -999,7 +1004,7 @@ function openForm(id){
       <div id="mob-tags" class="tags-row">${(c?.mobilite||[]).map(v=>`<div class="tg">${esc(v)}<span class="tg-x" onclick="this.parentElement.remove()">×</span></div>`).join('')}</div>
     </div>
     <div class="fg">
-      <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="f-pret" value="${esc(c?.pretention||'')}" placeholder="ex: 45k" oninput="saveDraft()"></div>
+      <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="f-pret" value="${esc(c?.pretention||'')}" placeholder="ex: 45k" oninput="saveDraft();updQuadBtn()"></div>
       <div class="fr"><label class="fl">Freelance</label><select class="fi" id="f-free" onchange="saveDraft()"><option value="Non"${(c?.freelance||'Non')==='Non'?' selected':''}>Non</option><option value="Oui"${c?.freelance==='Oui'?' selected':''}>Oui</option><option value="CDI"${c?.freelance==='CDI'?' selected':''}>CDI</option><option value="À valider"${c?.freelance==='À valider'?' selected':''}>À valider</option></select></div>
     </div>
     <div class="fr"><label class="fl">TJM (€ HT / jour)</label><input class="fi" id="f-tjm" value="${esc(c?.tjm||'')}" placeholder="ex: 450" oninput="saveDraft()"></div>
@@ -1160,6 +1165,11 @@ async function saveC(id,opt){
     const el=document.getElementById('f-nom');
     if(el){el.style.border='1.5px solid #dc2626';el.focus();setTimeout(()=>{if(el)el.style.border='';},2000);}
     showToast('Le nom du candidat est obligatoire','warn');return;
+  }
+  // Mehdi : quadrigramme vide -> rempli automatiquement
+  if(isAdmin()){
+    const te=document.getElementById('f-tri');
+    if(te&&!te.value.trim()){const q=makeQuadN(nom);if(q)te.value=q;}
   }
   // ── Poste non sélectionné dans la liste ──
   if(!posteId){
@@ -2309,6 +2319,54 @@ async function suField(id,key,val){
   try{await dbUpdSuivi(id,fields);}
   catch(e){console.error(e);showToast('Enregistrement impossible — rechargement','warn');await fetchSuivi();}
   if(S.tab==='su')suBody();
+}
+
+// ═══════════════════════════════════════
+// QUADRIGRAMME AUTOMATIQUE (v73) — même règle que l'anonymisation des CV
+// 1er prénom (Jean-Luc = un seul prénom) : 1ère + dernière lettre ; nom complet (mots collés) : 1ère + dernière lettre
+// ═══════════════════════════════════════════════════════════
+function lettersOnlyN(x){return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z]/g,'').toUpperCase();}
+function makeQuadN(fullName){
+  const w=String(fullName||'').trim().split(/\s+/).filter(Boolean);
+  if(w.length<2)return '';
+  const p=lettersOnlyN(w[0]),n=lettersOnlyN(w.slice(1).join(''));
+  if(!p||!n)return '';
+  return p[0]+p[p.length-1]+n[0]+n[n.length-1];
+}
+function isSaid(){return /^said/i.test(getMe()||'');}
+// Mehdi : toujours. Said : jamais (pour l'instant). Les autres : seulement si la prétention salariale est renseignée.
+function quadBtnVisible(pret){
+  if(isAdmin())return true;
+  if(isSaid())return false;
+  return !!String(pret||'').trim();
+}
+function updQuadBtn(){
+  const b=document.getElementById('tri-auto');if(!b)return;
+  b.style.display=quadBtnVisible(document.getElementById('f-pret')?.value)?'inline-flex':'none';
+}
+function autoQuad(){
+  const nom=(document.getElementById('f-nom')?.value||'').trim();
+  const q=makeQuadN(nom);
+  if(!q){showToast('Impossible : il faut un prénom ET un nom dans le champ « Nom »','warn');return;}
+  const el=document.getElementById('f-tri');
+  if(el.value.trim()&&el.value.trim().toUpperCase()!==q&&!confirm('Remplacer « '+el.value.trim()+' » par « '+q+' » ?'))return;
+  el.value=q;saveDraft();showToast('Quadrigramme : '+q,'ok');
+}
+function quadMissing(){return S.candidates.filter(c=>!c.deletedAt&&!String(c.trigramme||'').trim());}
+async function fillAllQuads(){
+  if(!isAdmin())return;
+  const miss=quadMissing();
+  const todo=miss.map(c=>({c,q:makeQuadN(c.nom)})).filter(x=>x.q);
+  const skip=miss.filter(c=>!makeQuadN(c.nom));
+  if(!todo.length){showToast(miss.length?miss.length+' profil(s) sans quadrigramme mais nom incomplet (prénom + nom requis)':'Tous les profils ont déjà un quadrigramme','warn');return;}
+  const lines=todo.slice(0,40).map(x=>x.q+'  ←  '+x.c.nom).join('\n')+(todo.length>40?'\n… et '+(todo.length-40)+' autres':'');
+  if(!confirm('Remplir '+todo.length+' quadrigramme(s) manquant(s) ?\n(les quadrigrammes déjà remplis ne sont pas touchés)\n\n'+lines+(skip.length?'\n\n'+skip.length+' profil(s) ignoré(s) : nom incomplet.':'')))return;
+  let ok=0,ko=0;
+  for(const {c,q} of todo){
+    try{await dbUpd(c.id,{trigramme:q});c.trigramme=q;ok++;}catch(e){console.error(e);ko++;}
+  }
+  saveLocal();render();
+  showToast(ok+' quadrigramme(s) rempli(s)'+(ko?' — '+ko+' échec(s)':'')+(skip.length?' — '+skip.length+' ignoré(s)':''),ko?'warn':'ok');
 }
 
 // ═══════════════════════════════════════
