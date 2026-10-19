@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v76</title>
+<title>Notion TAFINAR v77</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -149,7 +149,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v76</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v77</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -770,7 +770,7 @@ function getSelData(){
   const result=[];
   S.sel.forEach(id=>{
     const c=S.candidates.find(x=>x.id===id);
-    if(c){const p=gp(c.posteId);result.push({nom:c.nom,trigramme:c.trigramme,posteTitre:p?p.titre:(c.posteTitre||''),dispo:c.dispo,mobilite:c.mobilite,pretention:c.pretention,tjm:c.tjm,freelance:c.freelance,remarque:c.remarque,score:c.score,verdict:c.verdict,_id:c.id,cvOUrl:c.cvOUrl,cvOName:c.cvOName,cvAUrl:c.cvAUrl,cvAName:c.cvAName});}
+    if(c){const p=gp(c.posteId);result.push({nom:c.nom,trigramme:c.trigramme,posteTitre:p?p.titre:(c.posteTitre||''),dispo:c.dispo,mobilite:c.mobilite,pretention:c.pretention,tjm:c.tjm,proposeHt:c.proposeHt,freelance:c.freelance,remarque:c.remarque,score:c.score,verdict:c.verdict,_id:c.id,cvOUrl:c.cvOUrl,cvOName:c.cvOName,cvAUrl:c.cvAUrl,cvAName:c.cvAName});}
   });
   return result;
 }
@@ -810,7 +810,7 @@ function openMailModal(){
   mailLignes=[];
   ordre.forEach(p=>byPoste[p].forEach(c=>mailLignes.push({
     id:c._id,quad:c.trigramme||quadDe(c.nom),nom:c.nom,poste:p,dispo:c.dispo||'',
-    mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',tjm:c.tjm||'',freelance:c.freelance||'',remarques:c.remarque||''
+    mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',tjm:c.proposeHt||'',freelance:c.freelance||'',remarques:c.remarque||''
   })));
   mailTxt.intro2='Veuillez trouver ci-dessous une sélection de profils pour '+(ordre.length>1?'les postes demandés':'le poste demandé')+' :';
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
