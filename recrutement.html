@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v74</title>
+<title>Recrutement TAFINAR v76</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -198,7 +198,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v74</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v76</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -251,6 +251,7 @@ textarea{resize:vertical;line-height:1.5}
     <div class="row2">
       <div class="card" style="display:flex;flex-direction:column">
         <div class="ptitle"><span><i class="ti ti-briefcase" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Description du poste</span></div>
+        <input id="job-q" type="search" placeholder="🔍 Rechercher un poste…" oninput="loadJobLib()" autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px">
         <div class="lib-row">
           <select id="job-lib" onchange="loadJob()" style="flex:1"><option value="">— Sélectionner un poste —</option></select>
           <button class="new-job-btn" onclick="openNewJobPopup()" title="Créer un nouveau poste"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px"></i>Nouveau poste</button>
@@ -604,7 +605,7 @@ function loadJobLib(){
       // Cache in memory before stripping
       window._analysesCache=window._analysesCache||{};
       if(!window._analysesCache[n])window._analysesCache[n]=e.analysis;
-      lib[n]={desc:e.desc||''};
+      lib[n]={desc:e.desc||'',ts:e.ts||0};
       migrated=true;
     }
   });
@@ -612,7 +613,14 @@ function loadJobLib(){
   const sel=document.getElementById('job-lib');
   const cur=sel.value;
   sel.innerHTML='<option value="">— Charger un poste sauvegarde —</option>';
-  Object.keys(lib).sort().forEach(n=>{
+  // Tri : du plus récent au plus ancien (date d'enregistrement ; anciens postes sans date = ordre de sauvegarde)
+  const nz=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const q=nz((document.getElementById('job-q')||{}).value||'').trim();
+  const keys=Object.keys(lib).map((n,i)=>({n,i,ts:(lib[n]&&lib[n].ts)||0}))
+    .sort((a,b)=>(b.ts-a.ts)||(b.i-a.i)).map(x=>x.n)
+    .filter(n=>!q||nz(n).includes(q)||nz(typeof lib[n]==='string'?lib[n]:(lib[n]&&lib[n].desc)||'').includes(q));
+  if(q&&!keys.length){const o=document.createElement('option');o.value='';o.textContent='Aucun résultat';sel.appendChild(o);}
+  keys.forEach(n=>{
     const o=document.createElement('option');o.value=n;o.textContent=n;
     if(n===cur)o.selected=true;sel.appendChild(o);
   });
@@ -635,9 +643,10 @@ function saveJob(){
   if(!txt){alert('Description du poste vide.');return;}
   const name=prompt('Nom pour ce poste :');if(!name||!name.trim())return;
   const lib=JSON.parse(localStorage.getItem('cvjobs')||'{}');
-  lib[name.trim()]={desc:txt};
+  delete lib[name.trim()];lib[name.trim()]={desc:txt,ts:Date.now()};
   localStorage.setItem('cvjobs',JSON.stringify(lib));
   if(currentJobAnalysis){window._analysesCache=window._analysesCache||{};window._analysesCache[name.trim()]=currentJobAnalysis;}
+  const jq=document.getElementById('job-q');if(jq)jq.value='';
   loadJobLib();document.getElementById('job-lib').value=name.trim();
 }
 function deleteJob(){
@@ -1388,13 +1397,14 @@ function confirmNewJob(){
   const lib = JSON.parse(localStorage.getItem('cvjobs')||'{}');
   const existing = lib[name];
   const savedAnalysis = (existing&&typeof existing==='object') ? existing.analysis : null;
-  lib[name] = {desc: desc}; // analysis stored in memory only (no quota issue)
+  delete lib[name];lib[name] = {desc: desc, ts: Date.now()}; // analysis stored in memory only (no quota issue)
   localStorage.setItem('cvjobs', JSON.stringify(lib));
   // Cache analysis in memory for this session
   if(currentJobAnalysis || savedAnalysis){
     window._analysesCache = window._analysesCache || {};
     window._analysesCache[name] = currentJobAnalysis || savedAnalysis;
   }
+  const jq=document.getElementById('job-q');if(jq)jq.value='';
   loadJobLib();
   const sel = document.getElementById('job-lib');
   if(sel) sel.value = name;
