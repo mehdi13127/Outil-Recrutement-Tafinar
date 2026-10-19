@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v74</title>
+<title>Notion TAFINAR v76</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -149,7 +149,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v74</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v76</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -1025,7 +1025,7 @@ function openForm(id){
       <div class="cv-row"><span class="cv-lbl">CV original</span><label class="cv-up${eCV.o?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i><span id="cvol">${eCV.o?esc(eCV.o.name):'Choisir fichier'}</span><input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="fCvUp('o',this)"></label><div id="cvo-act" style="display:${eCV.o?'flex':'none'};gap:4px"><button type="button" class="btn" style="font-size:11px;padding:2px 6px" onclick="fCvDl('o')"><i class="ti ti-download" aria-hidden="true"></i></button><button type="button" class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="fCvRm('o')"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div>
       <div class="cv-row"><span class="cv-lbl">CV anonyme</span><label class="cv-up${eCV.a?' has':''}"><i class="ti ti-upload" aria-hidden="true"></i><span id="cval">${eCV.a?esc(eCV.a.name):'Choisir fichier'}</span><input type="file" accept=".pdf,.doc,.docx" style="display:none" onchange="fCvUp('a',this)"></label><div id="cva-act" style="display:${eCV.a?'flex':'none'};gap:4px"><button type="button" class="btn" style="font-size:11px;padding:2px 6px" onclick="fCvDl('a')"><i class="ti ti-download" aria-hidden="true"></i></button><button type="button" class="btn btn-r" style="font-size:11px;padding:2px 6px" onclick="fCvRm('a')"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div>
     </div>
-    <div class="m-actions" style="flex-wrap:wrap"><div style="margin-right:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" style="background:#eef3fe;color:#0348ac;border-color:#cfdcf6;font-weight:600" title="Enregistre le profil puis l'ajoute à la newsletter" onclick="saveC('${c?.id||''}',{news:true})">📬 Envoyer à la newsletter</button><button class="btn" style="background:#f0faf4;color:#166534;border-color:#bbf7d0;font-weight:600" title="Ouvre le CV anonyme dans un nouvel onglet" onclick="ficheAnon('${c?.id||''}')">🕶 Générer le CV anonyme</button>${(c&&S.anon&&S.anon.has(c.id))?`<button class="btn" style="background:#fff;color:#166534;border-color:#bbf7d0;font-weight:600" title="Rouvre le CV anonyme enregistré (modifiable, puis Imprimer en PDF)" onclick="ficheOpenAnon('${c.id}')">📄 Rouvrir le CV anonyme</button>`:''}</div><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-p" onclick="saveC('${c?.id||''}')">Enregistrer</button></div>
+    <div class="m-actions" style="flex-wrap:wrap"><div style="margin-right:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" style="background:#eef3fe;color:#0348ac;border-color:#cfdcf6;font-weight:600" title="Enregistre le profil puis l'ajoute à la newsletter" onclick="saveC('${c?.id||''}',{news:true})">📬 Envoyer à la newsletter</button><button class="btn" style="background:#fff7ed;color:#9a3412;border-color:#fed7aa;font-weight:600" title="Ajoute ce profil à l'onglet Suivi (sans renvoyer de mail)" onclick="ficheToSuivi('${c?.id||''}')">📤 Ajouter au suivi</button><button class="btn" style="background:#f0faf4;color:#166534;border-color:#bbf7d0;font-weight:600" title="Ouvre le CV anonyme dans un nouvel onglet" onclick="ficheAnon('${c?.id||''}')">🕶 Générer le CV anonyme</button>${(c&&S.anon&&S.anon.has(c.id))?`<button class="btn" style="background:#fff;color:#166534;border-color:#bbf7d0;font-weight:600" title="Rouvre le CV anonyme enregistré (modifiable, puis Imprimer en PDF)" onclick="ficheOpenAnon('${c.id}')">📄 Rouvrir le CV anonyme</button>`:''}</div><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-p" onclick="saveC('${c?.id||''}')">Enregistrer</button></div>
   </div></div>`;
   // Restore draft for new candidates
   if(!isEdit){
@@ -2568,6 +2568,14 @@ function openNewSuivi(){
     <div id="ns-warn" style="font-size:12px;color:#b45309"></div>
     <div class="m-actions"><button class="btn" onclick="closeM()">Annuler</button><button class="btn btn-g" onclick="nsSave()">Ajouter</button></div>
   </div></div>`;
+}
+function ficheToSuivi(id){
+  const c=id?S.candidates.find(x=>x.id===id):null;
+  if(!c){showToast("Enregistre d'abord le profil",'warn');return;}
+  closeM();openNewSuivi();
+  nsPick(id);
+  const pe=document.getElementById('ns-poste');
+  if(pe&&!pe.value&&c.posteTitre){pe.value=c.posteTitre;nsPoste();}
 }
 function nsFilter(){
   const q=normNom(document.getElementById('ns-q').value);const L=document.getElementById('ns-list');
