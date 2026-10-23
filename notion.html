@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v78</title>
+<title>Notion TAFINAR v79</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -100,6 +100,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 .pc.sel{border-color:var(--green);background:#f0faf4}
 .pc-src{font-size:10px;color:#9ca3af;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
 .pc-name{font-size:13px;font-weight:600}
+.qtag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#0d3b6e;background:#e8f0fe;border:1px solid #c7d8f6;border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:1px}
 .pc-poste{font-size:11px;color:#6b7280;margin-bottom:5px}
 .ptag{font-size:10px;padding:1px 6px;border-radius:6px;margin-right:3px}
 .ptag-b{background:#dbeafe;color:#1e40af}
@@ -149,7 +150,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v78</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v79</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -560,7 +561,7 @@ function rSrc(){
           const cvTag=(c.cvOUrl||c.cvAUrl)?`<span title="CV joint" style="font-size:10px;color:#166534;margin-left:4px"><i class="ti ti-paperclip" aria-hidden="true"></i></span>`:'';
           return`<div class="card${isSel?' sel':''}${ed?'':' readonly'}" style="position:relative" ${ed?'draggable="true"':''} data-id="${c.id}" onclick="${ed?`openForm('${c.id}')`:`openView('${c.id}')`}" ondragstart="dst(event,'${c.id}')" ondragend="den()">
             <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" ondragstart="event.stopPropagation()">
-            <div class="card-name">${esc(c.nom)}${cvTag}</div>
+            <div class="card-name">${esc(c.nom)}${c.trigramme?`<span class="qtag">${esc(c.trigramme)}</span>`:''}${cvTag}</div>
             <div class="card-poste">${p?esc(p.titre):c.posteTitre?esc(c.posteTitre):'—'}</div>
             ${scoreBadge}
             ${ed?`<div style="position:absolute;top:4px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -612,7 +613,7 @@ function rProfils(){
       <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)">
       ${canEditC(c.sourcer)?`<button onclick="event.stopPropagation();delCand('${c.id}')" style="position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:14px;color:#9ca3af;line-height:1" title="Supprimer">×</button>`:''}
       <div class="pc-src">${esc(c.sourcer)}</div>
-      <div class="pc-name">${esc(c.nom)}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534;font-size:12px" aria-hidden="true"></i>':''}</div>
+      <div class="pc-name">${esc(c.nom)}${c.trigramme?`<span class="qtag">${esc(c.trigramme)}</span>`:''}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534;font-size:12px" aria-hidden="true"></i>':''}</div>
       <div class="pc-poste">${esc(c.posteTitre||'—')}</div>
       <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">
         ${c.pretention?`<span class="ptag ptag-b">${esc(c.pretention)}</span>`:''}
