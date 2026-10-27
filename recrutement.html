@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recrutement TAFINAR v79</title>
+<title>Recrutement TAFINAR v80</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -198,7 +198,7 @@ textarea{resize:vertical;line-height:1.5}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v79</span></h1>
+      <h1>Recrutement <span style="font-weight:400;color:var(--ts)">TAFINAR</span> <span style="font-size:11px;color:#9ca3af;font-weight:400">v80</span></h1>
       <div class="sub">Analyse CV &amp; Anonymisation</div>
     </div>
     <div class="tabs">
@@ -833,7 +833,7 @@ function renderReport(d,filename,fileObj,idx){
     +'<button class="status-btn '+STATUS_CLASS[stVal]+'" id="sbtn-'+idx+'" onclick="cycleStatus(\'status_report_'+idx+'\',\'sbtn-'+idx+'\')">'+STATUS_LABELS[stVal]+'</button>'
     +'<button class="anon-btn" onclick="anonFromResult('+idx+')"><i class="ti ti-user-off" aria-hidden="true" style="font-size:11px;margin-right:3px"></i>Anonymiser</button>'
     +'<button class="add-dossier-btn" id="dbtn-'+idx+'" onclick="addToDossier('+idx+',this)"><i class="ti ti-clipboard-plus" aria-hidden="true" style="font-size:11px;margin-right:3px"></i>+ Dossier</button>'
-    +'<button onclick="envoyerProfilNotion(\''+escH(cname(d))+'\',\'\',document.getElementById(\'job-lib\').value||\'\',' +d.score+',\''+d.verdict_court+'\',\'\',\'\')" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit"><i class="ti ti-building-community" aria-hidden="true" style="font-size:11px"></i>→ Notion</button>'
+    +'<button onclick="envoyerProfilNotion(\''+escH(cname(d))+'\',\'\',document.getElementById(\'job-lib\').value||\'\',' +d.score+',\''+d.verdict_court+'\',\'\',\'\',\''+String(d.telephone||'').replace(/['"\\<>&]/g,'')+'\')" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit"><i class="ti ti-building-community" aria-hidden="true" style="font-size:11px"></i>→ Notion</button>'
     +'</div></div></div>'
     +'<div class="card" style="padding:0;overflow:hidden"><table class="crit-table"><thead><tr><th>Critere</th><th style="text-align:center">Poids</th><th style="text-align:center">Statut</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<div class="card"><div class="ptitle" style="margin-bottom:8px"><i class="ti ti-message-dots" aria-hidden="true" style="font-size:12px;vertical-align:-1px;margin-right:4px"></i>Verdict</div><div class="verdict-block">'+vLines+'</div></div>'
@@ -1387,7 +1387,157 @@ function closeNewJobPopup(){
   if(popup) popup.style.display = 'none';
 }
 
-function confirmNewJob(){
+
+/* ── Alerte anti-doublon poste (v78) ── */
+const DUP_STOP=new Set(['de','du','des','la','le','les','l','d','et','en','a','au','aux','pour','chez','un','une','h','f','hf','fh','mission','poste','pas','teletravail','remote','partiel','non','l1','l2','l3']);
+function dupNorm(s){
+  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+    .replace(/cgemjp\d+/g,' ').replace(/m&o[\s_]*[a-z0-9]{6}(?![a-z0-9])/g,' ')
+    .replace(/[^a-z0-9]+/g,' ').trim();
+}
+function dupTokens(s){return dupNorm(s).split(' ').filter(t=>t&&!DUP_STOP.has(t));}
+function dupLev(a,b){
+  if(a===b)return 0;
+  if(!a.length)return b.length;
+  if(!b.length)return a.length;
+  let prev=[];for(let j=0;j<=b.length;j++)prev[j]=j;
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];
+    for(let j=1;j<=b.length;j++){
+      cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+    prev=cur;
+  }
+  return prev[b.length];
+}
+// Deux mots sont "pareils" si égaux, ou à une lettre près (mots de 5+ lettres), ou lettre finale en moins/plus (mots de 4 lettres)
+function dupTokMatch(a,b){
+  if(a===b)return true;
+  const mx=Math.max(a.length,b.length);
+  if(mx<=3)return false;
+  if(mx===4){const sh=a.length<b.length?a:b,lg=a.length<b.length?b:a;return sh.length===3&&lg.indexOf(sh)===0;}
+  return dupLev(a,b)<=1;
+}
+function dupScore(a,b){
+  const ta=dupTokens(a),tb=dupTokens(b);
+  if(!ta.length||!tb.length)return 0;
+  const used=new Set();let matched=0;
+  ta.forEach(x=>{
+    for(let i=0;i<tb.length;i++){
+      if(!used.has(i)&&dupTokMatch(x,tb[i])){used.add(i);matched++;break;}
+    }
+  });
+  let sc=2*matched/(ta.length+tb.length);
+  // espace en trop / mot collé : le nombre de mots diffère, on compare le texte sans espaces
+  if(ta.length!==tb.length){
+    const ja=ta.join(''),jb=tb.join('');
+    const r=1-dupLev(ja,jb)/Math.max(ja.length,jb.length);
+    if(r>=0.92)sc=Math.max(sc,r);
+  }
+  return Math.round(sc*100);
+}
+function dupCodes(s){
+  const t=String(s||'').toUpperCase(),out=new Set();
+  (t.match(/CGEMJP\d{6,}/g)||[]).forEach(x=>out.add(x));
+  (t.match(/M&O_[A-Z0-9]{6}(?![A-Z0-9])/g)||[]).forEach(x=>out.add(x));
+  return out;
+}
+async function dupFetchAll(table,cols,orderCol){
+  let all=[],from=0;const step=1000;
+  for(;;){
+    const{data,error}=await sbClient.from(table).select(cols).order(orderCol).range(from,from+step-1);
+    if(error)throw error;
+    all=all.concat(data||[]);
+    if(!data||data.length<step)break;
+    from+=step;
+  }
+  return all;
+}
+// Cherche les postes déjà connus (postes Notion + postes des profils du Kanban) proches de ce nom
+async function findPosteDoublons(name,desc){
+  const [postes,cands]=await Promise.all([
+    dupFetchAll('postes','titre,description,created_at','created_at'),
+    dupFetchAll('candidats','poste_titre,sourcer,deleted_at,created_at','created_at')
+  ]);
+  const groups=new Map();
+  const grp=t=>{
+    const k=dupNorm(t);if(!k)return null;
+    if(!groups.has(k))groups.set(k,{titre:t,sourcers:new Map(),count:0,extra:''});
+    return groups.get(k);
+  };
+  postes.forEach(p=>{const g=grp(p.titre);if(g)g.extra+=' '+(p.description||'');});
+  cands.forEach(c=>{
+    if(c.deleted_at)return;
+    const g=grp(c.poste_titre);if(!g)return;
+    g.count++;
+    const who=(c.sourcer||'').trim();
+    if(who)g.sourcers.set(who,(g.sourcers.get(who)||0)+1);
+  });
+  const myCodes=dupCodes(name+' '+(desc||''));
+  const res=[];
+  groups.forEach(g=>{
+    let sc=dupScore(name,g.titre);
+    if(myCodes.size){
+      const theirs=dupCodes(g.titre+' '+g.extra);
+      for(const c of myCodes){if(theirs.has(c)){sc=100;break;}}
+    }
+    if(sc>=80){
+      const who=[...g.sourcers.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+      res.push({titre:g.titre,who,count:g.count,score:sc});
+    }
+  });
+  res.sort((a,b)=>b.score-a.score||b.count-a.count);
+  return res.slice(0,5);
+}
+function dupEsc(x){return String(x==null?'':x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function showDoublonPopup(name,hits){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+    const rows=hits.map(h=>{
+      const qui=h.who.length?'traité par <strong>'+h.who.map(dupEsc).join(', ')+'</strong>':'déjà créé dans Notion';
+      const nb=h.count+' profil'+(h.count>1?'s':'');
+      return '<div style="padding:8px 10px;border:.5px solid rgba(0,0,0,.15);border-radius:8px;margin-bottom:6px;font-size:13px"><div style="font-weight:600;color:#111">'+dupEsc(h.titre)+'</div><div style="color:#374151;margin-top:2px">'+qui+' · '+nb+' <span style="color:#9ca3af">('+h.score+' %)</span></div></div>';
+    }).join('');
+    ov.innerHTML='<div style="background:#fff;border-radius:12px;max-width:520px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.25);font-family:inherit">'
+      +'<div style="font-size:16px;font-weight:700;color:#92400e;margin-bottom:4px">⚠️ Ce poste existe peut-être déjà</div>'
+      +'<div style="font-size:12px;color:#6b7280;margin-bottom:12px">Tu veux enregistrer : <strong>'+dupEsc(name)+'</strong></div>'
+      +rows
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">'
+      +'<button data-c="cancel" style="padding:8px 14px;border:.5px solid rgba(0,0,0,.2);background:#fff;border-radius:8px;cursor:pointer;font-size:13px">Annuler</button>'
+      +'<button data-c="search" style="padding:8px 14px;border:.5px solid #1e3a5f;color:#1e3a5f;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Rechercher</button>'
+      +'<button data-c="add" style="padding:8px 14px;border:none;background:#1e3a5f;color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Ajouter quand même</button>'
+      +'</div></div>';
+    ov.querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{ov.remove();resolve(b.getAttribute('data-c'));});
+    document.body.appendChild(ov);
+  });
+}
+async function confirmNewJob(){
+  const name=(document.getElementById('new-job-name')?.value||'').trim();
+  const desc=(document.getElementById('new-job-desc')?.value||'').trim();
+  let ok=true;
+  if(!name){document.getElementById('new-job-name-warn').style.display='block';ok=false;}
+  if(!desc){document.getElementById('new-job-desc-warn').style.display='block';ok=false;}
+  if(!ok)return;
+  const btn=document.querySelector('button[onclick="confirmNewJob()"]');
+  const oldHtml=btn?btn.innerHTML:'';
+  if(btn){btn.disabled=true;btn.textContent='Vérification…';}
+  let choice='add';
+  try{
+    const hits=await findPosteDoublons(name,desc);
+    if(hits.length)choice=await showDoublonPopup(name,hits);
+  }catch(e){console.warn('Vérification doublon impossible',e);}
+  if(btn){btn.disabled=false;btn.innerHTML=oldHtml;}
+  if(choice==='cancel')return;
+  if(choice==='search'){
+    closeNewJobPopup();
+    try{window.parent.switchTo('notion');}catch(e){}
+    return;
+  }
+  _doConfirmNewJob();
+}
+
+function _doConfirmNewJob(){
   const name = (document.getElementById('new-job-name')?.value||'').trim();
   const desc = (document.getElementById('new-job-desc')?.value||'').trim();
   let ok = true;
@@ -1914,8 +2064,8 @@ const SB_KEY='sb_publishable_HpXipfY__RmCKOqeGZZMHQ_wJ83l2Yi';
 const sbClient=window.supabase.createClient(SB_URL,SB_KEY);
 
 // Ouvrir Notion TAFINAR avec un profil pré-rempli
-function envoyerProfilNotion(nom,trigramme,poste,score,verdict,dispo,pretention){
-  const payload={nom:nom||'',trigramme:trigramme||'',poste:poste||'',score:score||'',verdict:verdict||'',dispo:dispo||'',pretention:pretention||''};
+function envoyerProfilNotion(nom,trigramme,poste,score,verdict,dispo,pretention,telephone){
+  const payload={nom:nom||'',trigramme:trigramme||'',poste:poste||'',score:score||'',verdict:verdict||'',dispo:dispo||'',pretention:pretention||'',telephone:telephone||''};
   window.parent.switchToWithData('notion',payload);
 }
 
@@ -1971,8 +2121,8 @@ function envoyerHistVersNotion(idx){
   };
   window.parent.switchToWithData('notion', payload);
 }
-function addNotionBtnToReport(nom,trigramme,poste,score,verdict,dispo,pretention){
-  return `<button onclick="envoyerProfilNotion('${escH(nom)}','${escH(trigramme)}','${escH(poste)}','${score}','${escH(verdict)}','${escH(dispo)}','${escH(pretention)}')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:8px"><i class="ti ti-plus" aria-hidden="true"></i> Créer profil dans Notion TAFINAR</button>`;
+function addNotionBtnToReport(nom,trigramme,poste,score,verdict,dispo,pretention,telephone){
+  return `<button onclick="envoyerProfilNotion('${escH(nom)}','${escH(trigramme)}','${escH(poste)}','${score}','${escH(verdict)}','${escH(dispo)}','${escH(pretention)}','${escH(String(telephone||'').replace(/['"\\]/g,''))}')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#0e7c3a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:8px"><i class="ti ti-plus" aria-hidden="true"></i> Créer profil dans Notion TAFINAR</button>`;
 }
 
 // Nettoyage automatique localStorage au chargement
