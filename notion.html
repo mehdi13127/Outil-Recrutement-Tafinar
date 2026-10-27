@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v79</title>
+<title>Notion TAFINAR v80</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -150,7 +150,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v79</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v80</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -561,7 +561,8 @@ function rSrc(){
           const cvTag=(c.cvOUrl||c.cvAUrl)?`<span title="CV joint" style="font-size:10px;color:#166534;margin-left:4px"><i class="ti ti-paperclip" aria-hidden="true"></i></span>`:'';
           return`<div class="card${isSel?' sel':''}${ed?'':' readonly'}" style="position:relative" ${ed?'draggable="true"':''} data-id="${c.id}" onclick="${ed?`openForm('${c.id}')`:`openView('${c.id}')`}" ondragstart="dst(event,'${c.id}')" ondragend="den()">
             <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" ondragstart="event.stopPropagation()">
-            <div class="card-name">${esc(c.nom)}${c.trigramme?`<span class="qtag">${esc(c.trigramme)}</span>`:''}${cvTag}</div>
+            <div class="card-name">${esc(c.nom)}${cvTag}</div>
+            ${c.trigramme?`<div style="margin:2px 0 3px"><span style="display:inline-block;background:#ede9fe;color:#6d28d9;font-weight:700;font-size:10px;letter-spacing:.5px;padding:1px 5px;border-radius:4px">${esc(c.trigramme)}</span></div>`:''}
             <div class="card-poste">${p?esc(p.titre):c.posteTitre?esc(c.posteTitre):'—'}</div>
             ${scoreBadge}
             ${ed?`<div style="position:absolute;top:4px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -982,7 +983,7 @@ function openForm(id){
     <div class="m-title">${isEdit?'Modifier':'Ajouter'} un profil<button class="m-close" onclick="closeM()">×</button></div>
     <div class="fg">
       <div class="fr"><label class="fl">Nom et prénom *</label><input class="fi" id="f-nom" value="${esc(c?.nom||'')}" oninput="chkDupC();saveDraft()"><div id="dup-c"></div></div>
-      <div class="fr"><label class="fl">Trigramme</label><div style="display:flex;gap:6px"><input class="fi" id="f-tri" value="${esc(c?.trigramme||'')}" oninput="saveDraft()" style="flex:1"><button type="button" id="tri-auto" class="btn" style="display:${quadBtnVisible(c?.pretention)?'inline-flex':'none'};white-space:nowrap;font-size:12px" title="Calcule le quadrigramme à partir du nom (1ère et dernière lettre du prénom, puis du nom)" onclick="autoQuad()">✨ Auto-remplir</button></div></div>
+      <div class="fr"><label class="fl">Trigramme</label><div style="display:flex;gap:6px"><input class="fi" id="f-tri" value="${esc(c?.trigramme||'')}" oninput="saveDraft()" style="flex:1"><button type="button" id="tri-auto" class="btn" style="display:${quadBtnVisible(c?.pretention)?'inline-flex':'none'};white-space:nowrap;font-size:12px" title="${isSaid()?'Calcule le quadrigramme à partir du nom (2e et avant-dernière lettre du prénom, puis du nom)':'Calcule le quadrigramme à partir du nom (1ère et dernière lettre du prénom, puis du nom)'}" onclick="autoQuad()">✨ Auto-remplir</button></div></div>
     </div>
     <div class="fr" style="position:relative">
       <label class="fl">Poste ciblé *</label>
@@ -2342,11 +2343,19 @@ function makeQuadN(fullName){
   if(!p||!n)return '';
   return p[0]+p[p.length-1]+n[0]+n[n.length-1];
 }
+// Règle Said (v78) : 2e lettre + avant-dernière lettre du prénom, 2e + avant-dernière du nom
+function makeQuadSaid(fullName){
+  const w=String(fullName||'').trim().split(/\s+/).filter(Boolean);
+  if(w.length<2)return '';
+  const p=lettersOnlyN(w[0]),n=lettersOnlyN(w.slice(1).join(''));
+  if(p.length<2||n.length<2)return '';
+  return p[1]+p[p.length-2]+n[1]+n[n.length-2];
+}
 function isSaid(){return /^said/i.test(getMe()||'');}
-// Mehdi : toujours. Said : jamais (pour l'instant). Les autres : seulement si la prétention salariale est renseignée.
+function makeQuadFor(fullName){return isSaid()?makeQuadSaid(fullName):makeQuadN(fullName);}
+// Mehdi : toujours. Les autres (Said compris) : seulement si la prétention salariale est renseignée.
 function quadBtnVisible(pret){
   if(isAdmin())return true;
-  if(isSaid())return false;
   return !!String(pret||'').trim();
 }
 function updQuadBtn(){
@@ -2355,7 +2364,7 @@ function updQuadBtn(){
 }
 function autoQuad(){
   const nom=(document.getElementById('f-nom')?.value||'').trim();
-  const q=makeQuadN(nom);
+  const q=makeQuadFor(nom);
   if(!q){showToast('Impossible : il faut un prénom ET un nom dans le champ « Nom »','warn');return;}
   const el=document.getElementById('f-tri');
   if(el.value.trim()&&el.value.trim().toUpperCase()!==q&&!confirm('Remplacer « '+el.value.trim()+' » par « '+q+' » ?'))return;
