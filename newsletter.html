@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Newsletter TAFINAR v80</title>
+<title>Newsletter TAFINAR v81</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
@@ -50,7 +50,7 @@ input.i,select.i{border:1px solid #d1d5db;border-radius:6px;padding:5px 7px;font
 </head>
 <body>
 <div class="wrap">
-  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v80</small></h1>
+  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v81</small></h1>
   <div class="sub">Les profils arrivent ici depuis la fiche (bouton « Envoyer à la newsletter » ou popup après Enregistrer).</div>
   <div id="warn"></div>
   <div class="tabs">
@@ -120,7 +120,7 @@ function live(r){
     secteurBrut:r.secteur||'',
   };
 }
-function tjmTxt(t){const d=String(t||'').replace(/[^\d]/g,'');return d?d+' €':'Sur demande';}
+function tjmTxt(t){const s=String(t==null?'':t).replace(/\s/g,'').replace(',','.');const m=s.match(/\d+(?:\.\d+)?/);const n=m?Math.round(parseFloat(m[0])):0;return n>0?n+' €':'Sur demande';}
 
 /* ───────── Onglets ───────── */
 function setTab(t){TAB=t;document.getElementById('tb-pending').classList.toggle('active',t==='pending');document.getElementById('tb-sent').classList.toggle('active',t==='sent');render();}
@@ -263,7 +263,7 @@ function groupsFromPrep(){
     const l=live(r);
     if(!g.has(a.secteur))g.set(a.secteur,new Map());
     const pm=g.get(a.secteur);if(!pm.has(a.poste))pm.set(a.poste,[]);
-    pm.get(a.poste).push({id,quad:l.quad,dispo:l.dispo||'—',mob:l.mob||'—',tjm:tjmTxt(l.tjm)});
+    pm.get(a.poste).push({id,quad:l.quad,dispo:l.dispo||'—',mob:l.mob||'—',tjm:tjmTxt(l.pht)});
   });
   return[...g.entries()].map(([secteur,pm])=>({secteur,postes:[...pm.entries()].map(([poste,profils])=>({poste,profils}))}))
     .sort((a,b)=>count(b)-count(a));
