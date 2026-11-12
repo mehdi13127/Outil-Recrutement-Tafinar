@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v80</title>
+<title>Notion TAFINAR v82</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -62,6 +62,8 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 .score-m{background:#dcfce7;color:#166534}.score-p{background:#fef9c3;color:#854d0e}.score-n{background:#fee2e2;color:#991b1b}
 .card-del{position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;opacity:.4;padding:0}
 .card-del:hover{opacity:1;color:var(--red)}
+.ovl-on{background:transparent!important}
+.ovl-on>.topbar,.ovl-on>#banner,.ovl-on>#main,.ovl-on>#loader{visibility:hidden}
 .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding-top:24px;z-index:200}
 .modal{background:#fff;border-radius:12px;padding:20px;width:560px;max-height:88vh;overflow-y:auto;border:1px solid #e5e7eb;box-shadow:0 8px 32px rgba(0,0,0,.12)}
 .m-title{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
@@ -150,7 +152,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v80</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v82</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -3134,6 +3136,24 @@ function loadDraft(){
 }
 
 // ═══════════════════════════════════════
+// Mode « fiche par-dessus la newsletter » : on masque Notion, on ne garde que les fenêtres,
+// et on rend la main à la newsletter quand plus aucune fenêtre n'est ouverte.
+let _ovlT=null,_ovlEmpty=0;
+function ovlStart(){
+  document.body.classList.add('ovl-on');_ovlEmpty=0;
+  clearInterval(_ovlT);
+  _ovlT=setInterval(function(){
+    const open=(document.getElementById('mroot').innerHTML.trim()!=='')||document.getElementById('poste-check-popup')||document.querySelector('body>div[style*="z-index:10000"]');
+    _ovlEmpty=open?0:_ovlEmpty+1;
+    if(_ovlEmpty>=3)ovlStop();
+  },400);
+}
+function ovlStop(){
+  clearInterval(_ovlT);_ovlT=null;
+  document.body.classList.remove('ovl-on');
+  try{window.parent.postMessage({type:'tn_fiche_closed'},'*');}catch(e){}
+}
+// ═══════════════════════════════════════
 // PREFILL FROM RECRUTEMENT (postMessage)
 // ═══════════════════════════════════════
 window.addEventListener('message', function(e){
@@ -3147,6 +3167,7 @@ window.addEventListener('message', function(e){
         setTimeout(function(){tryOpen(attempt+1);},300);return;
       }
       if(document.querySelector('#mroot .modal'))closeM();
+      if(e.data.overlay)ovlStart();
       canEditC(c.sourcer)?openForm(c.id):openView(c.id);
     };
     tryOpen(0);
