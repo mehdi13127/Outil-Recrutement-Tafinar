@@ -561,8 +561,7 @@ function rSrc(){
           const cvTag=(c.cvOUrl||c.cvAUrl)?`<span title="CV joint" style="font-size:10px;color:#166534;margin-left:4px"><i class="ti ti-paperclip" aria-hidden="true"></i></span>`:'';
           return`<div class="card${isSel?' sel':''}${ed?'':' readonly'}" style="position:relative" ${ed?'draggable="true"':''} data-id="${c.id}" onclick="${ed?`openForm('${c.id}')`:`openView('${c.id}')`}" ondragstart="dst(event,'${c.id}')" ondragend="den()">
             <input type="checkbox" class="card-check" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" ondragstart="event.stopPropagation()">
-            <div class="card-name">${esc(c.nom)}${cvTag}</div>
-            ${c.trigramme?`<div style="margin:2px 0 3px"><span style="display:inline-block;background:#ede9fe;color:#6d28d9;font-weight:700;font-size:10px;letter-spacing:.5px;padding:1px 5px;border-radius:4px">${esc(c.trigramme)}</span></div>`:''}
+            <div class="card-name">${esc(c.nom)}${c.trigramme?`<span class="qtag">${esc(c.trigramme)}</span>`:''}${cvTag}</div>
             <div class="card-poste">${p?esc(p.titre):c.posteTitre?esc(c.posteTitre):'—'}</div>
             ${scoreBadge}
             ${ed?`<div style="position:absolute;top:4px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -983,7 +982,7 @@ function openForm(id){
     <div class="m-title">${isEdit?'Modifier':'Ajouter'} un profil<button class="m-close" onclick="closeM()">×</button></div>
     <div class="fg">
       <div class="fr"><label class="fl">Nom et prénom *</label><input class="fi" id="f-nom" value="${esc(c?.nom||'')}" oninput="chkDupC();saveDraft()"><div id="dup-c"></div></div>
-      <div class="fr"><label class="fl">Trigramme</label><div style="display:flex;gap:6px"><input class="fi" id="f-tri" value="${esc(c?.trigramme||'')}" oninput="saveDraft()" style="flex:1"><button type="button" id="tri-auto" class="btn" style="display:${quadBtnVisible(c?.pretention)?'inline-flex':'none'};white-space:nowrap;font-size:12px" title="${isSaid()?'Calcule le quadrigramme à partir du nom (2e et avant-dernière lettre du prénom, puis du nom)':'Calcule le quadrigramme à partir du nom (1ère et dernière lettre du prénom, puis du nom)'}" onclick="autoQuad()">✨ Auto-remplir</button></div></div>
+      <div class="fr"><label class="fl">Trigramme</label><div style="display:flex;gap:6px"><input class="fi" id="f-tri" value="${esc(c?.trigramme||'')}" oninput="saveDraft()" style="flex:1"><button type="button" id="tri-auto" class="btn" style="display:${quadBtnVisible(c?.pretention)?'inline-flex':'none'};white-space:nowrap;font-size:12px" title="Calcule le quadrigramme à partir du nom (1ère et dernière lettre du prénom, puis du nom)" onclick="autoQuad()">✨ Auto-remplir</button></div></div>
     </div>
     <div class="fr" style="position:relative">
       <label class="fl">Poste ciblé *</label>
@@ -2343,19 +2342,11 @@ function makeQuadN(fullName){
   if(!p||!n)return '';
   return p[0]+p[p.length-1]+n[0]+n[n.length-1];
 }
-// Règle Said (v78) : 2e lettre + avant-dernière lettre du prénom, 2e + avant-dernière du nom
-function makeQuadSaid(fullName){
-  const w=String(fullName||'').trim().split(/\s+/).filter(Boolean);
-  if(w.length<2)return '';
-  const p=lettersOnlyN(w[0]),n=lettersOnlyN(w.slice(1).join(''));
-  if(p.length<2||n.length<2)return '';
-  return p[1]+p[p.length-2]+n[1]+n[n.length-2];
-}
 function isSaid(){return /^said/i.test(getMe()||'');}
-function makeQuadFor(fullName){return isSaid()?makeQuadSaid(fullName):makeQuadN(fullName);}
-// Mehdi : toujours. Les autres (Said compris) : seulement si la prétention salariale est renseignée.
+// Mehdi : toujours. Said : jamais (pour l'instant). Les autres : seulement si la prétention salariale est renseignée.
 function quadBtnVisible(pret){
   if(isAdmin())return true;
+  if(isSaid())return false;
   return !!String(pret||'').trim();
 }
 function updQuadBtn(){
@@ -2364,7 +2355,7 @@ function updQuadBtn(){
 }
 function autoQuad(){
   const nom=(document.getElementById('f-nom')?.value||'').trim();
-  const q=makeQuadFor(nom);
+  const q=makeQuadN(nom);
   if(!q){showToast('Impossible : il faut un prénom ET un nom dans le champ « Nom »','warn');return;}
   const el=document.getElementById('f-tri');
   if(el.value.trim()&&el.value.trim().toUpperCase()!==q&&!confirm('Remplacer « '+el.value.trim()+' » par « '+q+' » ?'))return;
@@ -2423,7 +2414,8 @@ async function newsAddSelected(){
   const dup=cands.filter(c=>c.trigramme&&newsHas(c.id));
   const toAdd=cands.filter(c=>c.trigramme&&!newsHas(c.id));
   if(!toAdd.length){showToast((dup.length?dup.length+' déjà dans la newsletter':'')+(dup.length&&noQuad.length?' · ':'')+(noQuad.length?noQuad.length+' sans quadrigramme ('+noQuad.map(c=>c.nom).join(', ')+')':''),'warn');return;}
-  if(!confirm('Ajouter '+toAdd.length+' profil(s) à la newsletter ?\n\n'+toAdd.map(c=>c.trigramme+' — '+(c.posteTitre||'')).join('\n')))return;
+  const was=toAdd.filter(c=>newsLastSent(c.id));
+  if(!confirm('Ajouter '+toAdd.length+' profil(s) à la newsletter ?\n\n'+toAdd.map(c=>c.trigramme+' — '+(c.posteTitre||'')+(newsLastSent(c.id)?'  ⚠ DÉJÀ ENVOYÉ le '+new Date(newsLastSent(c.id).sent_at).toLocaleDateString('fr-FR'):'')).join('\n')+(was.length?'\n\n⚠ '+was.length+' profil(s) ont déjà été envoyés. Continuer les remet dans « Pas encore envoyé ».':'')))return;
   const rows=toAdd.map(newsRow);
   const{error}=await sb.from('news_liste').insert(rows);
   if(error){console.error('newsAddSelected',error);showToast('Ajout à la newsletter impossible','warn');return;}
@@ -2444,7 +2436,7 @@ async function newsAfterSave(c,opt){
     if(!S.newsOk){if(forced)showToast('Table newsletter absente : lance le SQL dans Supabase','warn');return;}
     if(!c.trigramme){if(forced)showToast('Quadrigramme manquant : renseigne-le puis réessaie','warn');return;}
     if(newsHas(c.id)){if(forced)showToast('Déjà dans la newsletter (pas encore envoyé)','ok');return;}
-    if(forced){await newsAdd(c);return;}
+    if(forced){const pv=newsLastSent(c.id);if(pv&&!confirm(c.trigramme+' a déjà été envoyé le '+new Date(pv.sent_at).toLocaleDateString('fr-FR')+'.\nLe remettre dans « Pas encore envoyé » ?'))return;await newsAdd(c);return;}
     if(document.querySelector('#mroot .overlay,#poste-check-popup'))return;
     const prev=newsLastSent(c.id);
     const a=await popupChoice(`<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px">📬 Newsletter</div>
@@ -3145,6 +3137,21 @@ function loadDraft(){
 // PREFILL FROM RECRUTEMENT (postMessage)
 // ═══════════════════════════════════════
 window.addEventListener('message', function(e){
+  // Ouvrir une fiche depuis l'onglet Newsletter
+  if(e.data&&e.data.type==='tn_open_cand'){
+    const cid=e.data.id;
+    const tryOpen=function(attempt){
+      const c=S.candidates.find(x=>x.id===cid);
+      if(!c){
+        if(attempt>10){showToast('Profil introuvable (supprimé ou dans la corbeille ?)','warn');return;}
+        setTimeout(function(){tryOpen(attempt+1);},300);return;
+      }
+      if(document.querySelector('#mroot .modal'))closeM();
+      canEditC(c.sourcer)?openForm(c.id):openView(c.id);
+    };
+    tryOpen(0);
+    return;
+  }
   // Handle poste prefill from Recrutement
   if(e.data&&e.data.type==='tn_poste'){
     const d=e.data.payload;if(!d)return;
