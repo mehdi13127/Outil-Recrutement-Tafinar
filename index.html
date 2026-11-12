@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAFINAR v80 — Espace de travail</title>
+<title>TAFINAR v82 — Espace de travail</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -68,6 +68,8 @@ iframe.visible{
   pointer-events:auto;
   z-index:1;
 }
+/* Fiche affichée par-dessus la newsletter (frame Notion en surimpression) */
+iframe.overlay{position:fixed!important;top:0;left:0;width:100vw!important;height:100vh!important;z-index:500!important;opacity:1!important;pointer-events:auto!important;background:transparent!important}
 </style>
 </head>
 <body>
@@ -99,6 +101,18 @@ iframe.visible{
 
 <script>
 let current = 'rec';
+
+function openFicheOverlay(candId) {
+  const fn = document.getElementById('frame-notion');
+  fn.classList.add('overlay');
+  try { fn.contentWindow.postMessage({type:'tn_open_cand', id:candId, overlay:true}, '*'); } catch(e) { fn.classList.remove('overlay'); }
+}
+window.addEventListener('message', function(e){
+  if (e.data && e.data.type === 'tn_fiche_closed') {
+    document.getElementById('frame-notion').classList.remove('overlay');
+    try { document.getElementById('frame-news').contentWindow.postMessage({type:'tn_news_show'}, '*'); } catch(err) {}
+  }
+});
 
 function switchTo(app) {
   switchToWithData(app, null);
