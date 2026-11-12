@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Newsletter TAFINAR v81</title>
+<title>Newsletter TAFINAR v80</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
@@ -28,7 +28,7 @@ table.t{width:100%;border-collapse:collapse}
 .t th{padding:7px 9px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb;white-space:nowrap}
 .t td{padding:7px 9px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
 .t tr:hover td{background:#fafbfc}
-.quad{font-weight:700;color:#0348ac;letter-spacing:1.5px}
+.quad{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;font-weight:700;color:#0348ac;letter-spacing:1.5px}
 .muted{color:#9ca3af}
 .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
 .ok{background:#dcfce7;color:#166534}.no{background:#fee2e2;color:#991b1b}
@@ -50,7 +50,7 @@ input.i,select.i{border:1px solid #d1d5db;border-radius:6px;padding:5px 7px;font
 </head>
 <body>
 <div class="wrap">
-  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v81</small></h1>
+  <h1><i class="ti ti-mail-forward"></i> Newsletter — Les profils qui vous manquent <small>v80</small></h1>
   <div class="sub">Les profils arrivent ici depuis la fiche (bouton « Envoyer à la newsletter » ou popup après Enregistrer).</div>
   <div id="warn"></div>
   <div class="tabs">
@@ -120,8 +120,34 @@ function live(r){
     secteurBrut:r.secteur||'',
   };
 }
-function tjmTxt(t){const s=String(t==null?'':t).replace(/\s/g,'').replace(',','.');const m=s.match(/\d+(?:\.\d+)?/);const n=m?Math.round(parseFloat(m[0])):0;return n>0?n+' €':'Sur demande';}
+function tjmTxt(t){const d=String(t||'').replace(/[^\d]/g,'');return d?d+' €':'Sur demande';}
 
+/* ───────── Ouvrir la fiche dans Notion ───────── */
+function openFiche(candId){
+  try{
+    const p=window.parent;
+    if(!p||p===window||!p.switchToWithData)throw new Error('standalone');
+    p.switchToWithData('notion',null);
+    p.document.getElementById('frame-notion').contentWindow.postMessage({type:'tn_open_cand',id:candId},'*');
+  }catch(e){toast('Ouvre la fiche depuis l\'espace de travail (page principale)','warn');}
+}
+/* ───────── Marquer comme déjà envoyé (sans préparer) ───────── */
+async function markSentNow(){
+  const ids=[...SEL.pending];
+  if(!ids.length){toast('Coche d\'abord les profils déjà envoyés','warn');return;}
+  const t=new Date(),dd=String(t.getDate()).padStart(2,'0')+'/'+String(t.getMonth()+1).padStart(2,'0')+'/'+t.getFullYear();
+  const ans=prompt('Marquer '+ids.length+' profil(s) comme DÉJÀ envoyés (sans renvoyer de mail).\nDate d\'envoi (jj/mm/aaaa) :',dd);
+  if(ans===null)return;
+  let when=new Date();
+  const m=String(ans).trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+  if(m){const y=+m[3]<100?2000+ +m[3]:+m[3];const d=new Date(y,+m[2]-1,+m[1],12,0,0);if(!isNaN(d))when=d;}
+  const iso=when.toISOString(),batch='manuel-'+Date.now().toString(36);
+  const res=await Promise.all(ids.map(id=>{const r=ROWS.find(x=>x.id===id);if(!r)return{};
+    return sb.from('news_liste').update({statut:'sent',sent_at:iso,batch_id:batch,secteur:r.secteur||null,poste_groupe:cleanPoste(r.poste_titre)||r.poste_titre||null}).eq('id',id);}));
+  if(res.some(r=>r.error)){toast('Une partie n\'a pas pu être enregistrée','warn');}
+  else toast(ids.length+' profil(s) déplacé(s) dans « Déjà envoyé »','ok');
+  SEL.pending=new Set();PREP=null;await load();setTab('sent');
+}
 /* ───────── Onglets ───────── */
 function setTab(t){TAB=t;document.getElementById('tb-pending').classList.toggle('active',t==='pending');document.getElementById('tb-sent').classList.toggle('active',t==='sent');render();}
 function render(){
@@ -142,6 +168,7 @@ function viewPending(P){
     <button class="btn" onclick="selAll('pending',true)">Tout sélectionner</button>
     <button class="btn" onclick="selAll('pending',false)">Tout désélectionner</button>
     <button class="btn btn-r" onclick="removeSel()" ${n?'':'disabled'}><i class="ti ti-trash"></i> Retirer (${n})</button>
+    <button class="btn" onclick="markSentNow()" ${n?'':'disabled'} title="Pour les profils déjà envoyés par mail : les déplace dans « Déjà envoyé » sans repasser par la préparation"><i class="ti ti-check"></i> Marquer comme déjà envoyé (${n})</button>
     <span style="flex:1"></span>
     <button class="btn btn-p" onclick="prepare()"><i class="ti ti-sparkles"></i> Préparer la newsletter ${n?'('+n+' sélectionnés)':'(tous)'}</button>
   </div>
@@ -149,7 +176,7 @@ function viewPending(P){
   P.forEach(r=>{
     const l=live(r);
     h+=`<tr><td><input type="checkbox" ${SEL.pending.has(r.id)?'checked':''} onchange="tog('pending','${r.id}',this.checked)"></td>
-    <td class="quad">${esc(l.quad)}</td><td style="max-width:280px">${esc(l.posteBrut)}</td><td><input class="i" style="min-width:110px" value="${esc(l.dispo)}" placeholder="ex: Immédiatement" onchange="editField('${r.id}','dispo',this.value)"></td><td><input class="i" style="min-width:140px" value="${esc(l.mob)}" placeholder="ex: Toulouse, Paris" onchange="editField('${r.id}','mob',this.value)"></td>
+    <td class="quad" title="Ouvrir la fiche" onclick="openFiche('${esc(r.cand_id)}')">${esc(l.quad)}</td><td style="max-width:280px">${esc(l.posteBrut)}</td><td><input class="i" style="min-width:110px" value="${esc(l.dispo)}" placeholder="ex: Immédiatement" onchange="editField('${r.id}','dispo',this.value)"></td><td><input class="i" style="min-width:140px" value="${esc(l.mob)}" placeholder="ex: Toulouse, Paris" onchange="editField('${r.id}','mob',this.value)"></td>
     <td><input class="i" style="width:84px" value="${esc(String(l.tjm||''))}" placeholder="TJM €" onchange="editField('${r.id}','tjm',this.value)"></td><td style="white-space:nowrap;font-weight:600">${esc(l.pret)||'<span class="muted">—</span>'}</td><td><input class="i" style="width:84px" value="${esc(String(l.pht||''))}" placeholder="€ HT" onchange="editField('${r.id}','pht',this.value)"></td><td style="white-space:nowrap">${l.cvUrl?'<span class="pill ok">PDF</span>':'<span class="pill no">pas de PDF</span>'}${ANON.has(r.cand_id)?` <a href="#" onclick="openAnon('${esc(r.cand_id)}');return false" style="font-size:11.5px">voir / imprimer</a>`:''}</td><td class="muted">${fmtDate(r.added_at)}</td><td class="muted">${esc(r.sourcer||'')}</td></tr>`;
   });
   h+='</tbody></table></div><div id="prep"></div>';
@@ -263,7 +290,7 @@ function groupsFromPrep(){
     const l=live(r);
     if(!g.has(a.secteur))g.set(a.secteur,new Map());
     const pm=g.get(a.secteur);if(!pm.has(a.poste))pm.set(a.poste,[]);
-    pm.get(a.poste).push({id,quad:l.quad,dispo:l.dispo||'—',mob:l.mob||'—',tjm:tjmTxt(l.pht)});
+    pm.get(a.poste).push({id,quad:l.quad,dispo:l.dispo||'—',mob:l.mob||'—',tjm:tjmTxt(l.tjm)});
   });
   return[...g.entries()].map(([secteur,pm])=>({secteur,postes:[...pm.entries()].map(([poste,profils])=>({poste,profils}))}))
     .sort((a,b)=>count(b)-count(a));
@@ -279,7 +306,7 @@ function renderPrep(){
   h+='<table class="t"><thead><tr><th>Profil</th><th>Secteur</th><th>Poste affiché</th></tr></thead><tbody>';
   PREP.ids.forEach(id=>{
     const r=ROWS.find(x=>x.id===id);if(!r)return;const a=PREP.assign[id];
-    h+=`<tr><td class="quad">${esc(live(r).quad)}</td>
+    h+=`<tr><td class="quad" title="Ouvrir la fiche" onclick="openFiche('${esc(r.cand_id)}')">${esc(live(r).quad)}</td>
       <td><input class="i" list="dl-sect" value="${esc(a.secteur)}" onchange="setAssign('${id}','secteur',this.value)"></td>
       <td><input class="i" value="${esc(a.poste)}" onchange="setAssign('${id}','poste',this.value)"></td></tr>`;
   });
@@ -404,7 +431,7 @@ function viewSent(S){
     rows.sort((a,b)=>(a.poste_groupe||'').localeCompare(b.poste_groupe||'')||(b.sent_at||'').localeCompare(a.sent_at||'')).forEach(r=>{
       const l=live(r);
       h+=`<tr><td style="width:28px"><input type="checkbox" ${SEL.sent.has(r.id)?'checked':''} onchange="tog('sent','${r.id}',this.checked)"></td>
-      <td class="quad" style="width:80px">${esc(l.quad)}</td><td>${esc(r.poste_groupe||r.poste_titre||'')}</td>
+      <td class="quad" style="width:80px" title="Ouvrir la fiche" onclick="openFiche('${esc(r.cand_id)}')">${esc(l.quad)}</td><td>${esc(r.poste_groupe||r.poste_titre||'')}</td>
       <td class="muted" style="width:150px;white-space:nowrap">${l.pret?'Prét. '+esc(l.pret):''}${l.pht?' · Proposé '+esc(l.pht)+' € HT':''}</td>
       <td class="muted" style="width:90px">${fmtDate(r.sent_at)}</td>
       <td style="width:190px;white-space:nowrap">${l.cvUrl?'<span class="pill ok">PDF</span>':'<span class="pill no">pas de PDF</span>'}${ANON.has(r.cand_id)?` <a href="#" onclick="openAnon('${esc(r.cand_id)}');return false" style="font-size:11.5px">voir / imprimer</a>`:''}</td></tr>`;});
