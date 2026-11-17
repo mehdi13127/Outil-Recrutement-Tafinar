@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion TAFINAR v82</title>
+<title>Notion TAFINAR v83</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -59,6 +59,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 .card-name{font-size:12px;font-weight:500}
 .card-poste{font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-score{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:1px 6px;border-radius:6px;margin-top:3px}
+.cchips{display:flex;flex-wrap:wrap;gap:5px}.cchip{border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;font-family:inherit}.cchip.on{background:#dcfce7;border-color:#16a34a;color:#166534;font-weight:600}
 .score-m{background:#dcfce7;color:#166534}.score-p{background:#fef9c3;color:#854d0e}.score-n{background:#fee2e2;color:#991b1b}
 .card-del{position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;opacity:.4;padding:0}
 .card-del:hover{opacity:1;color:var(--red)}
@@ -152,7 +153,7 @@ body{font-family:var(--fs);font-size:14px;color:#111;background:#eef0f3;min-heig
 </div>
 
 <div class="topbar">
-  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v82</span>
+  <span class="logo">Notion <span>TAFINAR</span></span><span style="font-size:10px;color:#9ca3af;margin-left:6px">v83</span>
   <div id="topbar-user" style="display:flex;align-items:center;gap:8px;font-size:12px"></div>
   <button id="mail-btn" class="btn" onclick="openMailModal()" style="opacity:.4;pointer-events:none;border-color:var(--green);color:var(--green);font-size:12px">
     <i class="ti ti-mail" aria-hidden="true"></i> Mail récap
@@ -347,7 +348,7 @@ function rowToCand(r){
     nom:r.nom||'',trigramme:r.trigramme||'',
     posteId:'',posteTitre:r.poste_titre||'',
     dispo:r.dispo||'',mobilite:mob,
-    pretention:r.pretention||'',tjm:r.tjm||'',proposeHt:r.propose_ht||'',freelance:r.freelance||'Non',
+    pretention:r.pretention||'',tjm:r.tjm||'',proposeHt:r.propose_ht||'',freelance:r.freelance||'',
     remarque:r.remarque||'',sourcer:r.sourcer||'',
     statut:r.statut||'',ordre:(r.ordre===null||r.ordre===undefined)?null:Number(r.ordre),
     score:r.score||null,verdict:r.verdict||null,
@@ -364,7 +365,7 @@ function candToRow(c){
     local_id:c.id,nom:c.nom,trigramme:c.trigramme||'',
     poste_titre:c.posteTitre||(gp(c.posteId)?.titre||''),
     dispo:c.dispo||'',mobilite:JSON.stringify(c.mobilite||[]),
-    pretention:c.pretention||'',tjm:c.tjm||'',propose_ht:c.proposeHt||'',freelance:c.freelance||'Non',
+    pretention:c.pretention||'',tjm:c.tjm||'',propose_ht:c.proposeHt||'',freelance:fmtContrats(c.freelance),
     remarque:c.remarque||'',sourcer:c.sourcer||'',statut:c.statut||'',
     ordre:(c.ordre===undefined?null:c.ordre),
     score:c.score||null,verdict:c.verdict||null,
@@ -621,13 +622,13 @@ function rProfils(){
         ${c.pretention?`<span class="ptag ptag-b">${esc(c.pretention)}</span>`:''}
         ${c.tjm?`<span class="ptag ptag-g">TJM ${esc(c.tjm)}</span>`:''}
         ${c.proposeHt?`<span class="ptag ptag-g">Proposé ${esc(c.proposeHt)} € HT</span>`:''}
-        ${c.freelance==='Oui'?'<span class="ptag ptag-g">Freelance</span>':''}
+        ${parseContrats(c.freelance).includes('Freelance OUI')?'<span class="ptag ptag-g">Freelance</span>':''}
         ${c.dispo?`<span class="ptag ptag-n">${esc(c.dispo)}</span>`:''}
         ${sc(c)}
       </div>
     </div>`;}).join('')}</div>`
-  :`<table class="lt"><thead><tr><th><input type="checkbox" ${selAll?'checked':''} onclick="toggleSelAll(this,${esc(JSON.stringify(list.map(c=>c.id)))})" style="accent-color:var(--green)"></th><th>Sourceur</th><th>Nom</th><th>Trigramme</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>Prétention</th><th>TJM</th><th>Freelance</th><th>Score</th></tr></thead><tbody>
-  ${list.map(c=>{const isSel=S.sel.has(c.id);return`<tr class="${isSel?'sel':''}" style="cursor:pointer" onclick="${open(c)}"><td onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" style="accent-color:var(--green)"></td><td style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${esc(c.sourcer)}</td><td style="font-weight:600">${esc(c.nom)}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534" aria-hidden="true"></i>':''}</td><td>${esc(c.trigramme)}</td><td style="font-size:11px">${esc(c.posteTitre||'—')}</td><td>${esc(c.dispo)||'—'}</td><td>${esc((c.mobilite||[]).join(', '))||'—'}</td><td><span class="ptag ptag-b">${esc(c.pretention)}</span></td><td>${esc(c.tjm)}</td><td>${esc(c.freelance)}</td><td>${sc(c)}</td></tr>`;}).join('')}
+  :`<table class="lt"><thead><tr><th><input type="checkbox" ${selAll?'checked':''} onclick="toggleSelAll(this,${esc(JSON.stringify(list.map(c=>c.id)))})" style="accent-color:var(--green)"></th><th>Sourceur</th><th>Nom</th><th>Trigramme</th><th>Poste</th><th>Dispo</th><th>Mobilité</th><th>Prétention</th><th>TJM</th><th>Type de contrat</th><th>Score</th></tr></thead><tbody>
+  ${list.map(c=>{const isSel=S.sel.has(c.id);return`<tr class="${isSel?'sel':''}" style="cursor:pointer" onclick="${open(c)}"><td onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSel('${c.id}',event)" style="accent-color:var(--green)"></td><td style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${esc(c.sourcer)}</td><td style="font-weight:600">${esc(c.nom)}${(c.cvOUrl||c.cvAUrl)?' <i class="ti ti-paperclip" style="color:#166534" aria-hidden="true"></i>':''}</td><td>${esc(c.trigramme)}</td><td style="font-size:11px">${esc(c.posteTitre||'—')}</td><td>${esc(c.dispo)||'—'}</td><td>${esc((c.mobilite||[]).join(', '))||'—'}</td><td><span class="ptag ptag-b">${esc(c.pretention)}</span></td><td>${esc(c.tjm)}</td><td>${esc(fmtContrats(c.freelance))}</td><td>${sc(c)}</td></tr>`;}).join('')}
   </tbody></table>`;
   return`<div class="tb">
     <input id="ps-n" placeholder="Nom..." value="${esc(sn)}" oninput="rProfilsLive()" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:130px">
@@ -794,7 +795,7 @@ const MAIL_COLS=[
   {id:'mobilite',label:'Mobilité',visible:true},
   {id:'pretention',label:'Prétention',visible:true},
   {id:'tjm',label:'TJM (€ HT)',visible:true},
-  {id:'freelance',label:'Freelance',visible:true},
+  {id:'freelance',label:'Type de contrat',visible:true},
   {id:'remarques',label:'Remarques',visible:true},
 ];
 let mailLignes=[];
@@ -813,7 +814,7 @@ function openMailModal(){
   mailLignes=[];
   ordre.forEach(p=>byPoste[p].forEach(c=>mailLignes.push({
     id:c._id,quad:c.trigramme||quadDe(c.nom),nom:c.nom,poste:p,dispo:c.dispo||'',
-    mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',tjm:c.proposeHt||'',freelance:c.freelance||'',remarques:c.remarque||''
+    mobilite:(c.mobilite||[]).join(', '),pretention:c.pretention||'',tjm:c.proposeHt||'',freelance:fmtContrats(c.freelance),remarques:c.remarque||''
   })));
   mailTxt.intro2='Veuillez trouver ci-dessous une sélection de profils pour '+(ordre.length>1?'les postes demandés':'le poste demandé')+' :';
   document.getElementById('mroot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()">
@@ -1009,7 +1010,7 @@ function openForm(id){
     </div>
     <div class="fg">
       <div class="fr"><label class="fl">Prétention salariale</label><input class="fi" id="f-pret" value="${esc(c?.pretention||'')}" placeholder="ex: 45k" oninput="saveDraft();updQuadBtn()"></div>
-      <div class="fr"><label class="fl">Freelance</label><select class="fi" id="f-free" onchange="saveDraft()"><option value="Non"${(c?.freelance||'Non')==='Non'?' selected':''}>Non</option><option value="Oui"${c?.freelance==='Oui'?' selected':''}>Oui</option><option value="CDI"${c?.freelance==='CDI'?' selected':''}>CDI</option><option value="À valider"${c?.freelance==='À valider'?' selected':''}>À valider</option></select></div>
+      <div class="fr"><label class="fl">Type de contrat <span style="text-transform:none;font-size:10px;font-weight:400">(plusieurs choix possibles)</span></label><input type="hidden" id="f-free" value="${esc(fmtContrats(c?.freelance))}"><div class="cchips" id="contrat-chips">${CONTRATS.map(o=>`<button type="button" class="cchip${parseContrats(c?.freelance).includes(o)?' on':''}" data-v="${esc(o)}" onclick="toggleContrat(this)">${esc(o)}</button>`).join('')}</div></div>
     </div>
     <div class="fg">
       <div class="fr"><label class="fl">TJM (€ HT / jour)</label><input class="fi" id="f-tjm" value="${esc(c?.tjm||'')}" placeholder="ex: 450" oninput="saveDraft()"></div>
@@ -1044,7 +1045,7 @@ function openForm(id){
         if(draft.tel)set('f-tel',draft.tel);
         if(draft.tjm)set('f-tjm',draft.tjm);
         if(draft.pht)set('f-pht',draft.pht);
-        if(draft.free){const el=document.getElementById('f-free');if(el)el.value=draft.free;}
+        if(draft.free!==undefined)setContrats(draft.free);
         if(draft.ps){
           set('f-ps',draft.ps);
           if(draft.pid){const hid=document.getElementById('f-pid');if(hid)hid.value=draft.pid;}
@@ -1136,7 +1137,7 @@ function captureFormState(){
     trigramme:document.getElementById('f-tri')?.value||'',
     dispo:document.getElementById('f-dis')?.value||'',
     pretention:document.getElementById('f-pret')?.value||'',
-    freelance:document.getElementById('f-free')?.value||'Non',
+    freelance:document.getElementById('f-free')?.value||'',
     sourcer:document.getElementById('f-src')?.value||S.srcr,
     remarque:document.getElementById('f-rem')?.value||'',
     telephone:document.getElementById('f-tel')?.value||'',
@@ -1218,6 +1219,26 @@ async function saveC(id,opt){
     return;
   }
 
+  // TJM rempli + prétention vide : la prétention reprend le TJM (jamais écrasée si elle est déjà remplie)
+  {
+    const pe=document.getElementById('f-pret'),te=document.getElementById('f-tjm');
+    if(pe&&te&&!pe.value.trim()&&te.value.trim()){pe.value=te.value.trim();saveDraft();updQuadBtn();}
+  }
+  // Alerte : prétention salariale vide (pas d'alerte pour un profil Freelance OUI)
+  {
+    const pe=document.getElementById('f-pret');
+    const contrats=parseContrats(document.getElementById('f-free')?.value);
+    if(pe&&!pe.value.trim()&&!contrats.includes('Freelance OUI')){
+      const rep2=await popupChoice(`<div style="font-size:15px;font-weight:700;color:#92400e;margin-bottom:8px">⚠️ Prétention salariale non renseignée</div>
+        <div style="font-size:13px;color:#374151;line-height:1.5">Rappel : si tu n'enregistres pas la prétention salariale, le profil ne sera pas partagé par ton équipe.</div>`,
+        [{label:'Retour',style:BTN_GREY,value:'back'},{label:'Enregistrer quand même',style:BTN_GREY,value:'save'}]);
+      if(rep2!=='save'){
+        pe.style.border='1.5px solid #dc2626';pe.focus();setTimeout(()=>{if(pe)pe.style.border='';},2500);
+        return;
+      }
+    }
+  }
+
   // ── Enregistrement du profil ──
   const rem=(document.getElementById('f-rem')?.value||'').trim();
   const mobilite=[...document.querySelectorAll('#mob-tags .tg')].map(el=>el.childNodes[0].textContent.trim());
@@ -1228,7 +1249,7 @@ async function saveC(id,opt){
     posteId,posteTitre:p?p.titre:posteSaisi,
     dispo:(document.getElementById('f-dis')?.value||'').trim(),mobilite,
     pretention:(document.getElementById('f-pret')?.value||'').trim(),
-    freelance:document.getElementById('f-free')?.value||'Non',
+    freelance:document.getElementById('f-free')?.value||'',
     sourcer,remarque:rem,
     telephone:(document.getElementById('f-tel')?.value||'').trim(),
     tjm:(document.getElementById('f-tjm')?.value||'').trim(),
@@ -1306,7 +1327,7 @@ function openView(id){
       <div><span style="color:#6b7280">TJM (€ HT) :</span> ${esc(c.tjm)||'—'}</div>
       <div><span style="color:#6b7280">Proposé à (€ HT) :</span> ${esc(c.proposeHt)||'—'}</div>
       <div><span style="color:#6b7280">Mobilité :</span> ${esc((c.mobilite||[]).join(', '))||'—'}</div>
-      <div><span style="color:#6b7280">Freelance :</span> ${esc(c.freelance)}</div>
+      <div><span style="color:#6b7280">Type de contrat :</span> ${esc(fmtContrats(c.freelance))}</div>
       ${c.telephone?`<div><span style="color:#6b7280">Téléphone :</span> <strong>${esc(c.telephone)}</strong></div>`:''}
     </div>
     ${c.score?`<div style="margin-bottom:10px"><span class="card-score ${c.verdict==='Match'?'score-m':c.verdict==='Partiel'?'score-p':'score-n'}" style="font-size:12px">${c.score}/100 — ${esc(c.verdict||'')}</span></div>`:''}
@@ -1571,7 +1592,7 @@ function reopenCandidatFormWithState(newPosteId,newPosteTitre){
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
     set('f-nom',state.nom);set('f-tri',state.trigramme);set('f-dis',state.dispo);
     set('f-pret',state.pretention);set('f-rem',state.remarque);set('f-tel',state.telephone||'');set('f-tjm',state.tjm||'');set('f-pht',state.proposeHt||'');
-    const ff=document.getElementById('f-free');if(ff)ff.value=state.freelance;
+    setContrats(state.freelance);
     const fs=document.getElementById('f-src');if(fs)fs.value=state.sourcer;
     if(state.posteSearch){set('f-ps',state.posteSearch);set('f-pid',state.posteId||'');}
     if(newPosteId){set('f-ps',newPosteTitre);set('f-pid',newPosteId);}
@@ -1736,13 +1757,20 @@ function rTrash(){
 
 // ── Normalize helpers ──
 function mapFreelance(val){
-  if(!val||val==='nan'||val.trim()==='')return'Non';
-  const v=val.trim().toLowerCase();
-  if(v==='oui'||v==='yes'||v==='true')return'Oui';
-  if(v==='non'||v==='no'||v==='false')return'Non';
-  if(v.startsWith('cdi')&&v.length<6)return'CDI';
-  if(v.includes('cdi')&&v.length<20)return'CDI';
-  return'À valider';
+  if(!val||val==='nan'||String(val).trim()==='')return'';
+  const out=[];
+  String(val).split(/[,;|]/).forEach(t=>{
+    const v=t.trim().toLowerCase();if(!v)return;
+    let m=null;
+    if(v==='oui'||v==='yes'||v==='true'||v.includes('freelance oui'))m='Freelance OUI';
+    else if(v==='non'||v==='no'||v==='false'||v.includes('freelance non'))m='Freelance NON';
+    else if(v.includes('cdic'))m='CDIC';
+    else if(v.includes('cdi'))m='CDI';
+    else if(v.includes('cdd'))m='CDD';
+    else if(v.includes('portage'))m='Portage';
+    if(m&&!out.includes(m))out.push(m);
+  });
+  return CONTRATS.filter(o=>out.includes(o)).join(', ');
 }
 
 function mapStatut(raw,sourcer){
@@ -1780,7 +1808,7 @@ function parseRow(row,sourcer){
     dispo:(row['Disponibilité']||'').trim(),
     mobilite,
     pretention:(row['Prétention salariale']||'').trim(),
-    freelance:mapFreelance(row['Freelance']||''),
+    freelance:mapFreelance(row['Type de contrat']||row['Freelance']||''),
     remarque:(row['Remarque profil']||'').trim(),
     sourcer:src,statut,
     score:null,verdict:null,ordre:null,deletedAt:null,
@@ -1975,7 +2003,7 @@ function impCSVPostes(e){
 
 function expCSV(type){
   let content,filename;
-  if(type==='c'){const h=['Nom et prénom','Trigramme','Poste ciblé','Disponibilité','Mobilité','Prétention salariale','Freelance','Remarque','Sourceur','Statut','Score','Verdict'];const rows=S.candidates.map(c=>{const p=gp(c.posteId);return[c.nom,c.trigramme,p?p.titre:'',c.dispo,(c.mobilite||[]).join(' | '),c.pretention,c.freelance,c.remarque,c.sourcer,c.statut,c.score||'',c.verdict||''];});content=[h,...rows].map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');filename='candidats_notion_tafinar.csv';}
+  if(type==='c'){const h=['Nom et prénom','Trigramme','Poste ciblé','Disponibilité','Mobilité','Prétention salariale','Type de contrat','Remarque','Sourceur','Statut','Score','Verdict'];const rows=S.candidates.map(c=>{const p=gp(c.posteId);return[c.nom,c.trigramme,p?p.titre:'',c.dispo,(c.mobilite||[]).join(' | '),c.pretention,fmtContrats(c.freelance),c.remarque,c.sourcer,c.statut,c.score||'',c.verdict||''];});content=[h,...rows].map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');filename='candidats_notion_tafinar.csv';}
   else{const h=['Titre','Client','Lieux','Secteur','Urgence','Statut','Salaire max','Expérience','Nb candidats','Compétences'];const rows=S.postes.map(p=>[p.titre,p.client,(p.lieux||[]).join(' | '),p.secteur,p.urgence,p.statut,p.salaire,p.experience,p.nbCandidats,p.competences]);content=[h,...rows].map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');filename='postes_notion_tafinar.csv';}
   const blob=new Blob(['\ufeff'+content],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
 }
@@ -2344,6 +2372,40 @@ function makeQuadN(fullName){
   if(!p||!n)return '';
   return p[0]+p[p.length-1]+n[0]+n[n.length-1];
 }
+// ── Type de contrat (v83) : sélection multiple, stockée dans la colonne `freelance` (texte, séparé par des virgules)
+var CONTRATS=['CDI','CDIC','CDD','Freelance OUI','Freelance NON','Portage'];
+function parseContrats(raw){
+  const out=[];
+  String(raw==null?'':raw).split(',').map(x=>x.trim()).filter(Boolean).forEach(v=>{
+    const l=v.toLowerCase();
+    let m=null;
+    if(l==='oui')m='Freelance OUI';          // anciennes valeurs
+    else if(l==='non')m='Freelance NON';
+    else if(l==='à valider'||l==='a valider')m=null;
+    else m=CONTRATS.find(o=>o.toLowerCase()===l)||null;
+    if(m&&!out.includes(m))out.push(m);
+  });
+  return CONTRATS.filter(o=>out.includes(o));
+}
+function fmtContrats(raw){return parseContrats(raw).join(', ');}
+function setContrats(raw){
+  const v=parseContrats(raw);
+  const h=document.getElementById('f-free');if(h)h.value=v.join(', ');
+  document.querySelectorAll('#contrat-chips .cchip').forEach(b=>b.classList.toggle('on',v.includes(b.getAttribute('data-v'))));
+}
+function toggleContrat(btn){
+  const cur=parseContrats(document.getElementById('f-free')?.value);
+  const v=btn.getAttribute('data-v');
+  const i=cur.indexOf(v);
+  if(i>=0)cur.splice(i,1);
+  else{
+    cur.push(v);
+    const other=v==='Freelance OUI'?'Freelance NON':v==='Freelance NON'?'Freelance OUI':null;   // OUI et NON s'excluent
+    if(other){const j=cur.indexOf(other);if(j>=0)cur.splice(j,1);}
+  }
+  setContrats(cur.join(', '));
+  saveDraft();
+}
 function isSaid(){return /^said/i.test(getMe()||'');}
 // Mehdi : toujours. Said : jamais (pour l'instant). Les autres : seulement si la prétention salariale est renseignée.
 function quadBtnVisible(pret){
@@ -2634,7 +2696,7 @@ function suClientBody(s,c){
   L.push('Profil '+s.quad+(s.posteTitre?' — '+s.posteTitre:''));
   if(c){
     const add=(l,v)=>{if(v&&String(v).trim())L.push(l+' : '+String(v).trim());};
-    add('Disponibilité',c.dispo);add('Mobilité',(c.mobilite||[]).join(', '));add('Prétention',c.pretention);add('TJM (€ HT)',c.tjm);add('Freelance',c.freelance);add('Remarques',c.remarque);
+    add('Disponibilité',c.dispo);add('Mobilité',(c.mobilite||[]).join(', '));add('Prétention',c.pretention);add('TJM (€ HT)',c.tjm);add('Type de contrat',fmtContrats(c.freelance));add('Remarques',c.remarque);
   }
   L.push('CV : voir pièce(s) jointe(s)');
   L.push('',SEP,'');
@@ -2949,7 +3011,7 @@ async function migrateOne(c,isTrash,byId,byName,res){
   const pt=gp(c.posteId)?.titre||c.posteTitre||'';
   if(!ex){
     const sts=S.statuts[sourcer]||DEFAULT_STATUTS;
-    const nc={id:c.id,nom:c.nom,trigramme:c.trigramme||'',posteId:'',posteTitre:pt,dispo:c.dispo||'',mobilite:Array.isArray(c.mobilite)?c.mobilite:[],pretention:c.pretention||'',freelance:c.freelance||'Non',remarque:c.remarque||'',sourcer,statut:c.statut||sts[0],ordre:(typeof c.order==='number')?c.order:null,score:c.score||null,verdict:c.verdict||null,telephone:c.telephone||'',analyse:c.analyse||null,createdAt:'',deletedAt:isTrash?(c._trashedAt||new Date().toISOString()):null};
+    const nc={id:c.id,nom:c.nom,trigramme:c.trigramme||'',posteId:'',posteTitre:pt,dispo:c.dispo||'',mobilite:Array.isArray(c.mobilite)?c.mobilite:[],pretention:c.pretention||'',freelance:c.freelance||'',remarque:c.remarque||'',sourcer,statut:c.statut||sts[0],ordre:(typeof c.order==='number')?c.order:null,score:c.score||null,verdict:c.verdict||null,telephone:c.telephone||'',analyse:c.analyse||null,createdAt:'',deletedAt:isTrash?(c._trashedAt||new Date().toISOString()):null};
     const o=await localCv(c,'o',c.id,res),a=await localCv(c,'a',c.id,res);
     if(o){nc.cvOUrl=o.url;nc.cvOName=o.name;}
     if(a){nc.cvAUrl=a.url;nc.cvAName=a.name;}
@@ -3113,7 +3175,7 @@ function saveDraft(){
       dis:document.getElementById('f-dis')?.value||'',
       mobilite:mobilite,
       pret:document.getElementById('f-pret')?.value||'',
-      free:document.getElementById('f-free')?.value||'Non',
+      free:document.getElementById('f-free')?.value||'',
       rem:document.getElementById('f-rem')?.value||'',
       tel:document.getElementById('f-tel')?.value||'',
       tjm:document.getElementById('f-tjm')?.value||'',
